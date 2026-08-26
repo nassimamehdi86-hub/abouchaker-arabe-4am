@@ -153,15 +153,23 @@
     border-radius:999px; padding:5px 13px;
   }
 
-  /* ============ ملصقات (Stickers) عائمة زخرفية ============ */
+  /* ============ ملصقات (Stickers) عائمة زخرفية — الآن شارات إنجاز حقيقية ============ */
   .sticker-row{ display:flex; justify-content:center; gap:14px; margin:4px 0 22px; flex-wrap:wrap; }
   .sticker{
     width:64px; height:64px; border-radius:18px; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    background:linear-gradient(150deg,#FFFDF7,#F3ECD5); border:1.4px solid var(--gold-3);
-    box-shadow:0 6px 14px rgba(169,127,42,0.12); gap:2px;
+    background:linear-gradient(150deg,#EFEADA,#E7E1CC); border:1.4px solid rgba(169,127,42,0.3);
+    box-shadow:0 4px 10px rgba(169,127,42,0.06); gap:2px; position:relative; filter:grayscale(.6); opacity:.65; transition:.2s;
+  }
+  .sticker.active{
+    background:linear-gradient(150deg,#FFFDF7,#F3ECD5); border-color:var(--gold-3);
+    box-shadow:0 6px 14px rgba(169,127,42,0.18); filter:none; opacity:1;
   }
   .sticker .st-emoji{ font-size:22px; }
   .sticker .st-label{ font-size:8.5px; font-weight:800; color:var(--ink-soft); }
+  .sticker .st-count{
+    position:absolute; top:-6px; left:-6px; background:var(--gold-2); color:#33260A; font-size:9px; font-weight:800;
+    border-radius:50%; width:19px; height:19px; display:flex; align-items:center; justify-content:center; border:1.2px solid #FFFDF7;
+  }
 
   /* ============ شارات الإنجاز (Achievement Badges) ============ */
   .badge-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; margin-bottom:22px; }
