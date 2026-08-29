@@ -23,6 +23,12 @@
 5. غيّر **`window.ADMIN_PIN`** في نفس الملف إلى رقمك السري الخاص (4 إلى 8 أرقام)
 
 ### قواعد أمان Firestore المقترحة (الصقها في تبويب Rules):
+🔴 **مهم جدًا إن كان مشروعك منشورًا مسبقًا:** إن كنت قد نسخت هذه القواعد إلى Firebase Console
+من قبل، فإن تعديل هذا الملف وحده لا يغيّر شيئًا — القواعد الفعلية تبقى القديمة حتى تعيد
+نسخ القواعد الكاملة أدناه وتلصقها في تبويب **Rules** بمشروعك على
+https://console.firebase.google.com ثم تضغط **نشر (Publish)**. تحديدًا، السطر الجديد
+`allow delete: if true;` ضروري لعمل زر "حذف تلميذ" في لوحة التحكم — بدونه يرفض Firestore
+أي محاولة حذف برسالة خطأ صلاحيات (permission-denied).
 ```
 rules_version = '2';
 service cloud.firestore {
@@ -31,6 +37,7 @@ service cloud.firestore {
       allow read: if true;
       allow create: if true;
       allow update: if true; // يفضّل لاحقًا تقييدها عبر Cloud Functions لمزيد من الأمان
+      allow delete: if true; // ⚠️ ضرورية لزر "حذف تلميذ" في لوحة التحكم — بدونها يفشل الحذف برسالة خطأ صلاحيات (permission-denied)
     }
     match /state/{doc} {
       allow read: if true;
