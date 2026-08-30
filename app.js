@@ -1265,18 +1265,32 @@ function waitForPdfLibs(timeoutMs = 10000){
   });
 }
 
+/* تقدير "ثِقَل" محتوى الدرس (عدد الفروع + الأبناء + طول التعريف) لاختيار حجم خط/مسافات
+   مناسب تلقائيًا حتى تتسع الخريطة الذهنية بأناقة داخل صفحة A4 واحدة دائمًا مهما طال الدرس */
+function estimateMindmapPrintSizeClass(lesson){
+  const branches = lesson.tree || [];
+  const totalChildren = branches.reduce((acc,b)=> acc + ((b.children||[]).length), 0);
+  const defLen = (lesson.def||'').replace(/<[^>]*>/g,'').length;
+  const weight = (branches.length*3) + totalChildren + Math.floor(defLen/55);
+  if(weight > 38) return 'pp-ultra-compact';
+  if(weight > 22) return 'pp-compact';
+  return '';
+}
+
 function exportMindmapPDF(lesson){
   if(!lesson.tree || !lesson.tree.length) return;
   const btn = document.getElementById('ldMindmapPdfBtn');
   const area = document.getElementById('mindmapPrintArea');
 
+  const sizeClass = estimateMindmapPrintSizeClass(lesson);
   area.innerHTML = `
-    <div class="pp-page">
+    <div class="pp-page ${sizeClass}">
       <div class="pp-header">
         <div class="pp-platform">منصة الأستاذ محمد أبوشاكر لعبودي</div>
         <div class="pp-level">اللغة العربية — السنة الرابعة متوسط</div>
         <div class="pp-lesson-title">🗺️ الخريطة الذهنية: ${lesson.title}</div>
       </div>
+      ${lesson.def ? `<div class="pp-def">${lesson.def}</div>` : ''}
       <div class="pp-branches">
         ${lesson.tree.map(buildMindmapPrintBranchHTML).join('')}
       </div>
@@ -1287,14 +1301,63 @@ function exportMindmapPDF(lesson){
   btn.innerHTML = '⏳ جارٍ التحضير...';
   btn.disabled = true;
 
+  /* التقاط عنصر .pp-page كصورة عبر html2canvas مع ضمانات صريحة ضد أشهر أخطاء المكتبة:
+     1) تجاهل أي عنصر خلفية عائم في الصفحة (مثل صورة الأستاذ الشفافة/العلامة المائية) حتى
+        لا يظهر أي أثر لها إطلاقًا في خلفية ملف الـ PDF الناتج.
+     2) عدم استخدام أي تدرّج لوني (gradient) داخل قالب الطباعة نفسه — القالب يعتمد ألوانًا
+        صلبة فقط — لتفادي خطأ addColorStop الشهير الذي يقع عندما تحاول html2canvas رسم
+        تدرّجات لونية معقّدة أو نص مقصوص بتدرّج (background-clip:text).
+     3) تحجيم (scale) تلقائي يتناسب مع ارتفاع المحتوى الفعلي بدل قيمة ثابتة، لتفادي تجاوز
+        الحد الأقصى لأبعاد الـ canvas المسموح بها في متصفحات الجوّال. */
   (async ()=>{
+    const ignoreFloatingBackgrounds = (el)=>{
+      if(!el || !el.classList) return false;
+      return el.classList.contains('teacher-watermark') || el.classList.contains('islamic-pattern');
+    };
+    const forceCleanClone = (clonedDoc)=>{
+      clonedDoc.querySelectorAll('.teacher-watermark, .islamic-pattern').forEach(n=> n.remove());
+      if(clonedDoc.body){ clonedDoc.body.style.background = '#ffffff'; }
+      if(clonedDoc.documentElement){ clonedDoc.documentElement.style.background = '#ffffff'; }
+    };
+
+    async function captureWithScale(pageEl, scale){
+      return html2canvas(pageEl, {
+        scale,
+        useCORS:true,
+        allowTaint:true,
+        backgroundColor:'#ffffff',
+        logging:false,
+        ignoreElements: ignoreFloatingBackgrounds,
+        onclone: forceCleanClone
+      });
+    }
+
     try{
       await waitForPdfLibs();
       /* مهلة بسيطة إضافية لضمان اكتمال رسم العنصر والخطوط في DOM قبل التقاطه بالصورة */
       await new Promise(r=>setTimeout(r, 120));
 
       const pageEl = area.querySelector('.pp-page');
-      const canvas = await html2canvas(pageEl, { scale:2, useCORS:true, allowTaint:true, backgroundColor:'#ffffff', logging:false });
+
+      /* حساب scale آمن حسب أبعاد المحتوى الفعلية، بحيث لا يتجاوز ناتج الـ canvas حدًا
+         أقصى آمنًا (~4000px لأي بعد) وهو ما يتوافق مع أضعف متصفحات الجوّال */
+      const naturalW = pageEl.scrollWidth || 794;
+      const naturalH = pageEl.scrollHeight || 1123;
+      const MAX_DIM = 4000;
+      let scale = 2;
+      if(naturalW*scale > MAX_DIM || naturalH*scale > MAX_DIM){
+        scale = Math.max(1, Math.min(scale, MAX_DIM / Math.max(naturalW, naturalH)));
+      }
+
+      let canvas;
+      try{
+        canvas = await captureWithScale(pageEl, scale);
+      }catch(innerErr){
+        /* محاولة أخيرة أكثر أمانًا بحجم scale=1 إن فشلت المحاولة الأولى لأي سبب متعلق بالأبعاد */
+        console.warn('exportMindmapPDF: retrying with scale=1 after error:', innerErr);
+        canvas = await captureWithScale(pageEl, 1);
+      }
+
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
       const { jsPDF } = window.jspdf;
@@ -1309,7 +1372,7 @@ function exportMindmapPDF(lesson){
         imgWidth = (canvas.width * imgHeight) / canvas.height;
       }
       const x = (pageWidth - imgWidth) / 2;
-      const y = 0;
+      const y = Math.max(0, (pageHeight - imgHeight) / 2);
       pdf.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight);
       pdf.save(`الخريطة الذهنية - ${lesson.title}.pdf`);
     }catch(err){

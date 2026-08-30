@@ -1215,16 +1215,22 @@
   position:fixed; top:0; left:-99999px; width:794px; z-index:-1; background:#fff;
 }
 .pp-page{ font-family:'Cairo', sans-serif; direction:rtl; width:794px; padding:34px 40px; background:#fff; }
-.pp-header{ text-align:center; margin-bottom:14px; border-bottom:2.5px solid #A97F2A; padding-bottom:10px; }
+.pp-header{ text-align:center; margin-bottom:12px; border-bottom:2.5px solid #A97F2A; padding-bottom:9px; }
 .pp-platform{
-  font-family:'Rakkas', serif; font-size:22px;
-  background:linear-gradient(135deg, #A97F2A, #6E8F73 55%, #A97F2A);
-  -webkit-background-clip:text; background-clip:text; color:transparent;
+  font-family:'Rakkas', serif; font-size:22px; font-weight:700; color:#A97F2A;
+  letter-spacing:.3px; text-shadow:0.5px 0.5px 0 rgba(110,143,115,0.35);
 }
 .pp-level{ font-size:11px; font-weight:700; color:#6E8F73; margin-top:2px; }
 .pp-lesson-title{
-  font-family:'Aref Ruqaa', serif; font-weight:700; font-size:17px; color:#33260A; margin-top:8px;
+  font-family:'Aref Ruqaa', serif; font-weight:700; font-size:18px; color:#33260A; margin-top:7px;
 }
+/* ===== تعريف الدرس (نص أصلي دون أي تغيير) ===== */
+.pp-def{
+  background:#FBF6E8; border:1.8px solid #A97F2A; border-radius:12px;
+  padding:9px 14px; margin-bottom:10px; font-size:11px; line-height:1.7; color:#22352B;
+  text-align:center;
+}
+.pp-def mark{ background:#F5E1A4; color:#22352B; padding:0 3px; border-radius:3px; }
 .pp-branches{ display:flex; flex-direction:column; gap:8px; }
 .pp-branch{ border:1.6px solid #A97F2A; border-radius:10px; overflow:hidden; break-inside:avoid; }
 .pp-branch-head{ font-weight:800; font-size:12.5px; padding:6px 10px; }
@@ -1232,7 +1238,7 @@
 .pp-branch.c-green .pp-branch-head{ background:#DCF0DA; } .pp-branch.c-green{ border-color:#2E8B57; }
 .pp-branch.c-purple .pp-branch-head{ background:#E9DFF5; } .pp-branch.c-purple{ border-color:#6E4FA3; }
 .pp-branch.c-orange .pp-branch-head{ background:#FBE3CE; } .pp-branch.c-orange{ border-color:#D6483F; }
-.pp-branch.c-gold .pp-branch-head{ background:linear-gradient(135deg,#FBEDC3,#E7C878); } .pp-branch.c-gold{ border-color:#A97F2A; }
+.pp-branch.c-gold .pp-branch-head{ background:#F0DFA3; } .pp-branch.c-gold{ border-color:#A97F2A; }
 .pp-branch.c-teal .pp-branch-head{ background:#CDEFE8; } .pp-branch.c-teal{ border-color:#1D8C7A; }
 .pp-branch.c-brown .pp-branch-head{ background:#EAD9C4; } .pp-branch.c-brown{ border-color:#8B5A2B; }
 .pp-branch-body{ padding:7px 10px 8px; }
@@ -1247,3 +1253,39 @@
 .pp-leaf-rule{ font-size:9.5px; font-weight:700; line-height:1.5; color:#22352B; }
 .pp-leaf-example{ font-size:8.5px; font-weight:600; margin-top:3px; color:#5A4A2E; }
 .pp-footer{ text-align:center; font-size:9px; color:#8A5626; margin-top:14px; opacity:.85; }
+
+/* ===== تكييف تلقائي لحجم الخط/المسافات حسب حجم محتوى الدرس، لضمان بقاء كل شيء في صفحة واحدة أنيقة ===== */
+.pp-page.pp-compact{ padding:26px 34px; }
+.pp-page.pp-compact .pp-header{ margin-bottom:9px; padding-bottom:7px; }
+.pp-page.pp-compact .pp-platform{ font-size:20px; }
+.pp-page.pp-compact .pp-lesson-title{ font-size:16px; margin-top:5px; }
+.pp-page.pp-compact .pp-def{ padding:7px 12px; margin-bottom:8px; font-size:10px; line-height:1.55; }
+.pp-page.pp-compact .pp-branches{ gap:6px; }
+.pp-page.pp-compact .pp-branch-head{ font-size:11.5px; padding:5px 9px; }
+.pp-page.pp-compact .pp-branch-body{ padding:6px 9px 7px; }
+.pp-page.pp-compact .pp-rule{ font-size:9.5px; line-height:1.5; }
+.pp-page.pp-compact .pp-example{ font-size:8.5px; }
+.pp-page.pp-compact .pp-children{ gap:5px; margin-top:5px; }
+.pp-page.pp-compact .pp-leaf{ padding:4px 7px; }
+.pp-page.pp-compact .pp-leaf-title{ font-size:8.5px; padding:1px 6px; }
+.pp-page.pp-compact .pp-leaf-rule{ font-size:8.5px; }
+.pp-page.pp-compact .pp-leaf-example{ font-size:8px; }
+.pp-page.pp-compact .pp-footer{ margin-top:9px; }
+
+.pp-page.pp-ultra-compact{ padding:20px 28px; }
+.pp-page.pp-ultra-compact .pp-header{ margin-bottom:7px; padding-bottom:6px; }
+.pp-page.pp-ultra-compact .pp-platform{ font-size:18px; }
+.pp-page.pp-ultra-compact .pp-lesson-title{ font-size:14.5px; margin-top:4px; }
+.pp-page.pp-ultra-compact .pp-def{ padding:6px 10px; margin-bottom:6px; font-size:9px; line-height:1.45; }
+.pp-page.pp-ultra-compact .pp-branches{ gap:5px; }
+.pp-page.pp-ultra-compact .pp-branch{ border-width:1.2px; border-radius:8px; }
+.pp-page.pp-ultra-compact .pp-branch-head{ font-size:10.5px; padding:4px 8px; }
+.pp-page.pp-ultra-compact .pp-branch-body{ padding:5px 8px 6px; }
+.pp-page.pp-ultra-compact .pp-rule{ font-size:8.5px; line-height:1.4; }
+.pp-page.pp-ultra-compact .pp-example{ font-size:7.5px; }
+.pp-page.pp-ultra-compact .pp-children{ gap:4px; margin-top:4px; }
+.pp-page.pp-ultra-compact .pp-leaf{ padding:3px 6px; }
+.pp-page.pp-ultra-compact .pp-leaf-title{ font-size:7.5px; padding:1px 5px; margin-bottom:2px; }
+.pp-page.pp-ultra-compact .pp-leaf-rule{ font-size:7.5px; }
+.pp-page.pp-ultra-compact .pp-leaf-example{ font-size:7px; }
+.pp-page.pp-ultra-compact .pp-footer{ margin-top:6px; font-size:8px; }
