@@ -1224,7 +1224,17 @@ async function finishExercise(lesson, mountEl, pct){
     </div>
     ${res && res.ok
       ? '<p style="text-align:center;font-weight:800;color:#3F6350;margin-top:10px">✅ تم تسجيل نتيجتك في ترتيب هذا الدرس.</p>'
-      : '<p style="text-align:center;font-weight:700;color:#c0392b;margin-top:10px">⚠️ تعذّر حفظ نتيجتك في قاعدة البيانات (تحقق من الاتصال). راجع الأستاذ إن استمرت المشكلة.</p>'}`;
+      : '<p style="text-align:center;font-weight:700;color:#c0392b;margin-top:10px">⚠️ تعذّر حفظ نتيجتك في قاعدة البيانات (تحقق من الاتصال). راجع الأستاذ إن استمرت المشكلة.</p>'}
+    <div id="pdfButtonsContainer"></div>`;
+  
+  /* إضافة أزرار تحميل PDF بعد تسجيل النتيجة بنجاح */
+  if(res && res.ok){
+    const exerciseData = await loadLessonExercise(lesson.id);
+    if(exerciseData){
+      const btnContainer = document.getElementById('pdfButtonsContainer');
+      addPdfDownloadButtons(lesson, exerciseData, btnContainer);
+    }
+  }
 }
 
 /* ---------- تصدير الخريطة الذهنية للدرس كملف PDF (تحميل مباشر) ----------
