@@ -639,6 +639,22 @@
   }
   .exam-panel .lock-icon{ font-size:30px; display:block; margin-bottom:8px; }
 
+  /* ============ زر الانطلاق البارز + الشرح بدون إطار (اختبار الفهم / تمارين الدرس) ============ */
+  .lesson-cta-btn{
+    display:flex; align-items:center; justify-content:center; gap:10px; width:100%;
+    font-family:'Aref Ruqaa', serif; font-weight:700; font-size:19px; color:#33260A;
+    background:linear-gradient(135deg, var(--gold-1), var(--gold-2)); border:1.6px solid var(--gold-3);
+    border-radius:18px; padding:16px 20px; box-shadow:0 10px 22px rgba(169,127,42,0.28), inset 0 1px 0 rgba(255,255,255,0.55);
+    cursor:pointer; transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .lesson-cta-btn:hover{ transform:translateY(-2px); box-shadow:0 14px 26px rgba(169,127,42,0.34); }
+  .lesson-cta-btn:active{ transform:translateY(1px); }
+  .lesson-cta-note{
+    margin:10px 4px 0; padding:0; border:none; background:none;
+    font-family:'Cairo', sans-serif; font-weight:300; font-size:12.5px; line-height:1.9;
+    color:var(--ink-soft); text-align:center;
+  }
+
   /* ============ بطاقة إعراب الجمل — إعراب 100 جملة ============ */
   .irab-launch{
     display:flex; align-items:center; gap:14px; border-radius:20px; padding:18px 18px 16px;

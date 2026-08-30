@@ -912,13 +912,7 @@ async function renderLessonExercisesBox(lesson){
   const data = await loadLessonExercise(lesson.id);
   if(!data){
     box.innerHTML = `
-      <div class="one-attempt-warn">
-        <div class="oaw-icon">⏳</div>
-        <div>
-          <div class="oaw-title">تمارين هذا الدرس غير متوفرة بعد</div>
-          <div class="oaw-sub">سيقوم الأستاذ/المشرف بإضافتها قريبًا. عند توفرها ستكون محاولة واحدة فقط، وتُحسب النتيجة بالنسبة المئوية وتدخل الترتيب.</div>
-        </div>
-      </div>`;
+      <div class="lesson-cta-note">⏳ تمارين هذا الدرس غير متوفرة بعد — سيقوم الأستاذ/المشرف بإضافتها قريبًا. عند توفرها ستكون محاولة واحدة فقط، وتُحسب النتيجة بالنسبة المئوية وتدخل الترتيب.</div>`;
     return;
   }
 
@@ -944,14 +938,8 @@ async function renderLessonExercisesBox(lesson){
   const count = units ? units.length : data.questions.length;
 
   box.innerHTML = `
-    <div class="one-attempt-warn">
-      <div class="oaw-icon">⚠️</div>
-      <div>
-        <div class="oaw-title">محاولة واحدة فقط</div>
-        <div class="oaw-sub">عدد الأسئلة: ${count}. لا يمكنك إعادة هذا التمرين بعد إرساله، وتُحسب نتيجتك بالنسبة المئوية وتدخل ترتيب هذا الدرس.</div>
-      </div>
-    </div>
-    <button class="install-btn" id="ldExerciseStartBtn" style="margin-top:12px">▶️ ابدأ التمرين</button>
+    <button class="lesson-cta-btn" id="ldExerciseStartBtn">▶️ ابدأ التمرين</button>
+    <div class="lesson-cta-note">⚠️ محاولة واحدة فقط — عدد الأسئلة: ${count}. لا يمكنك إعادة هذا التمرين بعد إرساله، وتُحسب نتيجتك بالنسبة المئوية وتدخل ترتيب هذا الدرس.</div>
     <div id="ldExerciseMount" style="margin-top:14px"></div>`;
 
   document.getElementById('ldExerciseStartBtn').addEventListener('click', ()=>{
@@ -1248,7 +1236,7 @@ function renderMindmap(lesson, wrap){
         ${ch.rule?`<div class="mm-leaf-rule">${ch.rule}</div>`:''}
         ${ch.example?`<div class="mm-leaf-example">✏️ ${ch.example}</div>`:''}
       </div>`).join('');
-    return `<details class="mm-branch c-${branch.color||'blue'}" open>
+    return `<details class="mm-branch c-${branch.color||'blue'}">
       <summary><span>${branch.title}</span><span class="chev">▾</span></summary>
       <div class="mm-branch-body">
         ${branch.rule?`<div class="mm-rule">${branch.rule}</div>`:''}
