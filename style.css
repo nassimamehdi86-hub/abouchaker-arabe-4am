@@ -1207,14 +1207,18 @@
 }
 
 /* =========================================================================================
-   تصدير الخريطة الذهنية كملف PDF (تحميل مباشر عبر html2canvas + jsPDF، بلا نافذة طباعة)
+   تصدير الخريطة الذهنية كملف PDF عبر نافذة طباعة المتصفح (Print → Save as PDF)
+   ملاحظة: بعض المتصفحات تُخفي صور/ألوان الخلفية في الطباعة إلا إذا فعّل المستخدم خيار
+   "طباعة الرسومات الخلفية / Background graphics"، لذا اعتمدنا على صورة <img> حقيقية
+   للعلامة المائية (لا background-image) لأن الصور الحقيقية تُطبع دائمًا بشكل افتراضي.
    ========================================================================================= */
 #mindmapPrintArea{ display:none; }
 
-#mindmapPrintArea{
-  position:fixed; top:0; left:-99999px; width:794px; z-index:-1; background:#fff;
+.pp-page{ position:relative; z-index:1; font-family:'Cairo', sans-serif; direction:rtl; }
+.pp-watermark{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:60%; max-width:420px; opacity:.08; z-index:0; filter:grayscale(.3);
 }
-.pp-page{ font-family:'Cairo', sans-serif; direction:rtl; width:794px; padding:34px 40px; background:#fff; }
 .pp-header{ text-align:center; margin-bottom:14px; border-bottom:2.5px solid #A97F2A; padding-bottom:10px; }
 .pp-platform{
   font-family:'Rakkas', serif; font-size:22px;
@@ -1247,3 +1251,14 @@
 .pp-leaf-rule{ font-size:9.5px; font-weight:700; line-height:1.5; color:#22352B; }
 .pp-leaf-example{ font-size:8.5px; font-weight:600; margin-top:3px; color:#5A4A2E; }
 .pp-footer{ text-align:center; font-size:9px; color:#8A5626; margin-top:14px; opacity:.85; }
+
+@media print{
+  body.printing-mindmap *{ visibility:hidden !important; }
+  body.printing-mindmap #mindmapPrintArea,
+  body.printing-mindmap #mindmapPrintArea *{ visibility:visible !important; }
+  body.printing-mindmap #mindmapPrintArea{
+    display:block !important; position:absolute; inset:0; margin:0;
+  }
+  body.printing-mindmap .pp-page{ padding:10mm 12mm; }
+  @page{ size:A4 portrait; margin:0; }
+}
