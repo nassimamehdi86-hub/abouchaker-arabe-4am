@@ -892,6 +892,7 @@ function openLessonDetail(id){
     if(listenWrap) listenWrap.style.display = 'none';
   }
   renderMindmap(lesson, document.getElementById('ldMindmap'));
+  document.getElementById('ldMindmapPdfBtn').onclick = ()=> exportMindmapPDF(lesson);
 
   const quizMount = document.getElementById('ldQuiz');
   document.getElementById('ldQuizStartBtn').onclick = ()=>{
@@ -1224,6 +1225,59 @@ async function finishExercise(lesson, mountEl, pct){
     ${res && res.ok
       ? '<p style="text-align:center;font-weight:800;color:#3F6350;margin-top:10px">✅ تم تسجيل نتيجتك في ترتيب هذا الدرس.</p>'
       : '<p style="text-align:center;font-weight:700;color:#c0392b;margin-top:10px">⚠️ تعذّر حفظ نتيجتك في قاعدة البيانات (تحقق من الاتصال). راجع الأستاذ إن استمرت المشكلة.</p>'}`;
+}
+
+/* ---------- تصدير الخريطة الذهنية للدرس كملف PDF (عبر نافذة طباعة المتصفح) ----------
+   لا تُستخدم أي مكتبة خارجية حتى يبقى هذا يعمل بلا اتصال بالإنترنت مثل باقي محتوى الدرس؛
+   يُبنى عرض مطبوع (كل الأقسام مفتوحة دائمًا، بنفس الألوان والإطارات) في حاوية مخفية
+   (#mindmapPrintArea)، ثم تُستدعى نافذة طباعة المتصفح التي تتيح للتلميذ حفظ النتيجة كـ PDF. */
+function buildMindmapPrintBranchHTML(branch){
+  const childrenHtml = (branch.children||[]).map(ch=>`
+    <div class="pp-leaf">
+      <span class="pp-leaf-title">${ch.title}</span>
+      ${ch.rule?`<div class="pp-leaf-rule">${ch.rule}</div>`:''}
+      ${ch.example?`<div class="pp-leaf-example">✏️ ${ch.example}</div>`:''}
+    </div>`).join('');
+  return `<div class="pp-branch c-${branch.color||'blue'}">
+    <div class="pp-branch-head">${branch.title}</div>
+    <div class="pp-branch-body">
+      ${branch.rule?`<div class="pp-rule">${branch.rule}</div>`:''}
+      ${branch.example?`<div class="pp-example">✏️ ${branch.example}</div>`:''}
+      ${childrenHtml?`<div class="pp-children">${childrenHtml}</div>`:''}
+    </div>
+  </div>`;
+}
+
+function exportMindmapPDF(lesson){
+  if(!lesson.tree || !lesson.tree.length) return;
+  const area = document.getElementById('mindmapPrintArea');
+  area.innerHTML = `
+    <img class="pp-watermark" src="teacher-watermark.jpg" alt="">
+    <div class="pp-page">
+      <div class="pp-header">
+        <div class="pp-platform">منصة الأستاذ محمد أبوشاكر لعبودي</div>
+        <div class="pp-level">اللغة العربية — السنة الرابعة متوسط</div>
+        <div class="pp-lesson-title">🗺️ الخريطة الذهنية: ${lesson.title}</div>
+      </div>
+      <div class="pp-branches">
+        ${lesson.tree.map(buildMindmapPrintBranchHTML).join('')}
+      </div>
+      <div class="pp-footer">إعداد الأستاذ الوطني: محمد أبوشاكر لعبودي</div>
+    </div>`;
+
+  document.body.classList.add('printing-mindmap');
+  let safetyTimer;
+  const cleanup = ()=>{
+    document.body.classList.remove('printing-mindmap');
+    area.innerHTML = '';
+    window.removeEventListener('afterprint', cleanup);
+    clearTimeout(safetyTimer);
+  };
+  window.addEventListener('afterprint', cleanup);
+  /* بعض متصفحات الأجهزة لا تُطلق afterprint بشكل موثوق، لذا نضيف صمّام أمان زمنيًا */
+  safetyTimer = setTimeout(cleanup, 15000);
+
+  setTimeout(()=> window.print(), 60);
 }
 
 /* ---------- الخريطة الذهنية ---------- */

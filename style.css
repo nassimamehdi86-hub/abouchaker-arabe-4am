@@ -711,6 +711,19 @@
 
 .mm-title{ text-align:center; font-family:'Aref Ruqaa', serif; font-weight:700; font-size:19px; margin:30px 0 12px; color:var(--ink); }
 
+/* ============ صف عنوان الخريطة الذهنية + زر تحميل PDF ============ */
+.mm-title-row{
+  display:flex; align-items:center; justify-content:center; gap:10px; margin:30px 0 12px; flex-wrap:wrap;
+}
+.mm-title-row .mm-title{ margin:0; }
+.mm-pdf-btn{
+  display:inline-flex; align-items:center; gap:6px; font-family:'Cairo',sans-serif; font-weight:800;
+  font-size:11.5px; color:#33260A; background:linear-gradient(135deg, var(--gold-1), var(--gold-2));
+  border:1.3px solid var(--gold-3); border-radius:999px; padding:6px 14px;
+  box-shadow:0 4px 10px rgba(169,127,42,0.22); cursor:pointer;
+}
+.mm-pdf-btn:active{ transform:translateY(1px); }
+
 /* اختبار الفهم */
 .quiz-progress{ text-align:center; font-size:11.5px; font-weight:800; color:var(--gold-3); margin-bottom:10px; }
 .quiz-card{ background:var(--paper); border:1.6px solid var(--gold-3); border-radius:16px; padding:18px 16px; }
@@ -1191,4 +1204,61 @@
 .notification-form .install-btn{
   width:100%;
   justify-content:center;
+}
+
+/* =========================================================================================
+   تصدير الخريطة الذهنية كملف PDF عبر نافذة طباعة المتصفح (Print → Save as PDF)
+   ملاحظة: بعض المتصفحات تُخفي صور/ألوان الخلفية في الطباعة إلا إذا فعّل المستخدم خيار
+   "طباعة الرسومات الخلفية / Background graphics"، لذا اعتمدنا على صورة <img> حقيقية
+   للعلامة المائية (لا background-image) لأن الصور الحقيقية تُطبع دائمًا بشكل افتراضي.
+   ========================================================================================= */
+#mindmapPrintArea{ display:none; }
+
+.pp-page{ position:relative; z-index:1; font-family:'Cairo', sans-serif; direction:rtl; }
+.pp-watermark{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:60%; max-width:420px; opacity:.08; z-index:0; filter:grayscale(.3);
+}
+.pp-header{ text-align:center; margin-bottom:14px; border-bottom:2.5px solid #A97F2A; padding-bottom:10px; }
+.pp-platform{
+  font-family:'Rakkas', serif; font-size:22px;
+  background:linear-gradient(135deg, #A97F2A, #6E8F73 55%, #A97F2A);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.pp-level{ font-size:11px; font-weight:700; color:#6E8F73; margin-top:2px; }
+.pp-lesson-title{
+  font-family:'Aref Ruqaa', serif; font-weight:700; font-size:17px; color:#33260A; margin-top:8px;
+}
+.pp-branches{ display:flex; flex-direction:column; gap:8px; }
+.pp-branch{ border:1.6px solid #A97F2A; border-radius:10px; overflow:hidden; break-inside:avoid; }
+.pp-branch-head{ font-weight:800; font-size:12.5px; padding:6px 10px; }
+.pp-branch.c-blue .pp-branch-head{ background:#D7E8F5; } .pp-branch.c-blue{ border-color:#2F6FB0; }
+.pp-branch.c-green .pp-branch-head{ background:#DCF0DA; } .pp-branch.c-green{ border-color:#2E8B57; }
+.pp-branch.c-purple .pp-branch-head{ background:#E9DFF5; } .pp-branch.c-purple{ border-color:#6E4FA3; }
+.pp-branch.c-orange .pp-branch-head{ background:#FBE3CE; } .pp-branch.c-orange{ border-color:#D6483F; }
+.pp-branch.c-gold .pp-branch-head{ background:linear-gradient(135deg,#FBEDC3,#E7C878); } .pp-branch.c-gold{ border-color:#A97F2A; }
+.pp-branch.c-teal .pp-branch-head{ background:#CDEFE8; } .pp-branch.c-teal{ border-color:#1D8C7A; }
+.pp-branch.c-brown .pp-branch-head{ background:#EAD9C4; } .pp-branch.c-brown{ border-color:#8B5A2B; }
+.pp-branch-body{ padding:7px 10px 8px; }
+.pp-rule{ font-size:10.5px; font-weight:700; line-height:1.6; color:#22352B; }
+.pp-example{ font-size:9.5px; font-weight:600; margin-top:3px; color:#5A4A2E; }
+.pp-children{ display:grid; grid-template-columns:repeat(2, 1fr); gap:6px; margin-top:6px; }
+.pp-leaf{ background:rgba(255,255,255,0.6); border:1.2px solid rgba(169,127,42,0.4); border-radius:8px; padding:5px 8px; break-inside:avoid; }
+.pp-leaf-title{
+  font-weight:800; font-size:9px; display:inline-block; padding:1px 7px; border-radius:999px;
+  background:#A97F2A; color:#fff; margin-bottom:3px;
+}
+.pp-leaf-rule{ font-size:9.5px; font-weight:700; line-height:1.5; color:#22352B; }
+.pp-leaf-example{ font-size:8.5px; font-weight:600; margin-top:3px; color:#5A4A2E; }
+.pp-footer{ text-align:center; font-size:9px; color:#8A5626; margin-top:14px; opacity:.85; }
+
+@media print{
+  body.printing-mindmap *{ visibility:hidden !important; }
+  body.printing-mindmap #mindmapPrintArea,
+  body.printing-mindmap #mindmapPrintArea *{ visibility:visible !important; }
+  body.printing-mindmap #mindmapPrintArea{
+    display:block !important; position:absolute; inset:0; margin:0;
+  }
+  body.printing-mindmap .pp-page{ padding:10mm 12mm; }
+  @page{ size:A4 portrait; margin:0; }
 }

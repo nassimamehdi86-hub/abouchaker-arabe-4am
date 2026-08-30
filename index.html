@@ -114,7 +114,10 @@
       <div class="video-frame"><iframe id="ldVideo" src="" allowfullscreen loading="lazy"></iframe></div>
     </div>
 
-    <div class="mm-title">🗺️ الخريطة الذهنية للدرس</div>
+    <div class="mm-title-row">
+      <div class="mm-title">🗺️ الخريطة الذهنية للدرس</div>
+      <button class="mm-pdf-btn" id="ldMindmapPdfBtn" title="تحميل الخريطة الذهنية كملف PDF">📄 <span>تحميل PDF</span></button>
+    </div>
     <div class="mm-wrap" id="ldMindmap"></div>
 
     <div class="section-title"><span>اختبار الفهم</span><div class="line"></div></div>
@@ -193,6 +196,9 @@
     <button class="install-btn" id="adminPinSubmit" style="width:100%;justify-content:center">دخول</button>
   </div>
 </div>
+
+<!-- ============ منطقة طباعة PDF للخريطة الذهنية (مخفية دائمًا، تظهر فقط أثناء الطباعة) ============ -->
+<div id="mindmapPrintArea"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
