@@ -1227,10 +1227,11 @@ async function finishExercise(lesson, mountEl, pct){
       : '<p style="text-align:center;font-weight:700;color:#c0392b;margin-top:10px">⚠️ تعذّر حفظ نتيجتك في قاعدة البيانات (تحقق من الاتصال). راجع الأستاذ إن استمرت المشكلة.</p>'}`;
 }
 
-/* ---------- تصدير الخريطة الذهنية للدرس كملف PDF (عبر نافذة طباعة المتصفح) ----------
-   لا تُستخدم أي مكتبة خارجية حتى يبقى هذا يعمل بلا اتصال بالإنترنت مثل باقي محتوى الدرس؛
-   يُبنى عرض مطبوع (كل الأقسام مفتوحة دائمًا، بنفس الألوان والإطارات) في حاوية مخفية
-   (#mindmapPrintArea)، ثم تُستدعى نافذة طباعة المتصفح التي تتيح للتلميذ حفظ النتيجة كـ PDF. */
+/* ---------- تصدير الخريطة الذهنية للدرس كملف PDF (تحميل مباشر) ----------
+   تُبنى نسخة كاملة من الخريطة الذهنية (كل الأقسام مفتوحة دائمًا، بنفس الألوان والإطارات)
+   في حاوية خارج نطاق الشاشة المرئية (#mindmapPrintArea)، ثم تُلتقط كصورة عبر html2canvas
+   وتُحوَّل إلى ملف PDF فعلي عبر jsPDF ويُنزَّل مباشرة على جهاز التلميذ (بلا نافذة طباعة).
+   يتطلب هذا اتصالاً بالإنترنت لتحميل مكتبتي html2canvas وjsPDF (عبر CDN) عند أول استخدام. */
 function buildMindmapPrintBranchHTML(branch){
   const childrenHtml = (branch.children||[]).map(ch=>`
     <div class="pp-leaf">
@@ -1250,9 +1251,10 @@ function buildMindmapPrintBranchHTML(branch){
 
 function exportMindmapPDF(lesson){
   if(!lesson.tree || !lesson.tree.length) return;
+  const btn = document.getElementById('ldMindmapPdfBtn');
   const area = document.getElementById('mindmapPrintArea');
+
   area.innerHTML = `
-    <img class="pp-watermark" src="teacher-watermark.jpg" alt="">
     <div class="pp-page">
       <div class="pp-header">
         <div class="pp-platform">منصة الأستاذ محمد أبوشاكر لعبودي</div>
@@ -1265,19 +1267,41 @@ function exportMindmapPDF(lesson){
       <div class="pp-footer">إعداد الأستاذ الوطني: محمد أبوشاكر لعبودي</div>
     </div>`;
 
-  document.body.classList.add('printing-mindmap');
-  let safetyTimer;
-  const cleanup = ()=>{
-    document.body.classList.remove('printing-mindmap');
-    area.innerHTML = '';
-    window.removeEventListener('afterprint', cleanup);
-    clearTimeout(safetyTimer);
-  };
-  window.addEventListener('afterprint', cleanup);
-  /* بعض متصفحات الأجهزة لا تُطلق afterprint بشكل موثوق، لذا نضيف صمّام أمان زمنيًا */
-  safetyTimer = setTimeout(cleanup, 15000);
+  const originalBtnHTML = btn.innerHTML;
+  btn.innerHTML = '⏳ جارٍ التحضير...';
+  btn.disabled = true;
 
-  setTimeout(()=> window.print(), 60);
+  /* مهلة بسيطة لضمان اكتمال رسم العنصر في DOM قبل التقاطه بالصورة */
+  setTimeout(async ()=>{
+    try{
+      const pageEl = area.querySelector('.pp-page');
+      const canvas = await html2canvas(pageEl, { scale:2, useCORS:true, backgroundColor:'#ffffff' });
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      let imgWidth = pageWidth;
+      let imgHeight = (canvas.height * imgWidth) / canvas.width;
+      if(imgHeight > pageHeight){
+        imgHeight = pageHeight;
+        imgWidth = (canvas.width * imgHeight) / canvas.height;
+      }
+      const x = (pageWidth - imgWidth) / 2;
+      const y = 0;
+      pdf.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight);
+      pdf.save(`الخريطة الذهنية - ${lesson.title}.pdf`);
+    }catch(err){
+      console.error('exportMindmapPDF failed:', err);
+      alert('تعذّر إنشاء ملف PDF. تأكد من اتصالك بالإنترنت ثم حاول مجددًا.');
+    }finally{
+      area.innerHTML = '';
+      btn.innerHTML = originalBtnHTML;
+      btn.disabled = false;
+    }
+  }, 50);
 }
 
 /* ---------- الخريطة الذهنية ---------- */
