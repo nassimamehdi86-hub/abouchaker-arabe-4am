@@ -1249,6 +1249,22 @@ function buildMindmapPrintBranchHTML(branch){
   </div>`;
 }
 
+/* تنتظر تحميل مكتبتي html2canvas وjsPDF من الإنترنت (قد يتأخرا قليلاً حسب سرعة الاتصال
+   أو تُحجبان من بعض برامج حجب الإعلانات/جدران حماية الشبكة)، وتفشل بخطأ واضح بعد مهلة معقولة */
+function waitForPdfLibs(timeoutMs = 10000){
+  return new Promise((resolve, reject)=>{
+    const start = Date.now();
+    (function check(){
+      const ready = (typeof html2canvas !== 'undefined') && window.jspdf && window.jspdf.jsPDF;
+      if(ready) return resolve();
+      if(Date.now() - start > timeoutMs){
+        return reject(new Error('تعذّر تحميل مكوّنات إنشاء PDF من الإنترنت. تأكد من اتصالك، ومن أن أي برنامج حجب إعلانات أو جدار حماية للشبكة لا يمنع تحميل ملفات جافاسكريبت خارجية، ثم أعد المحاولة.'));
+      }
+      setTimeout(check, 200);
+    })();
+  });
+}
+
 function exportMindmapPDF(lesson){
   if(!lesson.tree || !lesson.tree.length) return;
   const btn = document.getElementById('ldMindmapPdfBtn');
@@ -1271,11 +1287,14 @@ function exportMindmapPDF(lesson){
   btn.innerHTML = '⏳ جارٍ التحضير...';
   btn.disabled = true;
 
-  /* مهلة بسيطة لضمان اكتمال رسم العنصر في DOM قبل التقاطه بالصورة */
-  setTimeout(async ()=>{
+  (async ()=>{
     try{
+      await waitForPdfLibs();
+      /* مهلة بسيطة إضافية لضمان اكتمال رسم العنصر والخطوط في DOM قبل التقاطه بالصورة */
+      await new Promise(r=>setTimeout(r, 120));
+
       const pageEl = area.querySelector('.pp-page');
-      const canvas = await html2canvas(pageEl, { scale:2, useCORS:true, backgroundColor:'#ffffff' });
+      const canvas = await html2canvas(pageEl, { scale:2, useCORS:true, allowTaint:true, backgroundColor:'#ffffff', logging:false });
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
       const { jsPDF } = window.jspdf;
@@ -1295,13 +1314,14 @@ function exportMindmapPDF(lesson){
       pdf.save(`الخريطة الذهنية - ${lesson.title}.pdf`);
     }catch(err){
       console.error('exportMindmapPDF failed:', err);
-      alert('تعذّر إنشاء ملف PDF. تأكد من اتصالك بالإنترنت ثم حاول مجددًا.');
+      const msg = (err && err.message) ? err.message : 'تعذّر إنشاء ملف PDF. تأكد من اتصالك بالإنترنت ثم حاول مجددًا.';
+      alert(msg);
     }finally{
       area.innerHTML = '';
       btn.innerHTML = originalBtnHTML;
       btn.disabled = false;
     }
-  }, 50);
+  })();
 }
 
 /* ---------- الخريطة الذهنية ---------- */
