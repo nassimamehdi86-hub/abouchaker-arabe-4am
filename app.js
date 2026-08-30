@@ -928,7 +928,12 @@ async function renderLessonExercisesBox(lesson){
         <div class="result-gauge" style="--pct:${pct}"><div class="rg-pct">${pct}%</div></div>
         <div class="result-title">لقد أتممتَ تمرين هذا الدرس</div>
         <div class="result-msg">هذه نتيجتك المسجّلة — محاولة واحدة فقط لكل تلميذ، ولا يمكن إعادتها.</div>
-      </div>`;
+      </div>
+      <div id="ldExercisesPdfButtons"></div>`;
+    /* التلميذ اجتاز هذا التمرين فعلاً (نتيجته محفوظة في قاعدة البيانات) — أزرار تحميل PDF
+       يجب أن تظهر هنا في كل مرة يُفتح فيها الدرس من جديد، وليس فقط لحظة الإنهاء الأولى،
+       لأن data (محتوى التمرين) محمّل مسبقًا في هذه الدالة أصلاً. */
+    addPdfDownloadButtons(lesson, data, document.getElementById('ldExercisesPdfButtons'));
     return;
   }
 
