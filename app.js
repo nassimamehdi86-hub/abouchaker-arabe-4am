@@ -1265,18 +1265,14 @@ function waitForPdfLibs(timeoutMs = 10000){
   });
 }
 
-/* تضمن اكتمال تحميل الخطوط العربية المخصّصة (Rakkas / Aref Ruqaa / Cairo) فعليًا في المتصفح
-   قبل التقاط الصورة. بما أن هذه الخطوط تُحمَّل من Google Fonts بخاصية display:swap، فقد لا تكون
-   جاهزة بعد عند فتح شاشة الدرس للمرة الأولى (خصوصًا مع اتصال بطيء)، فيلتقط html2canvas خط
-   احتياطي (fallback) لا يدعم اتصال الحروف العربية بشكل صحيح، فتظهر الحروف مفكّكة/مشوّهة في
-   عنوان المنصة وعنوان الدرس داخل ملف الـ PDF رغم ظهورها سليمة تمامًا داخل التطبيق نفسه. */
+/* تضمن اكتمال تحميل خط Cairo (المستخدم الآن حصريًا في كامل قالب طباعة الـ PDF، بما في ذلك
+   عنوان المنصة وعنوان الدرس) فعليًا في المتصفح قبل التقاط الصورة، لتفادي أي خط احتياطي مؤقت. */
 async function ensureMindmapFontsLoaded(){
   if(!(document.fonts && document.fonts.load)) return;
   try{
     await Promise.all([
-      document.fonts.load('700 22px Rakkas'),
-      document.fonts.load('400 22px Rakkas'),
-      document.fonts.load('700 18px "Aref Ruqaa"'),
+      document.fonts.load('900 21px Cairo'),
+      document.fonts.load('800 17px Cairo'),
       document.fonts.load('700 12px Cairo'),
       document.fonts.load('600 12px Cairo'),
       document.fonts.load('400 12px Cairo')

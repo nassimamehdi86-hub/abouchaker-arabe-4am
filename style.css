@@ -1220,12 +1220,17 @@
 .pp-page{ font-family:'Cairo', sans-serif; direction:rtl; width:794px; padding:34px 40px; background:#fff; }
 .pp-header{ text-align:center; margin-bottom:12px; border-bottom:2.5px solid #A97F2A; padding-bottom:9px; }
 .pp-platform{
-  font-family:'Rakkas', serif; font-size:22px; font-weight:700; color:#A97F2A;
-  letter-spacing:.3px; text-shadow:0.5px 0.5px 0 rgba(110,143,115,0.35);
+  /* نستخدم عمدًا خط Cairo (وليس Rakkas/Aref Ruqaa الزخرفيَّين المستخدمين في واجهة التطبيق)
+     لأن محرك التقاط الصورة (html2canvas) يفشل في رسم تشكيل الحروف العربية المتصلة بشكل صحيح
+     مع الخطوط الزخرفية المعقّدة، فتظهر الحروف مفكّكة ومشوّهة رغم ظهورها سليمة تمامًا داخل
+     التطبيق نفسه. خط Cairo أبسط في تشكيله ويُرسَم بشكل سليم دائمًا، ونعوّض عن الطابع الزخرفي
+     بحجم كبير ووزن عريض جدًا ومسافة بين الحروف بدل الاعتماد على شكل الخط نفسه. */
+  font-family:'Cairo', sans-serif; font-size:21px; font-weight:900; color:#A97F2A;
+  letter-spacing:.4px;
 }
 .pp-level{ font-size:11px; font-weight:700; color:#6E8F73; margin-top:2px; }
 .pp-lesson-title{
-  font-family:'Aref Ruqaa', serif; font-weight:700; font-size:18px; color:#33260A; margin-top:7px;
+  font-family:'Cairo', sans-serif; font-weight:800; font-size:17px; color:#33260A; margin-top:7px;
 }
 /* ===== تعريف الدرس (نص أصلي دون أي تغيير) ===== */
 .pp-def{
