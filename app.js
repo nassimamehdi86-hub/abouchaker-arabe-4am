@@ -1358,6 +1358,13 @@ function exportMindmapPDF(lesson){
         canvas = await captureWithScale(pageEl, 1);
       }
 
+      /* حارس أمان صريح: إن كان canvas بأبعاد صفرية أو غير سليمة (وهذا ما كان يسبب سابقًا
+         خطأ "Invalid coordinates passed to jsPDF.addImage" بصمت) نوقف العملية برسالة
+         عربية واضحة بدل تمرير قيم NaN/صفرية إلى jsPDF */
+      if(!canvas || !canvas.width || !canvas.height){
+        throw new Error('تعذّر تجهيز صورة الخريطة الذهنية (أبعاد فارغة). أعد فتح الدرس وحاول مجددًا.');
+      }
+
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
       const { jsPDF } = window.jspdf;
@@ -1373,6 +1380,11 @@ function exportMindmapPDF(lesson){
       }
       const x = (pageWidth - imgWidth) / 2;
       const y = Math.max(0, (pageHeight - imgHeight) / 2);
+
+      if(![x,y,imgWidth,imgHeight].every(Number.isFinite)){
+        throw new Error('تعذّر حساب أبعاد ملف PDF بشكل صحيح. أعد فتح الدرس وحاول مجددًا.');
+      }
+
       pdf.addImage(imgData, 'JPEG', x, y, imgWidth, imgHeight);
       pdf.save(`الخريطة الذهنية - ${lesson.title}.pdf`);
     }catch(err){

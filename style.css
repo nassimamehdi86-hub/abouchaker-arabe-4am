@@ -1209,10 +1209,13 @@
 /* =========================================================================================
    تصدير الخريطة الذهنية كملف PDF (تحميل مباشر عبر html2canvas + jsPDF، بلا نافذة طباعة)
    ========================================================================================= */
-#mindmapPrintArea{ display:none; }
-
 #mindmapPrintArea{
+  /* لا نستخدم display:none هنا أبدًا: العنصر يجب أن يبقى "مرسومًا" فعليًا في الصفحة
+     (وإن كان خارج مجال الرؤية تمامًا عبر position:fixed + left سالب جدًا) وإلا فإن
+     html2canvas يلتقط قماشًا (canvas) بأبعاد صفرية، مما يسبب خطأ
+     "Invalid coordinates passed to jsPDF.addImage" عند تمرير أبعاد NaN/صفرية إلى jsPDF. */
   position:fixed; top:0; left:-99999px; width:794px; z-index:-1; background:#fff;
+  visibility:visible; pointer-events:none;
 }
 .pp-page{ font-family:'Cairo', sans-serif; direction:rtl; width:794px; padding:34px 40px; background:#fff; }
 .pp-header{ text-align:center; margin-bottom:12px; border-bottom:2.5px solid #A97F2A; padding-bottom:9px; }
