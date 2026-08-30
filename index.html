@@ -116,7 +116,7 @@
 
     <div class="mm-title-row">
       <div class="mm-title">🗺️ الخريطة الذهنية للدرس</div>
-      <button class="mm-pdf-btn" id="ldMindmapPdfBtn" title="تحميل الخريطة الذهنية كملف PDF">📄 <span>تحميل PDF</span></button>
+      <button class="mm-pdf-btn" id="ldMindmapPdfBtn" title="تحميل الخريطة الذهنية كملف PDF">⬇️ تحميل</button>
     </div>
     <div class="mm-wrap" id="ldMindmap"></div>
 
@@ -197,9 +197,13 @@
   </div>
 </div>
 
-<!-- ============ منطقة طباعة PDF للخريطة الذهنية (مخفية دائمًا، تظهر فقط أثناء الطباعة) ============ -->
+<!-- ============ منطقة بناء الخريطة الذهنية لتصديرها كملف PDF (خارج الشاشة، غير مرئية للمستخدم) ============ -->
 <div id="mindmapPrintArea"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
+  onerror="var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';document.head.appendChild(s);"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+  onerror="var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';document.head.appendChild(s);"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
