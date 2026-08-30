@@ -1265,6 +1265,28 @@ function waitForPdfLibs(timeoutMs = 10000){
   });
 }
 
+/* تضمن اكتمال تحميل الخطوط العربية المخصّصة (Rakkas / Aref Ruqaa / Cairo) فعليًا في المتصفح
+   قبل التقاط الصورة. بما أن هذه الخطوط تُحمَّل من Google Fonts بخاصية display:swap، فقد لا تكون
+   جاهزة بعد عند فتح شاشة الدرس للمرة الأولى (خصوصًا مع اتصال بطيء)، فيلتقط html2canvas خط
+   احتياطي (fallback) لا يدعم اتصال الحروف العربية بشكل صحيح، فتظهر الحروف مفكّكة/مشوّهة في
+   عنوان المنصة وعنوان الدرس داخل ملف الـ PDF رغم ظهورها سليمة تمامًا داخل التطبيق نفسه. */
+async function ensureMindmapFontsLoaded(){
+  if(!(document.fonts && document.fonts.load)) return;
+  try{
+    await Promise.all([
+      document.fonts.load('700 22px Rakkas'),
+      document.fonts.load('400 22px Rakkas'),
+      document.fonts.load('700 18px "Aref Ruqaa"'),
+      document.fonts.load('700 12px Cairo'),
+      document.fonts.load('600 12px Cairo'),
+      document.fonts.load('400 12px Cairo')
+    ]);
+    if(document.fonts.ready) await document.fonts.ready;
+  }catch(e){
+    /* لا نوقف عملية التصدير أبدًا بسبب فشل تحميل خط واحد — نتابع بأفضل خط متاح */
+  }
+}
+
 /* تقدير "ثِقَل" محتوى الدرس (عدد الفروع + الأبناء + طول التعريف) لاختيار حجم خط/مسافات
    مناسب تلقائيًا حتى تتسع الخريطة الذهنية بأناقة داخل صفحة A4 واحدة دائمًا مهما طال الدرس */
 function estimateMindmapPrintSizeClass(lesson){
@@ -1318,6 +1340,17 @@ function exportMindmapPDF(lesson){
       clonedDoc.querySelectorAll('.teacher-watermark, .islamic-pattern').forEach(n=> n.remove());
       if(clonedDoc.body){ clonedDoc.body.style.background = '#ffffff'; }
       if(clonedDoc.documentElement){ clonedDoc.documentElement.style.background = '#ffffff'; }
+      /* html2canvas ينسخ الصفحة داخل iframe منفصل داخليًا، وقد يكون تحميل الخطوط فيه غير
+         متزامن مع الصفحة الأصلية حتى لو كانت جاهزة هناك، فتظهر الحروف العربية مفكّكة. بما أن
+         html2canvas تنتظر أي Promise تُعيدها onclone قبل المتابعة، ننتظر هنا صراحةً اكتمال
+         تحميل خطوط المستند المستنسخ نفسه، مع مهلة قصوى احترازية حتى لا يتعلّق التصدير للأبد. */
+      if(clonedDoc.fonts && clonedDoc.fonts.ready){
+        return Promise.race([
+          clonedDoc.fonts.ready,
+          new Promise(resolve=> setTimeout(resolve, 1500))
+        ]);
+      }
+      return Promise.resolve();
     };
 
     async function captureWithScale(pageEl, scale){
@@ -1334,8 +1367,9 @@ function exportMindmapPDF(lesson){
 
     try{
       await waitForPdfLibs();
-      /* مهلة بسيطة إضافية لضمان اكتمال رسم العنصر والخطوط في DOM قبل التقاطه بالصورة */
-      await new Promise(r=>setTimeout(r, 120));
+      await ensureMindmapFontsLoaded();
+      /* مهلة بسيطة إضافية لضمان اكتمال رسم العنصر (الخطوط والتخطيط) في DOM قبل التقاطه بالصورة */
+      await new Promise(r=>setTimeout(r, 150));
 
       const pageEl = area.querySelector('.pp-page');
 
