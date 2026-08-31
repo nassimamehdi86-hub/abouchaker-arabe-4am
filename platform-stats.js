@@ -39,13 +39,17 @@ const PlatformStats = {
     if(onlineWrap) onlineWrap.style.display = (counts.online === null && this.onlineIndexMissing) ? 'none' : 'flex';
   },
 
-  /* جلب العددين من Firestore عبر استعلامات count() الخفيفة (قراءة واحدة لكل استعلام مهما كان حجم المجموعة) */
+  /* جلب العددين من Firestore.
+     ملاحظة: تم التراجع عن استخدام استعلامات count() المتقدّمة لأنها غير مدعومة في بعض
+     نسخ مكتبة Firebase compat (تظهر حينها كخطأ: "count is not a function")، واعتماد
+     الطريقة الأضمن: تحميل المستندات المطابقة فعليًا وعدّها عبر snapshot.size — متوافقة
+     مع كل نسخ Firebase مهما كانت قديمة، وتكلفتها ضئيلة جدًا لحجم بيانات فصل دراسي عادي. */
   async fetchCounts(){
     let total = null, online = null;
 
     try{
-      const totalSnap = await db.collection('students').where('status','==','approved').count().get();
-      total = totalSnap.data().count;
+      const totalSnap = await db.collection('students').where('status','==','approved').get();
+      total = totalSnap.size;
     }catch(e){ console.warn('تعذّر جلب عدد التلاميذ المنضمّين:', e && e.message); }
 
     try{
@@ -53,8 +57,8 @@ const PlatformStats = {
       const onlineSnap = await db.collection('students')
         .where('status','==','approved')
         .where('lastSeen','>=', cutoff)
-        .count().get();
-      online = onlineSnap.data().count;
+        .get();
+      online = onlineSnap.size;
     }catch(e){
       /* الاستعلام يحتاج فهرسًا مركّبًا (status + lastSeen) في Firestore — يُنشأ تلقائيًا
          بالضغط على الرابط الذي يظهر في رسالة الخطأ أدناه ضمن الـ Console عند أول محاولة */
@@ -64,6 +68,7 @@ const PlatformStats = {
 
     return { total, online };
   },
+
 
   async refresh(){
     if(!fbReady || !db) return;
