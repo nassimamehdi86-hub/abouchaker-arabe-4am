@@ -1867,6 +1867,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(typeof initWisdomBanner === 'function') setTimeout(initWisdomBanner, 500);
   if(typeof initNotificationsSystem === 'function') setTimeout(initNotificationsSystem, 500);
   if(typeof setupLessonLiveUpdates === 'function') setTimeout(setupLessonLiveUpdates, 500);
+  if(typeof initPlatformStatsWidget === 'function') setTimeout(initPlatformStatsWidget, 500);
 
   /* تحديث لوحة التحكم لتشمل إدارة التلاميذ */
   const originalRenderAdminPanel = window.renderAdminPanel;
