@@ -178,17 +178,17 @@
   .lantern{ width:30px; height:44px; opacity:.9; }
 
   .teacher-photo{
-    width:88px; height:88px; border-radius:50%; margin:2px auto 12px; position:relative;
+    width:min(240px, 64vw); aspect-ratio:1/1; border-radius:26px; margin:4px auto 16px; position:relative;
     background: linear-gradient(160deg, #EFE7D2, #E4EFE6);
-    border:3px solid var(--gold-2);
-    box-shadow:0 0 0 4px rgba(199,154,61,0.16), 0 8px 18px rgba(169,127,42,0.18);
+    border:4px solid var(--gold-2);
+    box-shadow:0 0 0 5px rgba(199,154,61,0.18), 0 12px 28px rgba(169,127,42,0.32);
     display:flex; align-items:center; justify-content:center; font-size:34px; color:var(--sage-deep);
     overflow:hidden;
     transition:transform .4s cubic-bezier(.34,1.56,.64,1);
     animation:teacherPhotoIntro .7s cubic-bezier(.34,1.56,.64,1) both,
               teacherPhotoGlow 3.4s ease-in-out .7s infinite;
   }
-  .teacher-photo:hover{ transform:scale(1.09); }
+  .teacher-photo:hover{ transform:scale(1.04); }
   .teacher-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
 
   /* ظهور الصورة بحركة تكبير ناعمة عند تحميل الصفحة */
