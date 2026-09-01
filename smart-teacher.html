@@ -784,6 +784,9 @@ const TEACHER_DEVICE_KEY = 'examPlatform_teacherDeviceAuthorized_v1';
 /* ============================= LANDING ============================= */
 async function renderLanding(){
   app.innerHTML = `
+    <div style="display:flex;justify-content:flex-start;margin-bottom:14px;">
+      <a href="index.html" class="backlink">⟵ رجوع للمنصة</a>
+    </div>
     <div class="hero-frame">
       <div class="hero-fade"></div>
       <div class="hero-content">
@@ -856,32 +859,11 @@ async function renderLanding(){
       <a href="#" id="showHidden" class="backlink" style="display:none;">إظهار الاختبارات المخفية</a>
     </div>
     <div class="center" style="margin-top:10px;">
-      <a href="#" id="teacherLink" class="backlink" style="display:none;">🔒 لوحة الأستاذ(ة)</a>
+      <a href="#" id="teacherLink" class="backlink">🔑 دخول الأستاذ(ة)</a>
     </div>
   `;
   document.getElementById('teacherLink').onclick = (e)=>{ e.preventDefault(); go('teacherGate'); };
   wireInstallButton('installAppBtn');
-
-  /* ===== زر لوحة الأستاذ(ة): مخفي تمامًا عن التلاميذ، ولا يظهر إلا على جهاز
-     تم التحقق منه سابقًا بالرقم السري. أول مرة على أي جهاز، يمكن للأستاذ(ة)
-     الوصول عبر الضغط 5 مرات متتالية على عنوان الصفحة (بدلاً من زر ظاهر للجميع). ===== */
-  const teacherLinkEl = document.getElementById('teacherLink');
-  if(localStorage.getItem(TEACHER_DEVICE_KEY) === 'true'){
-    teacherLinkEl.style.display = 'inline';
-  }
-  const heroTrigger = document.getElementById('heroIconTrigger');
-  if(heroTrigger){
-    let tapCount = 0, tapTimer = null;
-    heroTrigger.addEventListener('click', ()=>{
-      tapCount++;
-      clearTimeout(tapTimer);
-      tapTimer = setTimeout(()=>{ tapCount = 0; }, 3000);
-      if(tapCount >= 5){
-        tapCount = 0;
-        go('teacherGate');
-      }
-    });
-  }
 
   if(!initFirebase()){ go('setup'); return; }
   const feed = document.getElementById('examsFeed');
@@ -956,49 +938,31 @@ async function renderLanding(){
 }
 
 /* ============================= TEACHER PIN GATE ============================= */
-const PIN_KEY = 'examPlatform_teacherPin_v1';
+/* الرمز السري ثابت وموحّد (2580) على كل الأجهزة — نفس رمز دخول المشرف فالمنصة الرئيسية،
+   بلا حاجة لإنشاء رمز جديد فأول استعمال على كل جهاز. */
+const TEACHER_PIN = '2580';
 function renderTeacherGate(){
-  const hasPin = !!localStorage.getItem(PIN_KEY);
   app.innerHTML = `
     ${Header('لوحة الأستاذ(ة)')}
     <div class="card">
-      ${hasPin ? `
-        <div class="field"><label>الرمز السري (PIN)</label>
-          <input type="text" id="pinIn" inputmode="numeric" maxlength="8" placeholder="••••"></div>
-        <button class="btn btn-primary btn-block" id="pinGo">دخول</button>
-      ` : `
-        <p class="muted">هذه أول مرة تدخل فيها إلى لوحة الأستاذ(ة) من هذا الجهاز. يُرجى إنشاء رمز سري قصير (4 أرقام مثلاً) لحماية اللوحة من التلاميذ.</p>
-        <div class="field"><label>اختر رمزًا سريًا جديدًا</label>
-          <input type="text" id="pinNew" inputmode="numeric" maxlength="8" placeholder="مثلاً: 2580"></div>
-        <button class="btn btn-primary btn-block" id="pinSet">حفظ ومتابعة</button>
-      `}
+      <div class="field"><label>🔑 الرمز السري (PIN)</label>
+        <input type="text" id="pinIn" inputmode="numeric" maxlength="8" placeholder="••••"></div>
+      <button class="btn btn-primary btn-block" id="pinGo">دخول</button>
       <div id="pinErr" style="color:var(--red);margin-top:10px;font-size:13px;"></div>
     </div>
     <a class="backlink" id="back" href="#">⟵ رجوع</a>
   `;
   document.getElementById('back').onclick=(e)=>{e.preventDefault(); go('landing');};
-  if(hasPin){
-    document.getElementById('pinGo').onclick = ()=>{
-      const v = document.getElementById('pinIn').value.trim();
-      if(v && v === localStorage.getItem(PIN_KEY)){
-        localStorage.setItem(TEACHER_DEVICE_KEY, 'true');
-        if(!initFirebase()){ go('setup'); return; }
-        go('teacherDashboard');
-      } else {
-        document.getElementById('pinErr').textContent = 'الرمز غير صحيح.';
-      }
-    };
-  } else {
-    document.getElementById('pinSet').onclick = ()=>{
-      const v = document.getElementById('pinNew').value.trim();
-      if(!v || v.length<4){ document.getElementById('pinErr').textContent = 'يرجى إدخال رمز مكوّن من 4 أرقام على الأقل.'; return; }
-      localStorage.setItem(PIN_KEY, v);
+  document.getElementById('pinGo').onclick = ()=>{
+    const v = document.getElementById('pinIn').value.trim();
+    if(v && v === TEACHER_PIN){
       localStorage.setItem(TEACHER_DEVICE_KEY, 'true');
-      toast('تم تسجيل الرمز ✅ يرجى الاحتفاظ به جيدًا');
       if(!initFirebase()){ go('setup'); return; }
       go('teacherDashboard');
-    };
-  }
+    } else {
+      document.getElementById('pinErr').textContent = 'الرمز غير صحيح.';
+    }
+  };
 }
 
 /* ============================= FIREBASE / WORKER SETUP SCREEN ============================= */
@@ -1102,25 +1066,13 @@ async function renderTeacherDashboard(){
             <button class="btn btn-primary" id="newExam">+ اختبار جديد</button>
           </div>
         </div>
-        <p class="muted" style="margin-top:10px;">جميع اختباراتك تظهر هنا. اضغط على أي اختبار لمعاينته أو الحصول على رابط مشاركته أو حذفه.</p>
-        <div class="row" style="margin-top:10px;">
-          <div class="field"><label>المادة</label>
-            <input type="text" id="subjectSearchExams" placeholder="مثلاً: الرياضيات..."></div>
-          <div class="field"><label>المستوى</label>
-            <input type="text" id="levelSearchExams" placeholder="مثلاً: السنة الأولى متوسط..."></div>
-        </div>
+        <p class="muted" style="margin-top:10px;">جميع اختباراتك تظهر هنا بعناوينها. اضغط على أي اختبار لمعاينته أو الحصول على رابط مشاركته أو حذفه.</p>
         <div id="examsListMine" class="muted" style="margin-top:14px;">جارٍ التحميل...</div>
       </div>
 
       <div class="tabpanel" id="tab-archive">
         <h3 style="margin-top:0;">📄 نتائج تلاميذي</h3>
-        <p class="muted">تظهر هنا حصريًا الاختبارات التي أجاب عنها تلميذ واحد على الأقل. ابحث بالمادة أو المستوى، ثم اختر الاختبار لعرض لائحة التلاميذ وأسماءهم ونقطهم وحلولهم.</p>
-        <div class="row">
-          <div class="field"><label>المادة</label>
-            <input type="text" id="subjectSearch" placeholder="مثلاً: الرياضيات..."></div>
-          <div class="field"><label>المستوى</label>
-            <input type="text" id="levelSearch" placeholder="مثلاً: السنة الأولى متوسط..."></div>
-        </div>
+        <p class="muted">تظهر هنا حصريًا الاختبارات التي أجاب عنها تلميذ واحد على الأقل. اختر الاختبار لعرض لائحة التلاميذ وأسماءهم ونقطهم وحلولهم.</p>
         <div id="examsList" class="muted" style="margin-top:6px;">جارٍ التحميل...</div>
         <div id="submissionsPanel" style="margin-top:8px;"></div>
       </div>
@@ -1152,77 +1104,25 @@ async function renderTeacherDashboard(){
   let allExams = [];
   let examsLoaded = false;
 
-  // يبني بنية {مستوى -> مادة -> اختبارات} مرتبة، مع تطبيق تصفية المادة/المستوى محليًا (بلا أي استعلام جديد)
-  // هذا هو الفرق الجوهري: التصفية تشتغل على بيانات محمّلة مسبقًا فما تتعطلش أو تعلق حتى مع بطء الشبكة.
-  function groupExamsFor(list, subjFilter, levelFilter){
-    const f = (subjFilter||'').trim();
-    const lv = (levelFilter||'').trim();
-    let filtered = f ? list.filter(ex => textMatches(ex.subject, f) || textMatches(ex.title, f)) : list.slice();
-    if(lv) filtered = filtered.filter(ex => textMatches(ex.level||'', lv));
-    const levelGroups = {};
-    filtered.forEach(ex=>{
-      const lvKey = ex.level || 'بلا مستوى';
-      if(!levelGroups[lvKey]) levelGroups[lvKey] = [];
-      levelGroups[lvKey].push(ex);
-    });
-    const levelNames = Object.keys(levelGroups).sort((a,b)=>{
-      const ia = ALL_LEVELS.indexOf(a), ib = ALL_LEVELS.indexOf(b);
-      if(ia===-1 && ib===-1) return a.localeCompare(b,'ar');
-      if(ia===-1) return 1;
-      if(ib===-1) return -1;
-      return ia-ib;
-    });
-    return {filtered, levelGroups, levelNames};
-  }
-
-  function renderExamGroupsHTML(levelGroups, levelNames, extraBadge){
-    return levelNames.map(lvName=>{
-      const groups = {};
-      levelGroups[lvName].forEach(ex=>{
-        if(!groups[ex.subject]) groups[ex.subject] = [];
-        groups[ex.subject].push(ex);
-      });
-      const subjectNames = Object.keys(groups).sort((a,b)=>{
-        const ia = STANDARD_SUBJECTS.indexOf(a), ib = STANDARD_SUBJECTS.indexOf(b);
-        if(ia===-1 && ib===-1) return a.localeCompare(b,'ar');
-        if(ia===-1) return 1;
-        if(ib===-1) return -1;
-        return ia-ib;
-      });
-      return `
-        <div style="margin-bottom:22px;">
-          <div class="hero-pill" style="margin-bottom:12px;">🎓 ${esc(lvName)}</div>
-          ${subjectNames.map(subj=>`
-            <div style="margin-bottom:14px;">
-              <div style="font-weight:800;color:var(--gold-deep);margin-bottom:6px;">📚 ${esc(subj)} <span class="pill" style="margin-right:6px;">${groups[subj].length}</span></div>
-              ${groups[subj].map(ex=>`
-                <div class="exam-row" data-topic="${ex.id}" style="cursor:pointer;">
-                  <div class="exam-ico">📘</div>
-                  <div class="exam-info">
-                    <div class="t">${esc(ex.title)}</div>
-                    <div class="s">${ex.questionsCount} سؤال — ${ex.totalPoints} نقطة${extraBadge ? extraBadge(ex) : ''}</div>
-                  </div>
-                  <button class="btn btn-ghost" data-manage="${ex.id}" style="padding:8px 12px;font-size:13px;" title="رابط المشاركة والحذف">⚙️</button>
-                </div>`).join('')}
-            </div>
-          `).join('')}
+  // تعرض قائمة مسطّحة بالاختبارات مرتبة بعناوينها أبجديًا، بلا أي تجميع أو تصفية بالمستوى/المادة.
+  function renderExamListHTML(list, extraBadge){
+    const sorted = list.slice().sort((a,b)=> (a.title||'').localeCompare(b.title||'', 'ar'));
+    return sorted.map(ex=>`
+      <div class="exam-row" data-topic="${ex.id}" style="cursor:pointer;">
+        <div class="exam-ico">📘</div>
+        <div class="exam-info">
+          <div class="t">${esc(ex.title)}</div>
+          <div class="s">${ex.questionsCount} سؤال — ${ex.totalPoints} نقطة${extraBadge ? extraBadge(ex) : ''}</div>
         </div>
-      `;
-    }).join('');
+        <button class="btn btn-ghost" data-manage="${ex.id}" style="padding:8px 12px;font-size:13px;" title="رابط المشاركة والحذف">⚙️</button>
+      </div>`).join('');
   }
 
-  // تبويبة "اختباراتي": تعرض كل الاختبارات بلا استثناء، والضغط على أي واحد يفتح لوحة إدارته
-  function renderMineList(subjVal, levelVal){
+  // تبويبة "اختباراتي": تعرض كل الاختبارات بلا استثناء وبلا تصفية، والضغط على أي واحد يفتح لوحة إدارته
+  function renderMineList(){
     if(!examsLoaded){ listBoxMine.innerHTML = '<div class="loadbox"><div class="spinner"></div> جارٍ تحميل الاختبارات...</div>'; return; }
-    const {filtered, levelGroups, levelNames} = groupExamsFor(allExams, subjVal, levelVal);
     if(allExams.length===0){ listBoxMine.innerHTML = '<p class="muted">لا توجد اختبارات بعد. اضغط على "+ اختبار جديد" للبدء.</p>'; return; }
-    if(filtered.length===0){
-      listBoxMine.innerHTML = `<p class="muted">لا توجد اختبارات مطابقة لبحثك (من أصل ${allExams.length} اختبار محمّل). <a href="#" id="clearSearchMine" style="color:var(--gold-deep);font-weight:700;">امسح البحث</a> لرؤية الجميع.</p>`;
-      const cl = document.getElementById('clearSearchMine');
-      if(cl) cl.onclick = (e)=>{ e.preventDefault(); subjectBoxMine.value=''; levelBoxMine.value=''; renderMineList('',''); };
-      return;
-    }
-    listBoxMine.innerHTML = renderExamGroupsHTML(levelGroups, levelNames, ex => ex.submissionsCount ? ` — ✅ ${ex.submissionsCount} إجابة` : ' — لا إجابات بعد');
+    listBoxMine.innerHTML = renderExamListHTML(allExams, ex => ex.submissionsCount ? ` — ✅ ${ex.submissionsCount} إجابة` : ' — لا إجابات بعد');
     listBoxMine.querySelectorAll('[data-topic]').forEach(rowEl=>{
       rowEl.onclick = (e)=>{
         if(e.target.closest('[data-manage]')) return;
@@ -1234,22 +1134,14 @@ async function renderTeacherDashboard(){
     });
   }
 
-  // تبويبة "نتائج تلاميذي": تعرض حصريًا الاختبارات التي لها إجابة واحدة على الأقل
-  function renderArchiveList(subjVal, levelVal){
+  // تبويبة "نتائج تلاميذي": تعرض حصريًا الاختبارات التي لها إجابة واحدة على الأقل، بلا أي تصفية
+  function renderArchiveList(){
     if(!examsLoaded){ listBox.innerHTML = '<div class="loadbox"><div class="spinner"></div> جارٍ تحميل الاختبارات...</div>'; return; }
     // نبقي أيضًا الاختبارات اللي تعذّر التحقق من إجاباتها (submissionsLoadFailed) ظاهرة هنا
     // بدل ما تختفي بصمت — قد يكون عندها إجابات فعلية ما قدرناش نأكدوها بسبب خطأ شبكة عابر.
     const withSubs = allExams.filter(ex=>ex.submissionsCount>0 || ex.submissionsLoadFailed);
-    const {filtered, levelGroups, levelNames} = groupExamsFor(withSubs, subjVal, levelVal);
     if(withSubs.length===0){ subPanel.innerHTML=''; listBox.innerHTML = '<p class="muted">لا توجد اختبارات أنجزها تلاميذ بعد.</p>'; return; }
-    if(filtered.length===0){
-      subPanel.innerHTML='';
-      listBox.innerHTML = `<p class="muted">لا توجد نتائج مطابقة لبحثك (من أصل ${withSubs.length} اختبار منجز). <a href="#" id="clearSearchArch" style="color:var(--gold-deep);font-weight:700;">امسح البحث</a> لرؤية الجميع.</p>`;
-      const cl = document.getElementById('clearSearchArch');
-      if(cl) cl.onclick = (e)=>{ e.preventDefault(); subjectBoxArch.value=''; levelBoxArch.value=''; renderArchiveList('',''); };
-      return;
-    }
-    listBox.innerHTML = renderExamGroupsHTML(levelGroups, levelNames, ex => ex.submissionsLoadFailed ? ' — ⚠️ تعذر التحقق من الإجابات، اضغط لإعادة المحاولة' : ` — 👥 ${ex.submissionsCount} تلميذ`);
+    listBox.innerHTML = renderExamListHTML(withSubs, ex => ex.submissionsLoadFailed ? ' — ⚠️ تعذر التحقق من الإجابات، اضغط لإعادة المحاولة' : ` — 👥 ${ex.submissionsCount} تلميذ`);
     listBox.querySelectorAll('[data-topic]').forEach(rowEl=>{
       rowEl.onclick = (e)=>{
         if(e.target.closest('[data-manage]')) return;
@@ -1279,7 +1171,7 @@ async function renderTeacherDashboard(){
           examEntry.submissions = subsSnap.docs.map(d=>d.data());
           examEntry.submissionsCount = examEntry.submissions.length;
           examEntry.submissionsLoadFailed = false;
-          renderArchiveList(subjectBoxArch.value, levelBoxArch.value);
+          renderArchiveList();
           openTopicSubmissions(examEntry);
         }catch(e){
           subPanel.innerHTML = `<div class="card"><span style="color:var(--red);">فشلت المحاولة مجددًا (${esc(e.message||'')}).</span> <button class="btn btn-ghost" id="retrySubs2" style="padding:6px 12px;font-size:13px;">🔄 إعادة المحاولة</button></div>`;
@@ -1316,16 +1208,6 @@ async function renderTeacherDashboard(){
       bindCorrectionButtons(tr, examEntry.examData, s);
     });
   }
-
-  const subjectBoxMine = document.getElementById('subjectSearchExams');
-  const levelBoxMine = document.getElementById('levelSearchExams');
-  attachSuggestions(levelBoxMine, ALL_LEVELS, (val)=> renderMineList(subjectBoxMine.value, val));
-  attachSuggestions(subjectBoxMine, STANDARD_SUBJECTS, (val)=> renderMineList(val, levelBoxMine.value));
-
-  const subjectBoxArch = document.getElementById('subjectSearch');
-  const levelBoxArch = document.getElementById('levelSearch');
-  attachSuggestions(levelBoxArch, ALL_LEVELS, (val)=> renderArchiveList(subjectBoxArch.value, val));
-  attachSuggestions(subjectBoxArch, STANDARD_SUBJECTS, (val)=> renderArchiveList(val, levelBoxArch.value));
 
   // تحميل كل الاختبارات وإجاباتها دفعة واحدة، بمهلة زمنية على كل استعلام حتى لا يبقى العرض
   // عالقًا فحالة "جارٍ التحميل..." إلى الأبد بسبب بطء أو انقطاع الشبكة. خطأ في اختبار واحد
@@ -1372,8 +1254,8 @@ async function renderTeacherDashboard(){
       if(retryBtn) retryBtn.onclick = loadAllExams;
       return;
     }
-    renderMineList(subjectBoxMine.value, levelBoxMine.value);
-    renderArchiveList(subjectBoxArch.value, levelBoxArch.value);
+    renderMineList();
+    renderArchiveList();
   }
 
   loadAllExams();
@@ -1533,12 +1415,6 @@ function renderTeacherCreate(){
 
   if(d.step===1){
     box.innerHTML = `
-      <div class="field"><label>المستوى الدراسي</label>
-        ${levelSelectHTML('levelIn', d.level)}
-      </div>
-      <div class="field"><label>المادة</label>
-        <input type="text" id="subjectIn" value="${esc(d.subject)}" placeholder="مثلاً: اللغة العربية، الرياضيات، الفرنسية...">
-      </div>
       <div class="field"><label>عنوان الاختبار</label>
         <input type="text" id="titleIn" value="${esc(d.title)}" placeholder="مثلاً: اختبار الفصل الثالث"></div>
       <div class="field"><label>📄 ملف الاختبار (PDF)</label>
@@ -1548,15 +1424,11 @@ function renderTeacherCreate(){
         <input type="file" id="keyPdf" accept="application/pdf"></div>
       <button class="btn btn-primary btn-block" id="toStep2">استخراج الأسئلة بالذكاء الاصطناعي ⟵</button>
     `;
-    attachSuggestions(document.getElementById('subjectIn'), STANDARD_SUBJECTS);
     document.getElementById('toStep2').onclick = async ()=>{
-      d.level = document.getElementById('levelIn').value;
-      d.subject = document.getElementById('subjectIn').value.trim();
       d.title = document.getElementById('titleIn').value.trim();
       const examFile = document.getElementById('examPdf').files[0];
       const keyFile = document.getElementById('keyPdf').files[0];
-      if(!d.level){ toast('يرجى اختيار المستوى الدراسي'); return; }
-      if(!d.subject || !d.title){ toast('يرجى تعبئة حقلي المادة والعنوان'); return; }
+      if(!d.title){ toast('يرجى تعبئة حقل عنوان الاختبار'); return; }
       if(!examFile || !keyFile){ toast('يجب رفع ملف الاختبار وملف الحل النموذجي'); return; }
       d.examFile = examFile;
       box.innerHTML = `<div class="loadbox"><div class="spinner"></div> جارٍ قراءة الملفات واستخراج الأسئلة، يرجى الانتظار قليلاً...</div>`;
@@ -1985,7 +1857,7 @@ function renderTeacherCreate(){
     const editing = !!d.editingExamId;
     box.innerHTML = `
       <h3>${editing? 'جاهزة لحفظ التعديلات':'جاهز للنشر'}</h3>
-      <p class="muted"><b>${esc(d.title)}</b> — ${esc(d.level)} — ${esc(d.subject)} — ${d.questions.length} سؤال — من ${total} نقطة</p>
+      <p class="muted"><b>${esc(d.title)}</b>${d.subject?' — '+esc(d.subject):''} — ${d.questions.length} سؤال — من ${total} نقطة</p>
       ${pendingNotes>0? `<p style="color:var(--red);font-size:13.5px;">⚠️ عندك ${pendingNotes} رسم/شكل مفقود لم تتم إضافته بعد كصورة (راجعي قسم النصوص/الوثائق). هذا الرسم لن يظهر فالاختبار المنشور إلا إذا أضفتيه.</p>`:''}
       <button class="btn btn-primary btn-block" id="publish">${editing? '💾 حفظ التعديلات':'🖋️ نشر الاختبار'}</button>
       <button class="btn btn-ghost btn-block" id="backEdit" style="margin-top:10px;">⟵ رجوع للتعديل</button>
