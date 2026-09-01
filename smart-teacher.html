@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>المعلّم الذكي — منصة الأستاذ محمد أبوشاكر لعبودي</title>
 <meta name="description" content="المعلّم الذكي — وحدة الاختبارات والتصحيح الآلي ضمن منصة الأستاذ محمد أبوشاكر لعبودي.">
-<meta name="theme-color" content="#efe3bf">
+<meta name="theme-color" content="#F7F2E4">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Rakkas&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -18,15 +18,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{
-    --bg:#efe3bf; --bg2:#e7d9a8; --panel:#fffcf3; --panel2:#fbf1d6; --panel-solid:#fffdf6;
+    --bg:#F7F2E4; --bg2:#EFE7D2; --panel:#FFFDF7; --panel2:#FBF7EC; --panel-solid:#FFFDF7;
     --line:rgba(151,111,20,.25); --line-strong:rgba(151,111,20,.48);
-    --ink:#3c2f16; --dim:#8d7c50;
-    --gold:#c9982f; --lav:#2f5d43; --teal:#3f7d5c; --rose:#b5563a; --red:#b5432a;
-    --gold-deep:#a97a1c; --gold-light:#f2da96; --green-deep:#1f4530;
-    --paper:#fbf3da; --paperink:#3c2f16;
+    --ink:#22352B; --dim:#5B6E62;
+    --gold:#C79A3D; --lav:#3F6350; --teal:#3F6350; --rose:#b5563a; --red:#b5432a;
+    --gold-deep:#A97F2A; --gold-light:#E7C878; --green-deep:#22352B;
+    --paper:#FFFDF7; --paperink:#22352B;
     --radius:20px;
     --ease:cubic-bezier(.4,0,.2,1);
-    font-family:'IBM Plex Sans Arabic',sans-serif;
+    font-family:'Cairo',sans-serif;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);min-height:100vh;}
@@ -41,7 +41,7 @@
     background-attachment:fixed;
     min-height:100vh;
   }
-  h1,h2,h3,.disp{font-family:'IBM Plex Sans Arabic',sans-serif;font-weight:700;letter-spacing:-.01em;color:var(--ink);}
+  h1,h2,h3,.disp{font-family:'Aref Ruqaa',serif;font-weight:700;letter-spacing:-.01em;color:var(--ink);}
   .wrap{max-width:600px;margin:0 auto;padding:22px 18px 70px;min-height:100vh;}
 
   /* ===== Ornate hero (landing top identity) ===== */
@@ -69,7 +69,7 @@
     font-size:34px;background:radial-gradient(circle at 35% 30%, #fff8e4, var(--panel2));
     border:2.5px solid var(--gold); box-shadow:0 8px 20px rgba(169,122,28,.28);
   }
-  .hero-title{font-family:'Rakkas',serif;font-weight:400;font-size:26px;color:var(--green-deep);margin-bottom:6px;line-height:1.5;}
+  .hero-title{font-family:'Aref Ruqaa',serif;font-weight:400;font-size:26px;color:var(--green-deep);margin-bottom:6px;line-height:1.5;}
   .hero-sub{font-size:12.5px;color:var(--dim);margin-bottom:14px;}
   .hero-pill{
     display:inline-block;background:linear-gradient(135deg,var(--lav),var(--green-deep));color:#fdf8e4;
@@ -150,7 +150,7 @@
     z-index:-1;
   }
   @keyframes sealspin{to{transform:rotate(360deg);}}
-  .brand-name{font-family:'Rakkas',serif;font-weight:400;font-size:21px;color:var(--green-deep);letter-spacing:0;}
+  .brand-name{font-family:'Aref Ruqaa',serif;font-weight:400;font-size:21px;color:var(--green-deep);letter-spacing:0;}
   .brand-sub{
     display:inline-block;margin-top:3px;font-size:11px;color:var(--panel-solid);letter-spacing:.02em;
     background:var(--lav);border-radius:999px;padding:2px 11px;
@@ -162,7 +162,7 @@
     box-shadow:0 14px 36px rgba(90,66,10,.12), inset 0 1px 0 rgba(255,255,255,.55);
   }
   .btn{
-    font-family:'IBM Plex Sans Arabic',sans-serif;font-weight:600;border:none;border-radius:999px;
+    font-family:'Cairo',sans-serif;font-weight:600;border:none;border-radius:999px;
     padding:13px 22px;cursor:pointer;font-size:15px;
     transition:transform .18s var(--ease), box-shadow .18s var(--ease), filter .18s var(--ease);
     display:inline-flex;align-items:center;gap:8px;
@@ -179,7 +179,7 @@
   .btn-block{width:100%;justify-content:center;}
   input[type=text],input[type=number],textarea,select{
     width:100%;background:var(--panel-solid);border:1.5px solid var(--line);color:var(--ink);
-    border-radius:14px;padding:13px 15px;font-family:'IBM Plex Sans Arabic',sans-serif;font-size:15px;
+    border-radius:14px;padding:13px 15px;font-family:'Cairo',sans-serif;font-size:15px;
     transition:border-color .18s var(--ease), box-shadow .18s var(--ease);
   }
   input[type=text]:focus,input[type=number]:focus,textarea:focus,select:focus{
@@ -241,7 +241,7 @@
 
   .tabbar{display:flex;gap:8px;margin-bottom:16px;border-bottom:1.5px solid var(--line);}
   .tabbtn{
-    background:none;border:none;cursor:pointer;padding:10px 4px;font-family:'IBM Plex Sans Arabic',sans-serif;
+    background:none;border:none;cursor:pointer;padding:10px 4px;font-family:'Cairo',sans-serif;
     font-weight:600;font-size:14.5px;color:var(--dim);position:relative;margin-left:18px;
     transition:color .18s var(--ease);
   }
@@ -267,14 +267,14 @@
     box-shadow:0 10px 30px rgba(90,66,10,.28);
   }
   .link-box{display:flex;gap:8px;background:rgba(201,152,47,.08);border:1px dashed rgba(201,152,47,.5);border-radius:12px;padding:11px 13px;align-items:center;}
-  .link-box input{border:none;background:transparent;color:var(--gold-deep);font-family:'IBM Plex Sans Arabic',monospace;font-size:13px;}
+  .link-box input{border:none;background:transparent;color:var(--gold-deep);font-family:'Cairo',monospace;font-size:13px;}
   table{width:100%;border-collapse:collapse;font-size:14px;}
   th,td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--line);}
   th{color:var(--dim);font-size:12px;font-weight:600;}
   .rank1{color:var(--gold-deep);font-weight:800;}
   .rank2{color:#6b6350;font-weight:700;}
   .rank3{color:#9c7a3f;font-weight:700;}
-  .score-big{font-family:'Rakkas',serif;font-weight:400;font-size:54px;color:var(--gold-deep);text-align:center;text-shadow:0 2px 14px rgba(169,122,28,.25);}
+  .score-big{font-family:'Aref Ruqaa',serif;font-weight:400;font-size:54px;color:var(--gold-deep);text-align:center;text-shadow:0 2px 14px rgba(169,122,28,.25);}
   .qa-block{border-right:3px solid var(--line);padding-right:13px;margin-bottom:14px;}
   .qa-block.ok{border-color:var(--teal);}
   .qa-block.mid{border-color:var(--gold-deep);}
@@ -317,12 +317,12 @@
     display:flex;flex-wrap:wrap;align-content:flex-start;justify-content:center;
     transform:rotate(-27deg);opacity:.055;
   }
-  .sheet-watermark span{font-size:21px;font-weight:800;color:#3c2f16;white-space:nowrap;margin:32px 38px;font-family:'IBM Plex Sans Arabic',sans-serif;}
+  .sheet-watermark span{font-size:21px;font-weight:800;color:#22352B;white-space:nowrap;margin:32px 38px;font-family:'Cairo',sans-serif;}
   .sheet-head,.sheet-passage,.sheet-q,.sheet-footer-brand{position:relative;z-index:1;}
   .sheet-footer-brand{margin-top:24px;padding-top:10px;border-top:1px dashed #8b8299;display:flex;align-items:center;justify-content:center;gap:6px;font-size:10.5px;color:#7a7188;}
   .sheet-footer-brand img{width:14px;height:14px;border-radius:4px;}
   .sheet-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--paperink);padding-bottom:12px;margin-bottom:16px;}
-  .sheet-title{font-family:'IBM Plex Sans Arabic',sans-serif;font-weight:700;font-size:23px;}
+  .sheet-title{font-family:'Cairo',sans-serif;font-weight:700;font-size:23px;}
   .sheet-meta{font-size:12px;color:#5a5170;}
   .nameline{border-bottom:1px solid #8b8299;display:inline-block;min-width:180px;}
   .sheet-q{margin-bottom:18px;page-break-inside:avoid;}
@@ -793,51 +793,51 @@ async function renderLanding(){
         <svg viewBox="0 0 480 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="اختبارك، تصحيح بالذكاء الاصطناعي، نتيجة فورية">
           <defs>
             <linearGradient id="aiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#3f7d5c"/>
-              <stop offset="100%" stop-color="#1f4530"/>
+              <stop offset="0%" stop-color="#3F6350"/>
+              <stop offset="100%" stop-color="#22352B"/>
             </linearGradient>
             <marker id="arrowHeadA" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 Z" fill="#a97a1c"/>
+              <path d="M0,0 L10,5 L0,10 Z" fill="#A97F2A"/>
             </marker>
             <marker id="arrowHeadB" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 Z" fill="#3f7d5c"/>
+              <path d="M0,0 L10,5 L0,10 Z" fill="#3F6350"/>
             </marker>
           </defs>
 
           <!-- Icon 1: exam paper -->
-          <rect x="46" y="29" width="68" height="92" rx="8" fill="#fffdf6" stroke="#a97a1c" stroke-width="2.5"/>
-          <path d="M96,29 L114,29 L114,47 Z" fill="#f2da96" stroke="#a97a1c" stroke-width="1" stroke-linejoin="round"/>
-          <line x1="58" y1="50" x2="100" y2="50" stroke="#8d7c50" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
-          <line x1="58" y1="64" x2="92" y2="64" stroke="#8d7c50" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
-          <line x1="58" y1="78" x2="100" y2="78" stroke="#8d7c50" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
-          <line x1="58" y1="92" x2="84" y2="92" stroke="#8d7c50" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
-          <circle cx="104" cy="101" r="14" fill="#c9982f" stroke="#fffdf6" stroke-width="2"/>
+          <rect x="46" y="29" width="68" height="92" rx="8" fill="#FFFDF7" stroke="#A97F2A" stroke-width="2.5"/>
+          <path d="M96,29 L114,29 L114,47 Z" fill="#E7C878" stroke="#A97F2A" stroke-width="1" stroke-linejoin="round"/>
+          <line x1="58" y1="50" x2="100" y2="50" stroke="#5B6E62" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
+          <line x1="58" y1="64" x2="92" y2="64" stroke="#5B6E62" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
+          <line x1="58" y1="78" x2="100" y2="78" stroke="#5B6E62" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
+          <line x1="58" y1="92" x2="84" y2="92" stroke="#5B6E62" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
+          <circle cx="104" cy="101" r="14" fill="#C79A3D" stroke="#FFFDF7" stroke-width="2"/>
           <line x1="98" y1="107" x2="110" y2="95" stroke="#3c2708" stroke-width="3" stroke-linecap="round"/>
           <circle cx="110" cy="95" r="1.6" fill="#3c2708"/>
 
           <!-- arrow 1 -->
-          <path d="M132,75 C155,60 170,60 192,75" fill="none" stroke="#a97a1c" stroke-width="2.5" stroke-dasharray="1 7" stroke-linecap="round" marker-end="url(#arrowHeadA)"/>
+          <path d="M132,75 C155,60 170,60 192,75" fill="none" stroke="#A97F2A" stroke-width="2.5" stroke-dasharray="1 7" stroke-linecap="round" marker-end="url(#arrowHeadA)"/>
 
           <!-- Icon 2: AI spark -->
-          <circle cx="240" cy="75" r="46" fill="url(#aiGrad)" stroke="#f2da96" stroke-width="2"/>
+          <circle cx="240" cy="75" r="46" fill="url(#aiGrad)" stroke="#E7C878" stroke-width="2"/>
           <g class="ill-spark">
-            <path d="M240,46 C242,63 252,73 269,75 C252,77 242,87 240,104 C238,87 228,77 211,75 C228,73 238,63 240,46 Z" fill="#f2da96"/>
-            <path d="M266,48 C266.8,52.5 271,55.5 275,56 C271,56.5 266.8,59.5 266,64 C265.2,59.5 261,56.5 257,56 C261,55.5 265.2,52.5 266,48 Z" fill="#f2da96" opacity="0.85"/>
-            <circle cx="214" cy="100" r="3" fill="#f2da96" opacity="0.85"/>
+            <path d="M240,46 C242,63 252,73 269,75 C252,77 242,87 240,104 C238,87 228,77 211,75 C228,73 238,63 240,46 Z" fill="#E7C878"/>
+            <path d="M266,48 C266.8,52.5 271,55.5 275,56 C271,56.5 266.8,59.5 266,64 C265.2,59.5 261,56.5 257,56 C261,55.5 265.2,52.5 266,48 Z" fill="#E7C878" opacity="0.85"/>
+            <circle cx="214" cy="100" r="3" fill="#E7C878" opacity="0.85"/>
           </g>
 
           <!-- arrow 2 -->
-          <path d="M288,75 C310,60 330,60 352,75" fill="none" stroke="#3f7d5c" stroke-width="2.5" stroke-dasharray="1 7" stroke-linecap="round" marker-end="url(#arrowHeadB)"/>
+          <path d="M288,75 C310,60 330,60 352,75" fill="none" stroke="#3F6350" stroke-width="2.5" stroke-dasharray="1 7" stroke-linecap="round" marker-end="url(#arrowHeadB)"/>
 
           <!-- Icon 3: instant result -->
-          <circle cx="400" cy="75" r="46" fill="#fffdf6" stroke="#3f7d5c" stroke-width="3"/>
-          <circle cx="400" cy="75" r="39" fill="none" stroke="#c9982f" stroke-width="4" stroke-dasharray="4 5" opacity="0.55"/>
-          <path d="M380,76 L394,90 L422,58" fill="none" stroke="#1f4530" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="400" cy="75" r="46" fill="#FFFDF7" stroke="#3F6350" stroke-width="3"/>
+          <circle cx="400" cy="75" r="39" fill="none" stroke="#C79A3D" stroke-width="4" stroke-dasharray="4 5" opacity="0.55"/>
+          <path d="M380,76 L394,90 L422,58" fill="none" stroke="#22352B" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 
           <!-- labels -->
-          <text x="80" y="139" text-anchor="middle" font-family="IBM Plex Sans Arabic, sans-serif" font-size="12.5" font-weight="600" fill="#3c2f16">اختبارك</text>
-          <text x="240" y="139" text-anchor="middle" font-family="IBM Plex Sans Arabic, sans-serif" font-size="12.5" font-weight="600" fill="#3c2f16">تصحيح ذكي</text>
-          <text x="400" y="139" text-anchor="middle" font-family="IBM Plex Sans Arabic, sans-serif" font-size="12.5" font-weight="600" fill="#3c2f16">نتيجة فورية</text>
+          <text x="80" y="139" text-anchor="middle" font-family="Cairo, sans-serif" font-size="12.5" font-weight="600" fill="#22352B">اختبارك</text>
+          <text x="240" y="139" text-anchor="middle" font-family="Cairo, sans-serif" font-size="12.5" font-weight="600" fill="#22352B">تصحيح ذكي</text>
+          <text x="400" y="139" text-anchor="middle" font-family="Cairo, sans-serif" font-size="12.5" font-weight="600" fill="#22352B">نتيجة فورية</text>
         </svg>
       </div>
       <div class="hero-divider">✦ ⵜ ✦</div>
@@ -2660,7 +2660,7 @@ function buildCorrectionSheet(ex, result){
       <div class="sheet-qlabel"${ltr}>${L.question} ${r.number} — ${mark} ${r.awarded}/${r.max}</div>
       <div class="sheet-qtext"${ltr}>${esc(q.text||'')}</div>
       <div style="font-size:13px;margin:4px 0;"><b>إجابتك (مفرَّغة رقميًا):</b> ${esc(r.studentAnswerSummary||'—')}</div>
-      ${q.modelAnswer ? `<div style="font-size:13px;margin:4px 0;color:#1f4530;font-weight:700;"${ltr}><b>الإجابة الصحيحة:</b> ${esc(q.modelAnswer)}</div>` : ''}
+      ${q.modelAnswer ? `<div style="font-size:13px;margin:4px 0;color:#22352B;font-weight:700;"${ltr}><b>الإجابة الصحيحة:</b> ${esc(q.modelAnswer)}</div>` : ''}
       ${r.feedback ? `<div style="font-size:12.5px;color:#5a5170;"><b>الملاحظة:</b> ${esc(r.feedback)}</div>` : ''}
     </div>`;
   }).join('');
