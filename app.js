@@ -748,6 +748,7 @@ const Screens = {
     if(name === 'lessons') renderLessonsScreen();
     if(name === 'exams') renderExamsScreen();
     if(name === 'irab') renderIrabScreen();
+    if(name === 'situation') renderSituationScreen();
     if(name === 'leaderboard') renderLeaderboardScreen();
   },
 
@@ -1380,9 +1381,9 @@ function estimateMindmapPrintSizeClass(lesson){
   return '';
 }
 
-function exportMindmapPDF(lesson){
+function exportMindmapPDF(lesson, btnEl){
   if(!lesson.tree || !lesson.tree.length) return;
-  const btn = document.getElementById('ldMindmapPdfBtn');
+  const btn = btnEl || document.getElementById('ldMindmapPdfBtn');
   const area = document.getElementById('mindmapPrintArea');
 
   const sizeClass = estimateMindmapPrintSizeClass(lesson);
@@ -1533,6 +1534,20 @@ function renderMindmap(lesson, wrap){
       </div>
     </details>`;
   }).join('');
+}
+
+/* ---------- شاشة الوضعية الإدماجية ---------- */
+let situationRendered = false;
+function renderSituationScreen(){
+  const s = window.SITUATION;
+  if(!s) return;
+  document.getElementById('situationDef').innerHTML = s.def || '';
+  renderMindmap(s, document.getElementById('situationMindmap'));
+  if(!situationRendered){
+    document.getElementById('situationMindmapPdfBtn').onclick = ()=>
+      exportMindmapPDF(s, document.getElementById('situationMindmapPdfBtn'));
+    situationRendered = true;
+  }
 }
 
 /* ---------- شاشة الفروض والاختبارات ---------- */
