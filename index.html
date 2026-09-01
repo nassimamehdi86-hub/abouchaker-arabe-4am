@@ -145,9 +145,15 @@
   <div id="screen-situation" style="display:none">
     <div class="lesson-topbar"><button class="back-btn" data-nav="home">→ رجوع للرئيسية</button></div>
     <div class="section-title"><span>الوضعية الإدماجية</span><div class="line"></div></div>
-    <div style="text-align:center;color:var(--ink-soft);font-weight:600;padding:30px 10px">
-      سيتم إضافة تدريبات الوضعية الإدماجية هنا قريباً 🧩
+    <div style="margin-bottom:16px">
+      <div class="video-frame"><iframe src="https://www.youtube.com/embed/ElhaTiggtDQ" allowfullscreen loading="lazy"></iframe></div>
     </div>
+    <p class="hub-def" id="situationDef"></p>
+    <div class="mm-title-row">
+      <div class="mm-title">🗺️ الخريطة الذهنية للمنهجية</div>
+      <button class="mm-pdf-btn" id="situationMindmapPdfBtn" title="تحميل الخريطة الذهنية كملف PDF">⬇️ تحميل</button>
+    </div>
+    <div class="mm-wrap" id="situationMindmap"></div>
   </div>
 
   <!-- ============ شاشة إعراب الجمل ============ -->
@@ -227,6 +233,7 @@
 <script src="firebase-config.js"></script>
 <script src="lessons-data.js"></script>
 <script src="irab-data.js"></script>
+<script src="situation-data.js"></script>
 
 <!-- ===== ملفات الميزات الجديدة ===== -->
 <script src="wisdom-quotes.js"></script>
