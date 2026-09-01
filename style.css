@@ -433,6 +433,23 @@
     border-radius:999px; padding:3px 9px;
   }
 
+  /* ============ بطاقة عريضة: الترتيب والنقاط أسفل القائمة الرئيسية ============ */
+  .home-card-wide{
+    display:flex; align-items:center; gap:14px; border-radius:20px; padding:16px 18px;
+    background:linear-gradient(160deg, #FFFDF7, #F3ECD5);
+    border:1.6px solid rgba(169,127,42,0.35);
+    box-shadow:0 10px 22px rgba(169,127,42,0.10), inset 0 1px 0 rgba(255,255,255,0.7);
+    transition:.15s; text-align:right;
+  }
+  .home-card-wide:active{ transform:translateY(2px); }
+  .home-card-wide .hc-icon-wrap{
+    flex-shrink:0; width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center;
+    font-size:24px; border:1.3px solid rgba(169,127,42,0.3);
+    background:linear-gradient(150deg,#E4EFE6,#C9DFCE);
+  }
+  .home-card-wide .hc-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:17px; color:var(--ink); }
+  .home-card-wide .hc-sub{ font-size:11px; color:var(--ink-soft); margin-top:3px; font-weight:600; line-height:1.6; }
+
   /* ============ شاشة فرعية: قائمة الدروس عمودية ============ */
   .screen-frame{
     border:1.6px dashed rgba(169,127,42,0.4); border-radius:22px; padding:16px 14px 20px; margin:8px 0 32px;
