@@ -395,7 +395,12 @@ async function showLeaderboardPopup(lesson){
       
       const score = document.createElement('div');
       score.className = 'leaderboard-score';
-      score.textContent = `تاريخ: ${res.timestamp ? new Date(res.timestamp).toLocaleDateString('ar-EG') : 'غير محدد'}`;
+      let dateLabel = 'غير محدد';
+      if(res.submittedAt){
+        const d = (typeof res.submittedAt.toDate === 'function') ? res.submittedAt.toDate() : new Date(res.submittedAt);
+        if(d && !isNaN(d.getTime())) dateLabel = d.toLocaleDateString('ar-EG');
+      }
+      score.textContent = `تاريخ: ${dateLabel}`;
       
       info.appendChild(name);
       info.appendChild(score);
