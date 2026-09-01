@@ -777,6 +777,10 @@ function Header(sub){
 const HIDDEN_KEY = 'examPlatform_hiddenExams_v1';
 function getHiddenExams(){ return JSON.parse(localStorage.getItem(HIDDEN_KEY)||'[]'); }
 
+/* يُفعَّل هذا العلَم على جهاز الأستاذ(ة) بعد أول دخول ناجح بالرقم السري، فيظهر عندها
+   زر "لوحة الأستاذ(ة)" تلقائيًا على هذا الجهاز فقط — أما التلاميذ فلا يرونه إطلاقًا. */
+const TEACHER_DEVICE_KEY = 'examPlatform_teacherDeviceAuthorized_v1';
+
 /* ============================= LANDING ============================= */
 async function renderLanding(){
   app.innerHTML = `
@@ -785,9 +789,9 @@ async function renderLanding(){
       <div class="hero-content">
       <div class="hero-icon-wrap">
         <div class="hero-icon-glow"></div>
-        <img src="icon-512.png" class="hero-icon-img" alt="المعلّم الذكي">
+        <img src="icon-512.png" class="hero-icon-img" alt="فروض واختبارات">
       </div>
-      <div class="hero-title">المعلّم الذكي</div>
+      <div class="hero-title" id="heroIconTrigger">فروض واختبارات</div>
       <div class="hero-sub">اختبارك… تصحيحك… فورًا بالذكاء الاصطناعي</div>
       <div class="hero-illustration">
         <svg viewBox="0 0 480 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="اختبارك، تصحيح بالذكاء الاصطناعي، نتيجة فورية">
@@ -845,53 +849,59 @@ async function renderLanding(){
       </div>
     </div>
     <div class="card">
-      <h3 style="margin-top:0;">🔍 ابحث عن اختبارك</h3>
-      <div class="row">
-        <div class="field" style="flex:1;min-width:140px;">${levelSelectHTML('lvSelLanding','')}</div>
-        <div class="field" style="flex:1;min-width:140px;">${subjectSelectHTML('subjSelLanding','')}</div>
-      </div>
+      <h3 style="margin-top:0;">📋 اختباراتك وتمارينك</h3>
       <div id="examsFeed" class="loadbox"><div class="spinner"></div> جارٍ تحميل الاختبارات...</div>
     </div>
     <div class="center" style="margin-top:14px;">
       <a href="#" id="showHidden" class="backlink" style="display:none;">إظهار الاختبارات المخفية</a>
     </div>
     <div class="center" style="margin-top:10px;">
-      <a href="#" id="teacherLink" class="backlink">🔒 لوحة الأستاذ(ة)</a>
+      <a href="#" id="teacherLink" class="backlink" style="display:none;">🔒 لوحة الأستاذ(ة)</a>
     </div>
   `;
   document.getElementById('teacherLink').onclick = (e)=>{ e.preventDefault(); go('teacherGate'); };
   wireInstallButton('installAppBtn');
 
+  /* ===== زر لوحة الأستاذ(ة): مخفي تمامًا عن التلاميذ، ولا يظهر إلا على جهاز
+     تم التحقق منه سابقًا بالرقم السري. أول مرة على أي جهاز، يمكن للأستاذ(ة)
+     الوصول عبر الضغط 5 مرات متتالية على عنوان الصفحة (بدلاً من زر ظاهر للجميع). ===== */
+  const teacherLinkEl = document.getElementById('teacherLink');
+  if(localStorage.getItem(TEACHER_DEVICE_KEY) === 'true'){
+    teacherLinkEl.style.display = 'inline';
+  }
+  const heroTrigger = document.getElementById('heroIconTrigger');
+  if(heroTrigger){
+    let tapCount = 0, tapTimer = null;
+    heroTrigger.addEventListener('click', ()=>{
+      tapCount++;
+      clearTimeout(tapTimer);
+      tapTimer = setTimeout(()=>{ tapCount = 0; }, 3000);
+      if(tapCount >= 5){
+        tapCount = 0;
+        go('teacherGate');
+      }
+    });
+  }
+
   if(!initFirebase()){ go('setup'); return; }
   const feed = document.getElementById('examsFeed');
   const showHiddenLink = document.getElementById('showHidden');
-  const lvSel = document.getElementById('lvSelLanding');
-  const subjSel = document.getElementById('subjSelLanding');
   let hidden = getHiddenExams();
   let allDocs = [];
   let dataLoaded = false;
 
   function renderFeed(){
-    const lv = lvSel.value, sj = subjSel.value;
     showHiddenLink.style.display = hidden.length>0 ? 'inline' : 'none';
-    if(!lv && !sj){
-      feed.innerHTML = '<p class="muted">اختاري المستوى و/أو المادة أعلاه لعرض الاختبارات المتاحة.</p>';
-      return;
-    }
     // إلا مازال التحميل الأول من قاعدة البيانات ماكملش، نبينو سبينر بدل "لا توجد نتائج" المضلّلة
     if(!dataLoaded){
       feed.innerHTML = '<div class="loadbox"><div class="spinner"></div> جارٍ تحميل الاختبارات...</div>';
       return;
     }
-    const matched = allDocs.filter(doc=>{
-      const ex = doc.data();
-      if(lv && ex.level!==lv) return false;
-      if(sj && ex.subject!==sj) return false;
-      return true;
-    });
+    // تظهر كل الاختبارات والتمارين تلقائيًا فور إضافتها من طرف الأستاذ(ة)، بلا أي بحث أو تصفية
+    const matched = allDocs;
     const visibleDocs = matched.filter(d=>!hidden.includes(d.id));
     if(matched.length===0){
-      feed.innerHTML = '<p class="muted">لا توجد اختبارات مطابقة لهذا الاختيار حاليًا.</p>';
+      feed.innerHTML = '<p class="muted">لا توجد اختبارات أو تمارين منشورة حاليًا.</p>';
       return;
     }
     if(visibleDocs.length===0){
@@ -921,8 +931,6 @@ async function renderLanding(){
     });
   }
 
-  lvSel.onchange = renderFeed;
-  subjSel.onchange = renderFeed;
   showHiddenLink.onclick = (e)=>{
     e.preventDefault();
     hidden = [];
@@ -973,6 +981,7 @@ function renderTeacherGate(){
     document.getElementById('pinGo').onclick = ()=>{
       const v = document.getElementById('pinIn').value.trim();
       if(v && v === localStorage.getItem(PIN_KEY)){
+        localStorage.setItem(TEACHER_DEVICE_KEY, 'true');
         if(!initFirebase()){ go('setup'); return; }
         go('teacherDashboard');
       } else {
@@ -984,6 +993,7 @@ function renderTeacherGate(){
       const v = document.getElementById('pinNew').value.trim();
       if(!v || v.length<4){ document.getElementById('pinErr').textContent = 'يرجى إدخال رمز مكوّن من 4 أرقام على الأقل.'; return; }
       localStorage.setItem(PIN_KEY, v);
+      localStorage.setItem(TEACHER_DEVICE_KEY, 'true');
       toast('تم تسجيل الرمز ✅ يرجى الاحتفاظ به جيدًا');
       if(!initFirebase()){ go('setup'); return; }
       go('teacherDashboard');

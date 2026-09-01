@@ -713,6 +713,11 @@ function createIrabEngine(data, mountEl, titleText){
 /* =========================================================================================
    التنقّل بين الشاشات وربط الواجهة (مبني على هيكل index.html)
    ========================================================================================= */
+/* يُفعَّل هذا العلَم على جهاز الأستاذ/المشرف بعد أول دخول ناجح بالرقم السري، فيظهر عندها
+   زر "🔑 دخول الأستاذ/المشرف" تلقائيًا على هذا الجهاز فقط — أما التلاميذ فلا يرونه إطلاقًا
+   ولا سبيل لهم لفتح نافذة الدخول من واجهتهم. */
+const TEACHER_DEVICE_KEY = 'abouchaker_teacherDeviceAuthorized_v1';
+
 const Screens = {
   el: {}, // يُملأ عند التحميل بعناصر id لكل شاشة
 
@@ -724,6 +729,29 @@ const Screens = {
       btn.addEventListener('click', ()=> this.show(btn.getAttribute('data-nav')));
     });
     document.getElementById('adminEntryBtn').addEventListener('click', ()=> this.openAdminLogin());
+    this.updateAdminEntryVisibility();
+
+    /* بوابة سرّية لدخول الأستاذ/المشرف أول مرة على أي جهاز: الضغط 5 مرات متتالية
+       على صورة الأستاذ في الترويسة يفتح نافذة الرقم السري، دون أي زر ظاهر للتلاميذ. */
+    const photoTrigger = document.getElementById('teacherPhotoTrigger');
+    if(photoTrigger){
+      let tapCount = 0, tapTimer = null;
+      photoTrigger.addEventListener('click', ()=>{
+        tapCount++;
+        clearTimeout(tapTimer);
+        tapTimer = setTimeout(()=>{ tapCount = 0; }, 3000);
+        if(tapCount >= 5){
+          tapCount = 0;
+          this.openAdminLogin();
+        }
+      });
+    }
+  },
+
+  updateAdminEntryVisibility(){
+    const btn = document.getElementById('adminEntryBtn');
+    if(!btn) return;
+    btn.style.display = localStorage.getItem(TEACHER_DEVICE_KEY) === 'true' ? 'flex' : 'none';
   },
 
   show(name){
@@ -1674,6 +1702,10 @@ function setupAdminLoginModal(){
   document.getElementById('adminPinSubmit').addEventListener('click', ()=>{
     if(Admin.checkPin(input.value.trim())){
       modal.classList.remove('show'); input.value='';
+      /* بعد أول دخول ناجح، يصبح هذا الجهاز "جهاز أستاذ/مشرف معتمَد"، فيظهر عليه
+         زر الدخول تلقائيًا في المرات القادمة — بينما يبقى مخفيًا تمامًا عند التلاميذ */
+      localStorage.setItem(TEACHER_DEVICE_KEY, 'true');
+      Screens.updateAdminEntryVisibility();
       /* إخفاء نافذة تسجيل دخول التلميذ إن كانت ظاهرة، فهي تحجب لوحة تحكم الأستاذ/المشرف */
       document.getElementById('loginModal').classList.remove('show');
       Screens.show('admin'); renderAdminPanel();
