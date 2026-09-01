@@ -725,6 +725,21 @@ const Screens = {
     Object.values(this.el).forEach(e=>{ if(e) e.style.display = 'none'; });
     if(this.el[name]) this.el[name].style.display = 'block';
     window.scrollTo({top:0, behavior:'instant'});
+    
+    /* ========== التحكم في ظهور الترويسة والترحيب ========== */
+    const hero = document.querySelector('.hero');
+    const welcomeBox = document.getElementById('welcomeBox');
+    
+    if(name === 'home'){
+      /* في الشاشة الرئيسية: أظهر الترويسة الكاملة والترحيب */
+      if(hero) hero.style.display = 'block';
+      if(welcomeBox) welcomeBox.style.display = Student.status === 'approved' ? 'flex' : 'none';
+    } else {
+      /* في التبويبات الأخرى (الدروس، الفروض، إعراب، الترتيب): أخفِ الترويسة وأظهر الترحيب فقط */
+      if(hero) hero.style.display = 'none';
+      if(welcomeBox) welcomeBox.style.display = Student.status === 'approved' ? 'flex' : 'none';
+    }
+    
     if(name === 'lessons') renderLessonsScreen();
     if(name === 'exams') renderExamsScreen();
     if(name === 'irab') renderIrabScreen();
@@ -834,10 +849,25 @@ function renderLessonsScreen(){
   wrap.innerHTML = '<div class="sf-label">جاري التحميل…</div>';
   Locks.load().then(()=>{
     let html = '';
-    ['tawabi','qawaid','jumal','balagha','anmat'].forEach(cat=>{
+    ['tawabi','qawaid','jumal','balagha','anmat'].forEach((cat, idx)=>{
       const meta = CATEGORY_META[cat];
       const lessons = window.LESSONS.filter(l=>l.category===cat).sort((a,b)=>a.order-b.order);
-      html += `<div class="group-header"><span class="gh-icon">${meta.icon}</span><span class="gh-title">${meta.title}</span><span class="gh-count">${lessons.length} دروس</span></div><div class="lesson-list">`;
+      const categoryId = `category-${cat}`;
+      const isOpen = idx === 0; /* فتح أول وحدة افتراضياً، الباقي مغلق */
+      
+      html += `
+        <div class="lesson-accordion">
+          <div class="group-header accordion-toggle" data-category="${categoryId}">
+            <span class="gh-icon">${meta.icon}</span>
+            <span class="gh-title">${meta.title}</span>
+            <span class="gh-count">${lessons.length} دروس</span>
+            <span class="accordion-arrow" style="margin-right: auto; transition: transform 0.3s ease;">
+              ${isOpen ? '▼' : '▶'}
+            </span>
+          </div>
+          <div class="lesson-list accordion-content" id="${categoryId}" style="display: ${isOpen ? 'block' : 'none'}; max-height: ${isOpen ? '1000px' : '0'}; overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease; opacity: ${isOpen ? '1' : '0'};">
+      `;
+      
       lessons.forEach(l=>{
         const pending = l.locked === 'pending';
         const locked = pending || Locks.isLessonLocked(l.id);
@@ -850,9 +880,43 @@ function renderLessonsScreen(){
           <div class="lr-status">${pending ? '⏳' : (locked ? '🔒' : '✅')}</div>
         </div>`;
       });
-      html += `</div>`;
+      
+      html += `
+          </div>
+        </div>
+      `;
     });
+    
     wrap.innerHTML = html;
+    
+    /* إضافة معالج الـ Accordion */
+    wrap.querySelectorAll('.accordion-toggle').forEach(toggle=>{
+      toggle.addEventListener('click', function(){
+        const categoryId = this.getAttribute('data-category');
+        const content = document.getElementById(categoryId);
+        const arrow = this.querySelector('.accordion-arrow');
+        
+        if(content.style.display === 'none'){
+          /* فتح الـ Accordion */
+          content.style.display = 'block';
+          content.style.maxHeight = '1000px';
+          setTimeout(() => content.style.opacity = '1', 10);
+          arrow.style.transform = 'rotate(0deg)';
+          arrow.textContent = '▼';
+        } else {
+          /* إغلاق الـ Accordion */
+          content.style.opacity = '0';
+          content.style.maxHeight = '0';
+          setTimeout(() => {
+            if(content.style.maxHeight === '0px') content.style.display = 'none';
+          }, 300);
+          arrow.style.transform = 'rotate(0deg)';
+          arrow.textContent = '▶';
+        }
+      });
+    });
+    
+    /* معالج النقر على الدروس */
     wrap.querySelectorAll('.lesson-row').forEach(row=>{
       row.addEventListener('click', ()=>{
         if(row.classList.contains('locked')) return;
@@ -1758,6 +1822,10 @@ async function renderAdminPanel(){
    الإقلاع
    ========================================================================================= */
 document.addEventListener('DOMContentLoaded', async ()=>{
+  /* تهيئة: تأكد من أن الـ hero يظهر افتراضياً (الشاشة الرئيسية) */
+  const hero = document.querySelector('.hero');
+  if(hero) hero.style.display = 'block';
+  
   Screens.init();
   setupAdminLoginModal();
 
