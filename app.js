@@ -1920,14 +1920,50 @@ if('serviceWorker' in navigator){
   });
 }
 let deferredInstallPrompt = null;
+
+/* إخفاء زر/صف "تثبيت التطبيق" نهائياً من الواجهة */
+function hidePwaInstallButton(){
+  const btn = document.getElementById('pwaInstallBtn');
+  const row = btn ? btn.closest('.install-row') : document.querySelector('.install-row');
+  if(row) row.style.display = 'none';
+  else if(btn) btn.style.display = 'none';
+}
+
+/* هل التطبيق مثبّت فعلاً؟ (تخزين محلي، أو التشغيل حالياً بوضع standalone/PWA) */
+function isPwaInstalled(){
+  if(localStorage.getItem('pwaInstalled') === '1') return true;
+  if(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
+  if(window.navigator.standalone === true) return true; // iOS Safari
+  return false;
+}
+
 window.addEventListener('beforeinstallprompt', (e)=>{
   e.preventDefault(); deferredInstallPrompt = e;
 });
+
+/* المتصفح يطلق هذا الحدث فور اكتمال التثبيت فعلياً */
+window.addEventListener('appinstalled', ()=>{
+  localStorage.setItem('pwaInstalled', '1');
+  hidePwaInstallButton();
+});
+
 document.addEventListener('DOMContentLoaded', ()=>{
+  /* إن كان التطبيق مثبتاً مسبقاً على هذا الجهاز، أخفِ الزر فوراً ولا تُظهره مجدداً */
+  if(isPwaInstalled()) hidePwaInstallButton();
+
   /* تثبيت التطبيق */
   const btn = document.getElementById('pwaInstallBtn');
   if(btn) btn.addEventListener('click', async ()=>{
-    if(deferredInstallPrompt){ deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt = null; }
+    if(deferredInstallPrompt){
+      deferredInstallPrompt.prompt();
+      const choice = await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      /* بعض المتصفحات لا تُطلق appinstalled فور القبول، فنحفظ الحالة هنا احتياطاً */
+      if(choice && choice.outcome === 'accepted'){
+        localStorage.setItem('pwaInstalled', '1');
+        hidePwaInstallButton();
+      }
+    }
     else alert('لتثبيت التطبيق: افتح قائمة المتصفح واختر "تثبيت التطبيق" أو "إضافة إلى الشاشة الرئيسية".');
   });
 
