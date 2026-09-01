@@ -717,7 +717,7 @@ const Screens = {
   el: {}, // يُملأ عند التحميل بعناصر id لكل شاشة
 
   init(){
-    ['home','lessons','lessonDetail','exams','irab','leaderboard','admin'].forEach(s=>{
+    ['home','lessons','lessonDetail','exams','irab','situation','leaderboard','admin'].forEach(s=>{
       this.el[s] = document.getElementById('screen-'+s);
     });
     document.querySelectorAll('[data-nav]').forEach(btn=>{
