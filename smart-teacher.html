@@ -845,7 +845,11 @@ async function renderLanding(){
       </div>
     </div>
     <div class="card">
-      <h3 style="margin-top:0;">📋 التدريب على حل الفروض والاختبارات</h3>
+      <h3 style="margin-top:0;">🔍 ابحث عن اختبارك</h3>
+      <div class="row">
+        <div class="field" style="flex:1;min-width:140px;">${levelSelectHTML('lvSelLanding','')}</div>
+        <div class="field" style="flex:1;min-width:140px;">${subjectSelectHTML('subjSelLanding','')}</div>
+      </div>
       <div id="examsFeed" class="loadbox"><div class="spinner"></div> جارٍ تحميل الاختبارات...</div>
     </div>
     <div class="center" style="margin-top:14px;">
@@ -861,21 +865,33 @@ async function renderLanding(){
   if(!initFirebase()){ go('setup'); return; }
   const feed = document.getElementById('examsFeed');
   const showHiddenLink = document.getElementById('showHidden');
+  const lvSel = document.getElementById('lvSelLanding');
+  const subjSel = document.getElementById('subjSelLanding');
   let hidden = getHiddenExams();
   let allDocs = [];
   let dataLoaded = false;
 
   function renderFeed(){
+    const lv = lvSel.value, sj = subjSel.value;
     showHiddenLink.style.display = hidden.length>0 ? 'inline' : 'none';
+    if(!lv && !sj){
+      feed.innerHTML = '<p class="muted">اختاري المستوى و/أو المادة أعلاه لعرض الاختبارات المتاحة.</p>';
+      return;
+    }
     // إلا مازال التحميل الأول من قاعدة البيانات ماكملش، نبينو سبينر بدل "لا توجد نتائج" المضلّلة
     if(!dataLoaded){
       feed.innerHTML = '<div class="loadbox"><div class="spinner"></div> جارٍ تحميل الاختبارات...</div>';
       return;
     }
-    const matched = allDocs;
+    const matched = allDocs.filter(doc=>{
+      const ex = doc.data();
+      if(lv && ex.level!==lv) return false;
+      if(sj && ex.subject!==sj) return false;
+      return true;
+    });
     const visibleDocs = matched.filter(d=>!hidden.includes(d.id));
     if(matched.length===0){
-      feed.innerHTML = '<p class="muted">لا توجد اختبارات متاحة حاليًا.</p>';
+      feed.innerHTML = '<p class="muted">لا توجد اختبارات مطابقة لهذا الاختيار حاليًا.</p>';
       return;
     }
     if(visibleDocs.length===0){
@@ -905,6 +921,8 @@ async function renderLanding(){
     });
   }
 
+  lvSel.onchange = renderFeed;
+  subjSel.onchange = renderFeed;
   showHiddenLink.onclick = (e)=>{
     e.preventDefault();
     hidden = [];
@@ -1075,12 +1093,24 @@ async function renderTeacherDashboard(){
           </div>
         </div>
         <p class="muted" style="margin-top:10px;">جميع اختباراتك تظهر هنا. اضغط على أي اختبار لمعاينته أو الحصول على رابط مشاركته أو حذفه.</p>
+        <div class="row" style="margin-top:10px;">
+          <div class="field"><label>المادة</label>
+            <input type="text" id="subjectSearchExams" placeholder="مثلاً: الرياضيات..."></div>
+          <div class="field"><label>المستوى</label>
+            <input type="text" id="levelSearchExams" placeholder="مثلاً: السنة الأولى متوسط..."></div>
+        </div>
         <div id="examsListMine" class="muted" style="margin-top:14px;">جارٍ التحميل...</div>
       </div>
 
       <div class="tabpanel" id="tab-archive">
         <h3 style="margin-top:0;">📄 نتائج تلاميذي</h3>
-        <p class="muted">تظهر هنا الاختبارات التي أجاب عنها تلميذ واحد على الأقل. اختر الاختبار لعرض لائحة التلاميذ وأسماءهم ونقطهم وحلولهم.</p>
+        <p class="muted">تظهر هنا حصريًا الاختبارات التي أجاب عنها تلميذ واحد على الأقل. ابحث بالمادة أو المستوى، ثم اختر الاختبار لعرض لائحة التلاميذ وأسماءهم ونقطهم وحلولهم.</p>
+        <div class="row">
+          <div class="field"><label>المادة</label>
+            <input type="text" id="subjectSearch" placeholder="مثلاً: الرياضيات..."></div>
+          <div class="field"><label>المستوى</label>
+            <input type="text" id="levelSearch" placeholder="مثلاً: السنة الأولى متوسط..."></div>
+        </div>
         <div id="examsList" class="muted" style="margin-top:6px;">جارٍ التحميل...</div>
         <div id="submissionsPanel" style="margin-top:8px;"></div>
       </div>
@@ -1174,10 +1204,12 @@ async function renderTeacherDashboard(){
   // تبويبة "اختباراتي": تعرض كل الاختبارات بلا استثناء، والضغط على أي واحد يفتح لوحة إدارته
   function renderMineList(subjVal, levelVal){
     if(!examsLoaded){ listBoxMine.innerHTML = '<div class="loadbox"><div class="spinner"></div> جارٍ تحميل الاختبارات...</div>'; return; }
-    const {filtered, levelGroups, levelNames} = groupExamsFor(allExams, '', '');
+    const {filtered, levelGroups, levelNames} = groupExamsFor(allExams, subjVal, levelVal);
     if(allExams.length===0){ listBoxMine.innerHTML = '<p class="muted">لا توجد اختبارات بعد. اضغط على "+ اختبار جديد" للبدء.</p>'; return; }
     if(filtered.length===0){
-      listBoxMine.innerHTML = '<p class="muted">لا توجد اختبارات متاحة حاليًا.</p>';
+      listBoxMine.innerHTML = `<p class="muted">لا توجد اختبارات مطابقة لبحثك (من أصل ${allExams.length} اختبار محمّل). <a href="#" id="clearSearchMine" style="color:var(--gold-deep);font-weight:700;">امسح البحث</a> لرؤية الجميع.</p>`;
+      const cl = document.getElementById('clearSearchMine');
+      if(cl) cl.onclick = (e)=>{ e.preventDefault(); subjectBoxMine.value=''; levelBoxMine.value=''; renderMineList('',''); };
       return;
     }
     listBoxMine.innerHTML = renderExamGroupsHTML(levelGroups, levelNames, ex => ex.submissionsCount ? ` — ✅ ${ex.submissionsCount} إجابة` : ' — لا إجابات بعد');
@@ -1198,11 +1230,13 @@ async function renderTeacherDashboard(){
     // نبقي أيضًا الاختبارات اللي تعذّر التحقق من إجاباتها (submissionsLoadFailed) ظاهرة هنا
     // بدل ما تختفي بصمت — قد يكون عندها إجابات فعلية ما قدرناش نأكدوها بسبب خطأ شبكة عابر.
     const withSubs = allExams.filter(ex=>ex.submissionsCount>0 || ex.submissionsLoadFailed);
-    const {filtered, levelGroups, levelNames} = groupExamsFor(withSubs, '', '');
+    const {filtered, levelGroups, levelNames} = groupExamsFor(withSubs, subjVal, levelVal);
     if(withSubs.length===0){ subPanel.innerHTML=''; listBox.innerHTML = '<p class="muted">لا توجد اختبارات أنجزها تلاميذ بعد.</p>'; return; }
     if(filtered.length===0){
       subPanel.innerHTML='';
-      listBox.innerHTML = '<p class="muted">لا توجد نتائج متاحة حاليًا.</p>';
+      listBox.innerHTML = `<p class="muted">لا توجد نتائج مطابقة لبحثك (من أصل ${withSubs.length} اختبار منجز). <a href="#" id="clearSearchArch" style="color:var(--gold-deep);font-weight:700;">امسح البحث</a> لرؤية الجميع.</p>`;
+      const cl = document.getElementById('clearSearchArch');
+      if(cl) cl.onclick = (e)=>{ e.preventDefault(); subjectBoxArch.value=''; levelBoxArch.value=''; renderArchiveList('',''); };
       return;
     }
     listBox.innerHTML = renderExamGroupsHTML(levelGroups, levelNames, ex => ex.submissionsLoadFailed ? ' — ⚠️ تعذر التحقق من الإجابات، اضغط لإعادة المحاولة' : ` — 👥 ${ex.submissionsCount} تلميذ`);
@@ -1235,7 +1269,7 @@ async function renderTeacherDashboard(){
           examEntry.submissions = subsSnap.docs.map(d=>d.data());
           examEntry.submissionsCount = examEntry.submissions.length;
           examEntry.submissionsLoadFailed = false;
-          renderArchiveList('', '');
+          renderArchiveList(subjectBoxArch.value, levelBoxArch.value);
           openTopicSubmissions(examEntry);
         }catch(e){
           subPanel.innerHTML = `<div class="card"><span style="color:var(--red);">فشلت المحاولة مجددًا (${esc(e.message||'')}).</span> <button class="btn btn-ghost" id="retrySubs2" style="padding:6px 12px;font-size:13px;">🔄 إعادة المحاولة</button></div>`;
@@ -1273,7 +1307,15 @@ async function renderTeacherDashboard(){
     });
   }
 
+  const subjectBoxMine = document.getElementById('subjectSearchExams');
+  const levelBoxMine = document.getElementById('levelSearchExams');
+  attachSuggestions(levelBoxMine, ALL_LEVELS, (val)=> renderMineList(subjectBoxMine.value, val));
+  attachSuggestions(subjectBoxMine, STANDARD_SUBJECTS, (val)=> renderMineList(val, levelBoxMine.value));
 
+  const subjectBoxArch = document.getElementById('subjectSearch');
+  const levelBoxArch = document.getElementById('levelSearch');
+  attachSuggestions(levelBoxArch, ALL_LEVELS, (val)=> renderArchiveList(subjectBoxArch.value, val));
+  attachSuggestions(subjectBoxArch, STANDARD_SUBJECTS, (val)=> renderArchiveList(val, levelBoxArch.value));
 
   // تحميل كل الاختبارات وإجاباتها دفعة واحدة، بمهلة زمنية على كل استعلام حتى لا يبقى العرض
   // عالقًا فحالة "جارٍ التحميل..." إلى الأبد بسبب بطء أو انقطاع الشبكة. خطأ في اختبار واحد
@@ -1320,8 +1362,8 @@ async function renderTeacherDashboard(){
       if(retryBtn) retryBtn.onclick = loadAllExams;
       return;
     }
-    renderMineList('', '');
-    renderArchiveList('', '');
+    renderMineList(subjectBoxMine.value, levelBoxMine.value);
+    renderArchiveList(subjectBoxArch.value, levelBoxArch.value);
   }
 
   loadAllExams();
