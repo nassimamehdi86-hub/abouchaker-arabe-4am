@@ -311,6 +311,69 @@ const Leaderboard = {
       await ref.set({ studentName: Student.fullName, percent, submittedAt: firebase.firestore.FieldValue.serverTimestamp() });
       return { ok:true };
     }catch(e){ return { ok:false, reason:'error' }; }
+  },
+
+  /* ---------- الترتيب الشامل (لوحة الشرف العامة) — مجموع نتائج كل تلميذ في تمارين الدروس المنجزة ----------
+     يجمع نتائج كل تلميذ عبر جميع الدروس المتوفرة (وليس درسًا واحدًا فقط)، ويرتّبهم تنازليًا حسب
+     مجموع نتائجهم الإجمالية. يُعاد أيضًا متوسط النسبة المئوية وعدد التمارين المنجزة لكل تلميذ. */
+  async overallLessons(){
+    if(!fbReady) return [];
+    const lessons = window.LESSONS.filter(l=>l.locked!=='pending');
+    const byStudent = new Map(); // studentId -> {name, total, count}
+    for(const l of lessons){
+      try{
+        const snap = await db.collection('submissions').doc(l.id).collection('students').get();
+        snap.forEach(doc=>{
+          const data = doc.data();
+          if(typeof data.percent !== 'number') return;
+          const id = doc.id;
+          const entry = byStudent.get(id) || { studentId:id, name:data.studentName || 'طالب غير معروف', total:0, count:0 };
+          entry.total += data.percent;
+          entry.count += 1;
+          entry.name = data.studentName || entry.name;
+          byStudent.set(id, entry);
+        });
+      }catch(e){}
+    }
+    const results = Array.from(byStudent.values()).map(e=>({
+      studentId: e.studentId, name: e.name, totalScore: Math.round(e.total*10)/10,
+      avgPercent: Math.round(e.total / e.count), exercisesCount: e.count
+    }));
+    /* الترتيب التنازلي حسب مجموع النتائج الإجمالية */
+    results.sort((a,b)=> b.totalScore - a.totalScore);
+    return results;
+  },
+
+  /* ---------- ترتيب الفروض والاختبارات — مجموع النقاط المتحصل عليها لكل تلميذ عبر كل الفروض/الاختبارات المنجزة ----------
+     ملاحظة: تسليم الفروض/الاختبارات يتم بالاسم الكامل فقط (بدون حساب دخول)، لذا يتم تجميع النقاط
+     حسب اسم التلميذ(ة) كما كتبه بنفسه عند التسليم. */
+  async overallExams(){
+    if(!fbReady) return [];
+    const byStudent = new Map(); // normalizedName -> {name, total, count}
+    try{
+      const examsSnap = await db.collection('exams').get();
+      for(const examDoc of examsSnap.docs){
+        try{
+          const subsSnap = await db.collection('exams').doc(examDoc.id).collection('submissions').get();
+          subsSnap.forEach(doc=>{
+            const data = doc.data();
+            const name = (data.studentName || '').trim();
+            if(!name || typeof data.score !== 'number') return;
+            const key = name.toLowerCase();
+            const entry = byStudent.get(key) || { name, total:0, count:0 };
+            entry.total += data.score;
+            entry.count += 1;
+            byStudent.set(key, entry);
+          });
+        }catch(e){}
+      }
+    }catch(e){}
+    const results = Array.from(byStudent.values()).map(e=>({
+      name: e.name, totalPoints: Math.round(e.total*100)/100, examsCount: e.count
+    }));
+    /* الترتيب التنازلي حسب مجموع النقاط المتحصل عليها */
+    results.sort((a,b)=> b.totalPoints - a.totalPoints);
+    return results;
   }
 };
 
@@ -1602,12 +1665,34 @@ function renderIrabScreen(){
   });
 }
 
-/* ---------- شاشة الترتيب العام ---------- */
+/* ---------- شاشة الترتيب العام ----------
+   ثلاثة أقسام مستقلة تمامًا عن بعضها:
+   1) لوحة الشرف العامة: ترتيب شامل لكل التلاميذ بمجموع نتائجهم في كل تمارين الدروس مجتمعة.
+   2) ترتيب الفروض والاختبارات: ترتيب مستقل بمجموع النقاط المتحصل عليها في الفروض/الاختبارات المنجزة فقط.
+   3) ترتيب تمارين كل درس على حدة: تبقى كما كانت — نافذة منبثقة خاصة بكل درس عند الضغط عليه. */
 function renderLeaderboardScreen(){
   const wrap = document.getElementById('leaderboardWrap');
-  wrap.innerHTML = `<div class="sf-label">اختر درسًا لعرض ترتيب تمارينه في نافذة منبثقة (تظهر البطاقات فور توفر تمارين الدرس)</div>`;
-  const grid = document.createElement('div');
-  grid.className = 'lb-lesson-grid';
+  wrap.innerHTML = `
+    <div class="lb-section">
+      <div class="lb-section-title"><span class="lb-section-icon">🏅</span>لوحة الشرف العامة</div>
+      <div class="sf-label">الترتيب الشامل لجميع التلاميذ في المنصة، بناءً على مجموع نتائجهم الإجمالية في تمارين الدروس المنجزة</div>
+      <div id="lbOverallList" class="lb-hall-list"><div class="leaderboard-empty">جاري تحميل الترتيب…</div></div>
+    </div>
+
+    <div class="lb-section">
+      <div class="lb-section-title"><span class="lb-section-icon">📝</span>ترتيب الفروض والاختبارات</div>
+      <div class="sf-label">ترتيب مستقل للتلاميذ بناءً على مجموع النقاط المتحصل عليها في الفروض والاختبارات المنجزة</div>
+      <div id="lbExamsList" class="lb-hall-list"><div class="leaderboard-empty">جاري تحميل الترتيب…</div></div>
+    </div>
+
+    <div class="lb-section">
+      <div class="lb-section-title"><span class="lb-section-icon">📚</span>ترتيب تمارين كل درس</div>
+      <div class="sf-label">اختر درسًا لعرض ترتيب تمارينه الخاصة به فقط في نافذة منبثقة مستقلة (تظهر البطاقات فور توفر تمارين الدرس)</div>
+      <div id="lbLessonGrid" class="lb-lesson-grid"></div>
+    </div>`;
+
+  /* 3) شبكة الدروس — لا تغيير في المنطق: كل بطاقة تفتح ترتيب تمارين درسها فقط */
+  const grid = document.getElementById('lbLessonGrid');
   window.LESSONS.filter(l=>l.locked!=='pending').forEach(l=>{
     const card = document.createElement('div');
     card.className = 'lb-lesson-card';
@@ -1618,7 +1703,62 @@ function renderLeaderboardScreen(){
     card.addEventListener('click', ()=> showLeaderboardPopup(l));
     grid.appendChild(card);
   });
-  wrap.appendChild(grid);
+
+  /* 1) لوحة الشرف العامة */
+  loadOverallLeaderboardHall();
+  /* 2) ترتيب الفروض والاختبارات */
+  loadExamsLeaderboardHall();
+}
+
+function renderHallRow(idx, rankLabel, nameHtml, metaHtml, badgeHtml){
+  const rankCls = idx===0?'first':idx===1?'second':idx===2?'third':'';
+  const trophy = idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':'';
+  return `<div class="lb-hall-item">
+      <div class="lb-hall-rank ${rankCls}">${trophy || rankLabel}</div>
+      <div class="lb-hall-info">
+        <div class="lb-hall-name">${nameHtml}</div>
+        <div class="lb-hall-meta">${metaHtml}</div>
+      </div>
+      <div class="lb-hall-badge">${badgeHtml}</div>
+    </div>`;
+}
+
+async function loadOverallLeaderboardHall(){
+  const holder = document.getElementById('lbOverallList');
+  if(!holder) return;
+  if(!fbReady){ holder.innerHTML = '<div class="leaderboard-empty">Firebase غير مفعّل. لا يمكن عرض الترتيب.</div>'; return; }
+  try{
+    const results = await Leaderboard.overallLessons();
+    if(!results.length){ holder.innerHTML = '<div class="leaderboard-empty">لا توجد نتائج بعد</div>'; return; }
+    holder.innerHTML = results.map((r, idx)=> renderHallRow(
+      idx, (idx+1),
+      r.name,
+      `مجموع النتائج: ${r.totalScore} — ${r.exercisesCount} تمرين منجز`,
+      `${r.avgPercent}%`
+    )).join('');
+  }catch(e){
+    console.error('Error loading overall leaderboard:', e);
+    holder.innerHTML = '<div class="leaderboard-empty">خطأ في تحميل الترتيب</div>';
+  }
+}
+
+async function loadExamsLeaderboardHall(){
+  const holder = document.getElementById('lbExamsList');
+  if(!holder) return;
+  if(!fbReady){ holder.innerHTML = '<div class="leaderboard-empty">Firebase غير مفعّل. لا يمكن عرض الترتيب.</div>'; return; }
+  try{
+    const results = await Leaderboard.overallExams();
+    if(!results.length){ holder.innerHTML = '<div class="leaderboard-empty">لا توجد فروض أو اختبارات منجزة بعد</div>'; return; }
+    holder.innerHTML = results.map((r, idx)=> renderHallRow(
+      idx, (idx+1),
+      r.name,
+      `${r.examsCount} فرض/اختبار منجز`,
+      `${r.totalPoints} نقطة`
+    )).join('');
+  }catch(e){
+    console.error('Error loading exams leaderboard:', e);
+    holder.innerHTML = '<div class="leaderboard-empty">خطأ في تحميل الترتيب</div>';
+  }
 }
 
 /* ---------- موسكوت SVG (نفس تصميم المعاينة) ---------- */
