@@ -2114,6 +2114,14 @@ async function renderStudentExam(){
   function buildPage(){
   const alreadyKey = `submitted_${examId}`;
   const already = localStorage.getItem(alreadyKey);
+  // اسم التلميذ(ة) كما دخل به من الصفحة الرئيسية للمنصة (نفس المتصفح/الأصل، فبالتالي localStorage
+  // مشترك). إذا كان موجودًا، نعرضه مقفلاً وغير قابل للتعديل — حتى لا يتلاعب أحد بالاسم عند التسليم.
+  let loggedInStudentName = '';
+  try{
+    const raw = localStorage.getItem('student_name');
+    const v = raw ? JSON.parse(raw) : null;
+    if(v && typeof v === 'string') loggedInStudentName = v.trim();
+  }catch(e){}
 
   app.innerHTML = `
     ${Header(ex.title)}
@@ -2149,7 +2157,15 @@ async function renderStudentExam(){
     <div class="card" id="submitSection">
       ${already ? `<p class="muted">📌 نتيجتك وصلت مسبقًا لهذا الاختبار. <a class="plain" href="#" id="viewAgain">عرض النتيجة</a></p>` : ''}
       <h3>تسليم الإجابة</h3>
-      <div class="field"><label>الاسم الكامل</label><input type="text" id="studentName" placeholder="مثلاً: ياسمين بلعيد"></div>
+      <div class="field"><label>الاسم الكامل</label>
+        ${loggedInStudentName ? `
+          <input type="text" id="studentName" value="${esc(loggedInStudentName)}" readonly style="background:var(--panel-solid);color:var(--dim);cursor:not-allowed;">
+          <p class="muted" style="margin-top:4px;font-size:12px;">🔒 هذا اسمك المسجَّل فالمنصة، ولا يمكن تغييره هنا لضمان عدم التلاعب بالأسماء.</p>
+        ` : `
+          <input type="text" id="studentName" placeholder="مثلاً: ياسمين بلعيد">
+          <p class="muted" style="margin-top:4px;font-size:12px;">⚠️ يُرجى الدخول أولاً باسمك من الصفحة الرئيسية للمنصة، ثم العودة إلى هذا الاختبار، حتى يُسجَّل اسمك تلقائيًا هنا.</p>
+        `}
+      </div>
       <div class="field">
         <label>📷 صور ورقة الإجابة، أو 📄 ملف PDF مكتوب بالقلم الإلكتروني (يمكن أكثر من ملف)</label>
         <input type="file" id="answerPhotos" accept="image/*,application/pdf" capture="environment" multiple>
