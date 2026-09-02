@@ -1049,7 +1049,6 @@ function subjectSelectHTML(id, selected){
 }
 
 async function renderTeacherDashboard(){
-  const mine = JSON.parse(localStorage.getItem('myExams_v1')||'[]');
   app.innerHTML = `
     ${Header('لوحة الأستاذ(ة)')}
     <div class="card">
@@ -1094,12 +1093,6 @@ async function renderTeacherDashboard(){
   const listBoxMine = document.getElementById('examsListMine');
   const listBox = document.getElementById('examsList');
   const subPanel = document.getElementById('submissionsPanel');
-
-  if(mine.length===0){
-    listBoxMine.innerHTML = 'لا توجد اختبارات بعد. اضغط على "+ اختبار جديد" للبدء.';
-    listBox.innerHTML = 'لا توجد اختبارات بعد.';
-    return;
-  }
 
   let allExams = [];
   let examsLoaded = false;
@@ -1212,22 +1205,18 @@ async function renderTeacherDashboard(){
   // تحميل كل الاختبارات وإجاباتها دفعة واحدة، بمهلة زمنية على كل استعلام حتى لا يبقى العرض
   // عالقًا فحالة "جارٍ التحميل..." إلى الأبد بسبب بطء أو انقطاع الشبكة. خطأ في اختبار واحد
   // ما كيوقفش تحميل الباقي (try/catch لكل اختبار على حدة).
+  // مهم: نجيبو كل الاختبارات مباشرة من قاعدة البيانات (وليس من لائحة محفوظة محليًا فهاد
+  // الجهاز)، حتى تظهر جميع الاختبارات — حتى التي أُنشئت من جهاز آخر — بما أن الدخول للوحة
+  // الأستاذ(ة) أصبح بنفس الرمز السري على أي جهاز.
   async function loadAllExams(){
     examsLoaded = false;
     listBoxMine.innerHTML = '<div class="loadbox"><div class="spinner"></div> جارٍ تحميل الاختبارات...</div>';
     listBox.innerHTML = '<div class="loadbox"><div class="spinner"></div> جارٍ تحميل الاختبارات...</div>';
     let hadPartialError = false;
     try{
-      // مهم: تحميل بيانات الاختبار وتحميل إجاباته يشتغلان بشكل منفصل تمامًا (try/catch لكل واحد
-      // على حدة). قبل هذا التصحيح كان فشل استعلام الإجابات وحده (شبكة، صلاحيات...) كيسقط
-      // الاختبار بأكمله من كل اللوائح، رغم أن بياناته الأساسية تحمّلت بنجاح — وهذا هو سبب
-      // اختفاء اختبارات فيها إجابات فعلية من تبويبة "نتائج تلاميذي".
-      const results = await withTimeout(Promise.all(mine.map(async id=>{
-        let doc;
-        try{
-          doc = await withTimeout(db.collection('exams').doc(id).get(), 15000);
-        }catch(e){ console.error('exam doc load error', id, e); hadPartialError = true; return null; }
-        if(!doc.exists) return null;
+      const examsSnap = await withTimeout(db.collection('exams').get(), 15000);
+      const results = await withTimeout(Promise.all(examsSnap.docs.map(async doc=>{
+        const id = doc.id;
         const data = doc.data();
         let submissions = [];
         let submissionsLoadFailed = false;
