@@ -1454,17 +1454,19 @@
 .lb-section-title-clickable{
   display:flex; align-items:center; gap:8px; font-family:'Aref Ruqaa', serif;
   font-weight:700; font-size:17px; color:var(--ink); margin-bottom:6px;
-  border-bottom:2px solid var(--gold-3); padding-bottom:8px;
+  border:1.5px solid var(--gold-3); border-radius:14px;
+  padding:12px 14px; background:#FFFDF7;
   transition:all 0.25s ease;
   user-select:none;
 }
 .lb-section-title-clickable:hover{
-  color:var(--gold); transform:translateX(-4px);
-  border-bottom-color:var(--gold);
+  color:var(--gold); border-color:var(--gold);
+  box-shadow:0 4px 14px rgba(169,127,42,0.18);
 }
 .lb-section-title-clickable:active{
-  transform:translateX(-6px);
+  transform:scale(0.98);
 }
+.lb-section-title-clickable span:nth-child(2){ flex:1; }
 
 /* مؤشر الـ Popup */
 .lb-popup-indicator{

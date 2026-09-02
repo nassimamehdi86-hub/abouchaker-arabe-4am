@@ -1680,7 +1680,6 @@ function renderLeaderboardScreen(){
         <span class="lb-popup-indicator">→</span>
       </div>
       <div class="sf-label">الترتيب الشامل لجميع التلاميذ في المنصة، بناءً على مجموع نتائجهم الإجمالية في تمارين الدروس المنجزة</div>
-      <div id="lbOverallListPreview" class="lb-hall-list-preview"><div class="leaderboard-empty">جاري تحميل الترتيب…</div></div>
     </div>
 
     <div class="lb-section">
@@ -1690,7 +1689,6 @@ function renderLeaderboardScreen(){
         <span class="lb-popup-indicator">→</span>
       </div>
       <div class="sf-label">ترتيب مستقل للتلاميذ بناءً على مجموع النقاط المتحصل عليها في الفروض والاختبارات المنجزة</div>
-      <div id="lbExamsListPreview" class="lb-hall-list-preview"><div class="leaderboard-empty">جاري تحميل الترتيب…</div></div>
     </div>
 
     <div class="lb-section">
@@ -1711,11 +1709,6 @@ function renderLeaderboardScreen(){
     card.addEventListener('click', ()=> showLeaderboardPopup(l));
     grid.appendChild(card);
   });
-
-  /* 1) لوحة الشرف العامة — معاينة */
-  loadOverallLeaderboardPreview();
-  /* 2) ترتيب الفروض والاختبارات — معاينة */
-  loadExamsLeaderboardPreview();
 }
 
 function renderHallRow(idx, rankLabel, nameHtml, metaHtml, badgeHtml){
@@ -1729,47 +1722,6 @@ function renderHallRow(idx, rankLabel, nameHtml, metaHtml, badgeHtml){
       </div>
       <div class="lb-hall-badge">${badgeHtml}</div>
     </div>`;
-}
-
-/* ===== المعاينات السريعة (في الصفحة الرئيسية) ===== */
-async function loadOverallLeaderboardPreview(){
-  const holder = document.getElementById('lbOverallListPreview');
-  if(!holder) return;
-  if(!fbReady){ holder.innerHTML = '<div class="leaderboard-empty">Firebase غير مفعّل. لا يمكن عرض الترتيب.</div>'; return; }
-  try{
-    const results = await Leaderboard.overallLessons();
-    if(!results.length){ holder.innerHTML = '<div class="leaderboard-empty">لا توجد نتائج بعد</div>'; return; }
-    /* عرض أول 3 فقط في المعاينة */
-    holder.innerHTML = results.slice(0, 3).map((r, idx)=> renderHallRow(
-      idx, (idx+1),
-      r.name,
-      `مجموع النتائج: ${r.totalScore} — ${r.exercisesCount} تمرين منجز`,
-      `${r.avgPercent}%`
-    )).join('');
-  }catch(e){
-    console.error('Error loading overall leaderboard preview:', e);
-    holder.innerHTML = '<div class="leaderboard-empty">خطأ في تحميل الترتيب</div>';
-  }
-}
-
-async function loadExamsLeaderboardPreview(){
-  const holder = document.getElementById('lbExamsListPreview');
-  if(!holder) return;
-  if(!fbReady){ holder.innerHTML = '<div class="leaderboard-empty">Firebase غير مفعّل. لا يمكن عرض الترتيب.</div>'; return; }
-  try{
-    const results = await Leaderboard.overallExams();
-    if(!results.length){ holder.innerHTML = '<div class="leaderboard-empty">لا توجد فروض أو اختبارات منجزة بعد</div>'; return; }
-    /* عرض أول 3 فقط في المعاينة */
-    holder.innerHTML = results.slice(0, 3).map((r, idx)=> renderHallRow(
-      idx, (idx+1),
-      r.name,
-      `${r.examsCount} فرض/اختبار منجز`,
-      `${r.totalPoints} نقطة`
-    )).join('');
-  }catch(e){
-    console.error('Error loading exams leaderboard preview:', e);
-    holder.innerHTML = '<div class="leaderboard-empty">خطأ في تحميل الترتيب</div>';
-  }
 }
 
 /* ===== Popups الكاملة (النوافذ المنبثقة) ===== */
