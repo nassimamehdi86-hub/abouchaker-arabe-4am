@@ -925,11 +925,19 @@ async function renderLanding(){
     try{
       // نجبرو القراءة من السيرفر مباشرة (مو الكاش المحلي) باش الاختبار الجديد المنشور يبان مباشرة
       // بلا تقطّع، حتى لو كان الكاش المحلي قديم أو ناقص.
-      snap = await db.collection('exams').orderBy('createdAt','desc').limit(50).get({source:'server'});
+      snap = await db.collection('exams').limit(200).get({source:'server'});
     }catch(serverErr){
-      snap = await db.collection('exams').orderBy('createdAt','desc').limit(50).get();
+      snap = await db.collection('exams').limit(200).get();
     }
-    allDocs = snap.docs;
+    // مهم: الترتيب هنا يتم محليًا (وليس عبر orderBy داخل الاستعلام)، لأن orderBy فـ Firestore
+    // يستبعد تلقائيًا أي مستند ناقص فيه الحقل المرتَّب عليه (createdAt) — وهذا بالضبط ما كان
+    // يجعل بعض الاختبارات المنشورة حديثًا لا تظهر فهاد اللائحة رغم نجاح نشرها فعليًا.
+    allDocs = snap.docs.slice().sort((a,b)=>{
+      const ca = a.data().createdAt, cb = b.data().createdAt;
+      const ta = ca && ca.toMillis ? ca.toMillis() : Infinity;
+      const tb = cb && cb.toMillis ? cb.toMillis() : Infinity;
+      return tb - ta; // الأحدث أولاً؛ الاختبارات بلا تاريخ (نادرة) تُعتبر الأحدث فتظهر فالأعلى
+    });
     dataLoaded = true;
     renderFeed();
   }catch(e){
