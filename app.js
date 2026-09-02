@@ -1674,15 +1674,23 @@ function renderLeaderboardScreen(){
   const wrap = document.getElementById('leaderboardWrap');
   wrap.innerHTML = `
     <div class="lb-section">
-      <div class="lb-section-title"><span class="lb-section-icon">🏅</span>لوحة الشرف العامة</div>
+      <div class="lb-section-title-clickable" onclick="showOverallLeaderboardPopup()" style="cursor:pointer;">
+        <span class="lb-section-icon">🏅</span>
+        <span>لوحة الشرف العامة</span>
+        <span class="lb-popup-indicator">→</span>
+      </div>
       <div class="sf-label">الترتيب الشامل لجميع التلاميذ في المنصة، بناءً على مجموع نتائجهم الإجمالية في تمارين الدروس المنجزة</div>
-      <div id="lbOverallList" class="lb-hall-list"><div class="leaderboard-empty">جاري تحميل الترتيب…</div></div>
+      <div id="lbOverallListPreview" class="lb-hall-list-preview"><div class="leaderboard-empty">جاري تحميل الترتيب…</div></div>
     </div>
 
     <div class="lb-section">
-      <div class="lb-section-title"><span class="lb-section-icon">📝</span>ترتيب الفروض والاختبارات</div>
+      <div class="lb-section-title-clickable" onclick="showExamsLeaderboardPopup()" style="cursor:pointer;">
+        <span class="lb-section-icon">📝</span>
+        <span>ترتيب الفروض والاختبارات</span>
+        <span class="lb-popup-indicator">→</span>
+      </div>
       <div class="sf-label">ترتيب مستقل للتلاميذ بناءً على مجموع النقاط المتحصل عليها في الفروض والاختبارات المنجزة</div>
-      <div id="lbExamsList" class="lb-hall-list"><div class="leaderboard-empty">جاري تحميل الترتيب…</div></div>
+      <div id="lbExamsListPreview" class="lb-hall-list-preview"><div class="leaderboard-empty">جاري تحميل الترتيب…</div></div>
     </div>
 
     <div class="lb-section">
@@ -1704,10 +1712,10 @@ function renderLeaderboardScreen(){
     grid.appendChild(card);
   });
 
-  /* 1) لوحة الشرف العامة */
-  loadOverallLeaderboardHall();
-  /* 2) ترتيب الفروض والاختبارات */
-  loadExamsLeaderboardHall();
+  /* 1) لوحة الشرف العامة — معاينة */
+  loadOverallLeaderboardPreview();
+  /* 2) ترتيب الفروض والاختبارات — معاينة */
+  loadExamsLeaderboardPreview();
 }
 
 function renderHallRow(idx, rankLabel, nameHtml, metaHtml, badgeHtml){
@@ -1723,41 +1731,165 @@ function renderHallRow(idx, rankLabel, nameHtml, metaHtml, badgeHtml){
     </div>`;
 }
 
-async function loadOverallLeaderboardHall(){
-  const holder = document.getElementById('lbOverallList');
+/* ===== المعاينات السريعة (في الصفحة الرئيسية) ===== */
+async function loadOverallLeaderboardPreview(){
+  const holder = document.getElementById('lbOverallListPreview');
   if(!holder) return;
   if(!fbReady){ holder.innerHTML = '<div class="leaderboard-empty">Firebase غير مفعّل. لا يمكن عرض الترتيب.</div>'; return; }
   try{
     const results = await Leaderboard.overallLessons();
     if(!results.length){ holder.innerHTML = '<div class="leaderboard-empty">لا توجد نتائج بعد</div>'; return; }
-    holder.innerHTML = results.map((r, idx)=> renderHallRow(
+    /* عرض أول 3 فقط في المعاينة */
+    holder.innerHTML = results.slice(0, 3).map((r, idx)=> renderHallRow(
       idx, (idx+1),
       r.name,
       `مجموع النتائج: ${r.totalScore} — ${r.exercisesCount} تمرين منجز`,
       `${r.avgPercent}%`
     )).join('');
   }catch(e){
-    console.error('Error loading overall leaderboard:', e);
+    console.error('Error loading overall leaderboard preview:', e);
     holder.innerHTML = '<div class="leaderboard-empty">خطأ في تحميل الترتيب</div>';
   }
 }
 
-async function loadExamsLeaderboardHall(){
-  const holder = document.getElementById('lbExamsList');
+async function loadExamsLeaderboardPreview(){
+  const holder = document.getElementById('lbExamsListPreview');
   if(!holder) return;
   if(!fbReady){ holder.innerHTML = '<div class="leaderboard-empty">Firebase غير مفعّل. لا يمكن عرض الترتيب.</div>'; return; }
   try{
     const results = await Leaderboard.overallExams();
     if(!results.length){ holder.innerHTML = '<div class="leaderboard-empty">لا توجد فروض أو اختبارات منجزة بعد</div>'; return; }
-    holder.innerHTML = results.map((r, idx)=> renderHallRow(
+    /* عرض أول 3 فقط في المعاينة */
+    holder.innerHTML = results.slice(0, 3).map((r, idx)=> renderHallRow(
       idx, (idx+1),
       r.name,
       `${r.examsCount} فرض/اختبار منجز`,
       `${r.totalPoints} نقطة`
     )).join('');
   }catch(e){
-    console.error('Error loading exams leaderboard:', e);
+    console.error('Error loading exams leaderboard preview:', e);
     holder.innerHTML = '<div class="leaderboard-empty">خطأ في تحميل الترتيب</div>';
+  }
+}
+
+/* ===== Popups الكاملة (النوافذ المنبثقة) ===== */
+async function showOverallLeaderboardPopup(){
+  if(!fbReady){
+    alert('Firebase غير مفعّل. لا يمكن عرض الترتيب.');
+    return;
+  }
+  
+  const overlay = document.createElement('div');
+  overlay.className = 'leaderboard-modal-overlay';
+  
+  const popup = document.createElement('div');
+  popup.className = 'leaderboard-modal-popup';
+  
+  const header = document.createElement('div');
+  header.className = 'leaderboard-modal-header';
+  
+  const title = document.createElement('div');
+  title.className = 'leaderboard-modal-title';
+  title.textContent = '🏅 لوحة الشرف العامة';
+  
+  const subtitle = document.createElement('div');
+  subtitle.className = 'leaderboard-modal-subtitle';
+  subtitle.textContent = 'الترتيب الشامل لجميع التلاميذ';
+  
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'leaderboard-modal-close';
+  closeBtn.innerHTML = '✕';
+  closeBtn.onclick = ()=>overlay.remove();
+  
+  header.appendChild(title);
+  header.appendChild(subtitle);
+  header.appendChild(closeBtn);
+  
+  const listDiv = document.createElement('div');
+  listDiv.className = 'leaderboard-modal-list';
+  listDiv.innerHTML = '<div class="leaderboard-empty" style="padding:30px 20px;">جاري تحميل الترتيب…</div>';
+  
+  popup.appendChild(header);
+  popup.appendChild(listDiv);
+  overlay.appendChild(popup);
+  document.body.appendChild(overlay);
+  
+  try{
+    const results = await Leaderboard.overallLessons();
+    if(!results.length){
+      listDiv.innerHTML = '<div class="leaderboard-empty" style="padding:30px 20px;">لا توجد نتائج بعد</div>';
+      return;
+    }
+    
+    listDiv.innerHTML = results.map((r, idx)=> renderHallRow(
+      idx, (idx+1),
+      r.name,
+      `مجموع النتائج: ${r.totalScore} — ${r.exercisesCount} تمرين منجز`,
+      `${r.avgPercent}%`
+    )).join('');
+  }catch(e){
+    console.error('Error loading overall leaderboard popup:', e);
+    listDiv.innerHTML = '<div class="leaderboard-empty" style="padding:30px 20px;">خطأ في تحميل الترتيب</div>';
+  }
+}
+
+async function showExamsLeaderboardPopup(){
+  if(!fbReady){
+    alert('Firebase غير مفعّل. لا يمكن عرض الترتيب.');
+    return;
+  }
+  
+  const overlay = document.createElement('div');
+  overlay.className = 'leaderboard-modal-overlay';
+  
+  const popup = document.createElement('div');
+  popup.className = 'leaderboard-modal-popup';
+  
+  const header = document.createElement('div');
+  header.className = 'leaderboard-modal-header';
+  
+  const title = document.createElement('div');
+  title.className = 'leaderboard-modal-title';
+  title.textContent = '📝 ترتيب الفروض والاختبارات';
+  
+  const subtitle = document.createElement('div');
+  subtitle.className = 'leaderboard-modal-subtitle';
+  subtitle.textContent = 'ترتيب التلاميذ حسب نقاطهم في الفروض والاختبارات';
+  
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'leaderboard-modal-close';
+  closeBtn.innerHTML = '✕';
+  closeBtn.onclick = ()=>overlay.remove();
+  
+  header.appendChild(title);
+  header.appendChild(subtitle);
+  header.appendChild(closeBtn);
+  
+  const listDiv = document.createElement('div');
+  listDiv.className = 'leaderboard-modal-list';
+  listDiv.innerHTML = '<div class="leaderboard-empty" style="padding:30px 20px;">جاري تحميل الترتيب…</div>';
+  
+  popup.appendChild(header);
+  popup.appendChild(listDiv);
+  overlay.appendChild(popup);
+  document.body.appendChild(overlay);
+  
+  try{
+    const results = await Leaderboard.overallExams();
+    if(!results.length){
+      listDiv.innerHTML = '<div class="leaderboard-empty" style="padding:30px 20px;">لا توجد فروض أو اختبارات منجزة بعد</div>';
+      return;
+    }
+    
+    listDiv.innerHTML = results.map((r, idx)=> renderHallRow(
+      idx, (idx+1),
+      r.name,
+      `${r.examsCount} فرض/اختبار منجز`,
+      `${r.totalPoints} نقطة`
+    )).join('');
+  }catch(e){
+    console.error('Error loading exams leaderboard popup:', e);
+    listDiv.innerHTML = '<div class="leaderboard-empty" style="padding:30px 20px;">خطأ في تحميل الترتيب</div>';
   }
 }
 
