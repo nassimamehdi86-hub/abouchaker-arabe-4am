@@ -18,6 +18,49 @@
 </head>
 <body>
 
+<!-- ============ زر فتح المتصفح الحقيقي (يظهر تلقائياً داخل تيليجرام/إنستغرام...) ============ -->
+<div id="openInBrowserBar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:#A97F2A;color:#fff;padding:10px 14px;text-align:center;font-family:'Cairo',sans-serif;font-weight:700;font-size:15px;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer" onclick="__openInRealBrowser()">
+  📲 اضغط هنا لفتح التطبيق بشكل صحيح
+</div>
+<script>
+(function(){
+  var ua = navigator.userAgent || navigator.vendor || window.opera || "";
+  // اكتشاف المتصفحات المدمجة داخل التطبيقات (Telegram, Instagram, Facebook, TikTok, Snapchat...)
+  var isInApp = /Telegram|Instagram|FBAN|FBAV|FB_IAB|Line\/|Snapchat|TikTok|MicroMessenger|Twitter/i.test(ua);
+  if (isInApp) {
+    document.addEventListener('DOMContentLoaded', function () {
+      var bar = document.getElementById('openInBrowserBar');
+      if (bar) {
+        bar.style.display = 'block';
+        document.body.style.paddingTop = '42px';
+      }
+    });
+  }
+
+  window.__openInRealBrowser = function () {
+    var url = window.location.href;
+    var isAndroid = /Android/i.test(ua);
+    var isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+    if (isAndroid) {
+      // انتقال تلقائي وموثوق لمتصفح Chrome عبر intent://
+      var strippedUrl = url.replace(/^https?:\/\//, '');
+      var intentUrl = 'intent://' + strippedUrl + '#Intent;scheme=https;package=com.android.chrome;end';
+      window.location.href = intentUrl;
+      // خطة بديلة إن لم يتوفر كروم
+      setTimeout(function () {
+        window.location.href = url;
+      }, 800);
+    } else if (isIOS) {
+      // آيفون: لا توجد وسيلة تلقائية موثوقة، فنوجّه المستخدم بخطوة واحدة واضحة
+      alert('لفتح الموقع في متصفح Safari:\n\nاضغط على أيقونة (⋯) أو (مشاركة) في الأعلى، ثم اختر "فتح في Safari".');
+    } else {
+      window.open(url, '_blank');
+    }
+  };
+})();
+</script>
+
 <!-- ============ خلفية شفافة: صورة الأستاذ (Watermark) ============ -->
 <div class="teacher-watermark"><img src="teacher-watermark.jpg" alt=""></div>
 
