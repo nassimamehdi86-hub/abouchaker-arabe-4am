@@ -27,20 +27,12 @@
   var ua = navigator.userAgent || navigator.vendor || window.opera || "";
   // اكتشاف المتصفحات المدمجة داخل التطبيقات (Telegram, Instagram, Facebook, TikTok, Snapchat...)
   var isInApp = /Telegram|Instagram|FBAN|FBAV|FB_IAB|Line\/|Snapchat|TikTok|MicroMessenger|Twitter/i.test(ua);
-  if (isInApp) {
-    document.addEventListener('DOMContentLoaded', function () {
-      var bar = document.getElementById('openInBrowserBar');
-      if (bar) {
-        bar.style.display = 'block';
-        document.body.style.paddingTop = '42px';
-      }
-    });
-  }
+  var isAndroid = /Android/i.test(ua);
+  var isIOS = /iPhone|iPad|iPod/i.test(ua);
 
+  // تعريف الدالة أولاً قبل أي استدعاء لها
   window.__openInRealBrowser = function () {
     var url = window.location.href;
-    var isAndroid = /Android/i.test(ua);
-    var isIOS = /iPhone|iPad|iPod/i.test(ua);
 
     if (isAndroid) {
       // انتقال تلقائي وموثوق لمتصفح Chrome عبر intent://
@@ -58,6 +50,28 @@
       window.open(url, '_blank');
     }
   };
+
+  if (isInApp) {
+    // نُظهر الشريط دائماً كخطة احتياطية (يظهر فوراً إن فشل الانتقال التلقائي لأي سبب)
+    document.addEventListener('DOMContentLoaded', function () {
+      var bar = document.getElementById('openInBrowserBar');
+      if (bar) {
+        bar.style.display = 'block';
+        document.body.style.paddingTop = '42px';
+      }
+    });
+
+    if (isAndroid) {
+      // أندرويد: ننتقل تلقائياً وفوراً للمتصفح الحقيقي دون انتظار أي ضغطة من التلميذ
+      __openInRealBrowser();
+    } else if (isIOS) {
+      // آيفون: نظام آبل يمنع أي انتقال تلقائي لمتصفح خارجي دون لمسة حقيقية من المستخدم،
+      // لذلك أقصى ما يمكن فعله هو تنبيه فوري بخطوة واحدة بدل انتظار ضغط الشريط
+      document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(__openInRealBrowser, 400);
+      });
+    }
+  }
 })();
 </script>
 
