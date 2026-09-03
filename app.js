@@ -84,7 +84,7 @@ const Student = {
     }catch(e){ this.streak = 0; }
   },
 
-  /* محاولة الدخول أو التسجيل بالاسم واللقب — receiptDataUrl: صورة وصل مضغوطة (Base64)، فقط عند أول تسجيل */
+  /* محاولة الدخول أو التسجيل بالاسم واللقب — receiptDataUrl: صورة وصل مضغوطة (Base64)، فقط عند أول تسجيل (اختيارية الآن) */
   async loginOrRegister(fullName, receiptDataUrl){
     if(!fbReady) return { ok:false, reason:'no-firebase' };
     const key = this.normalizedKey(fullName);
@@ -111,11 +111,10 @@ const Student = {
       return { ok:true, status:'approved' };
     }
 
-    /* لا يوجد سجل سابق: إنشاء طلب جديد بحالة الانتظار — يتطلب صورة وصل عند أول تسجيل */
-    if(!receiptDataUrl) return { ok:false, reason:'receipt-required' };
+    /* لا يوجد سجل سابق: إنشاء طلب جديد بحالة الانتظار */
     const newDoc = await col.add({
       fullName: fullName.trim(), nameKey:key, status:'pending',
-      receiptImage: receiptDataUrl, /* مؤقتة: تُحذف تلقائيًا فور قرار القبول/الرفض */
+      receiptImage: receiptDataUrl || null, /* صورة وصل اختيارية */
       createdAt: firebase.firestore.FieldValue.serverTimestamp(), currentSession:null
     });
     this.id = newDoc.id; this.fullName = fullName.trim(); this.status = 'pending';
@@ -2098,47 +2097,20 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     const name = firstName + ' ' + lastName;
     const btn = document.getElementById('loginSubmitBtn');
     const msgBox = document.getElementById('loginMsg');
-    const receiptFile = document.getElementById('loginReceiptInput').files[0];
 
     btn.disabled = true; btn.textContent = 'جارٍ التحقق…';
     msgBox.textContent = '';
 
-    let receiptDataUrl = null;
-    if(receiptFile){
-      try{ receiptDataUrl = await compressImageFile(receiptFile, 700); }
-      catch(e){ /* تجاهل خطأ الضغط، سنعتمد على فحص لاحق */ }
-    }
-
-    const res = await Student.loginOrRegister(name, receiptDataUrl);
+    /* لا حاجة للبحث عن receipt — يتم التسجيل بالاسم واللقب فقط */
+    const res = await Student.loginOrRegister(name, null);
     btn.disabled = false; btn.textContent = 'دخول';
 
-    if(!res.ok && res.reason === 'receipt-required'){
-      msgBox.textContent = '📎 يرجى إرفاق صورة وصل الدفع عند أول تسجيل.';
-      document.getElementById('receiptFieldWrap').style.display = 'block';
-      return;
-    }
     if(!res.ok){ msgBox.textContent = 'تعذّر الاتصال بالمنصة، تحقق من إعداد Firebase.'; return; }
     if(res.status === 'pending'){ msgBox.textContent = '⏳ طلبك قيد المراجعة، يرجى الانتظار حتى يوافق الأستاذ أو المشرف.'; return; }
     if(res.status === 'rejected'){ msgBox.textContent = '❌ لم تتم الموافقة على طلبك. تواصل مع الأستاذ لمزيد من التفاصيل.'; return; }
     document.getElementById('loginModal').classList.remove('show');
     renderWelcome();
   });
-
-  /* معاينة صورة الوصل فور اختيارها + إخفاء حقل الرفع تلقائيًا إذا كان الاسم مسجَّلًا مسبقًا محليًا */
-  document.getElementById('loginReceiptInput').addEventListener('change', (e)=>{
-    const file = e.target.files[0];
-    const wrap = document.getElementById('receiptPreviewWrap');
-    const img = document.getElementById('receiptPreviewImg');
-    if(!file){ wrap.style.display = 'none'; return; }
-    const reader = new FileReader();
-    reader.onload = (ev)=>{ img.src = ev.target.result; wrap.style.display = 'block'; };
-    reader.readAsDataURL(file);
-  });
-  if(lsGet('student_id')){
-    /* هذا الجهاز فيه تسجيل سابق محفوظ محليًا: نُخفي حقل الوصل افتراضيًا لتبسيط التجربة،
-       ويظهر تلقائيًا من جديد إن رجع الخادم برسالة "يلزم إرفاق الوصل" (تسجيل تلميذ آخر من نفس الجهاز) */
-    document.getElementById('receiptFieldWrap').style.display = 'none';
-  }
 
   if(Student.status !== 'approved'){
     document.getElementById('loginModal').classList.add('show');
