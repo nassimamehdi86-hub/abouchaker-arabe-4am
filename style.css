@@ -1748,3 +1748,124 @@
     font-size:15px;
   }
 }
+
+/* =========================================================================================
+   شهادة التقدير — القالب (يُلتقط عبر html2canvas داخل certificate-generator.js) + نافذة المعاينة
+   ملاحظة: خط Cairo فقط وبلا أي letter-spacing على النص العربي (نفس قيد قوالب PDF الأخرى في
+   المنصة)، حتى تُرسَم الحروف العربية متصلة وسليمة عبر html2canvas.
+   ========================================================================================= */
+#certificatePrintArea{
+  position:fixed; top:0; left:-99999px; width:1123px; z-index:-1; background:#fff;
+  visibility:visible; pointer-events:none;
+}
+
+.cert-page{
+  font-family:'Cairo', sans-serif; direction:rtl; width:1123px; height:794px;
+  background:linear-gradient(160deg, #FFFDF7 0%, #FBF6E8 55%, #F3ECD5 100%);
+  padding:26px; box-sizing:border-box;
+}
+
+.cert-frame{
+  position:relative; width:100%; height:100%; box-sizing:border-box;
+  border:3px solid var(--gold-3, #A97F2A); border-radius:14px;
+  padding:26px 54px; text-align:center;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+  background:rgba(255,255,255,0.35);
+}
+.cert-frame::before{
+  content:''; position:absolute; inset:9px; border:1.4px solid var(--gold-2, #C79A3D);
+  border-radius:9px; pointer-events:none;
+}
+
+.cert-corner{ position:absolute; width:34px; height:34px; pointer-events:none; }
+.cert-corner-tl{ top:14px; left:14px; border-top:3px solid var(--gold-3,#A97F2A); border-right:3px solid var(--gold-3,#A97F2A); }
+.cert-corner-tr{ top:14px; right:14px; border-top:3px solid var(--gold-3,#A97F2A); border-left:3px solid var(--gold-3,#A97F2A); }
+.cert-corner-bl{ bottom:14px; left:14px; border-bottom:3px solid var(--gold-3,#A97F2A); border-right:3px solid var(--gold-3,#A97F2A); }
+.cert-corner-br{ bottom:14px; right:14px; border-bottom:3px solid var(--gold-3,#A97F2A); border-left:3px solid var(--gold-3,#A97F2A); }
+
+.cert-badge-ribbon{
+  position:absolute; top:22px; left:50%; transform:translateX(-50%);
+  font-size:34px; line-height:1; filter:drop-shadow(0 2px 2px rgba(169,127,42,0.35));
+}
+
+.cert-head{ margin-top:34px; }
+.cert-logo{ width:56px; height:56px; border-radius:50%; border:2px solid var(--gold-3,#A97F2A); object-fit:cover; background:#fff; }
+.cert-platform{ font-weight:900; font-size:15px; color:var(--gold-3,#A97F2A); margin-top:8px; }
+.cert-subject{ font-weight:700; font-size:10.5px; color:var(--sage-deep,#3F6350); margin-top:2px; }
+
+.cert-title{
+  font-weight:900; font-size:34px; color:#33260A; margin-top:14px; letter-spacing:0;
+}
+.cert-headline{ font-weight:800; font-size:14px; color:var(--gold-3,#A97F2A); margin-top:4px; }
+
+.cert-body{ margin-top:18px; max-width:760px; }
+.cert-line{ font-weight:600; font-size:13px; color:#22352B; line-height:1.9; }
+.cert-student-name{
+  font-weight:900; font-size:26px; color:#22352B; margin:6px 0 10px;
+  padding-bottom:6px; border-bottom:2.4px solid var(--gold-2,#C79A3D); display:inline-block;
+}
+.cert-lesson-title{
+  font-weight:800; font-size:17px; color:var(--sage-deep,#3F6350); margin:8px 0 4px;
+}
+.cert-score-row{
+  display:flex; align-items:center; justify-content:center; gap:10px; margin-top:10px;
+}
+.cert-score-label{ font-weight:700; font-size:12px; color:#5B6E62; }
+.cert-score-value{
+  font-weight:900; font-size:20px; color:#fff;
+  background:linear-gradient(135deg, var(--gold-1,#E7C878), var(--gold-2,#C79A3D));
+  border:1.4px solid var(--gold-3,#A97F2A); border-radius:999px; padding:3px 16px;
+}
+.cert-msg{ font-weight:700; font-size:12.5px; color:var(--sage-deep,#3F6350); margin-top:12px; line-height:1.8; }
+
+.cert-foot{
+  margin-top:auto; padding-top:18px; width:100%; max-width:820px;
+  display:flex; align-items:flex-end; justify-content:space-between;
+}
+.cert-foot-col{ flex:1; text-align:center; }
+.cert-foot-label{ font-weight:700; font-size:9.5px; color:#8A5626; }
+.cert-foot-value{ font-weight:800; font-size:12px; color:#33260A; margin-top:2px; }
+.cert-teacher-photo{
+  width:38px; height:38px; border-radius:50%; object-fit:cover; margin-bottom:4px;
+  border:1.6px solid var(--gold-3,#A97F2A);
+}
+.cert-seal{
+  width:52px; height:52px; border-radius:50%; margin:0 auto;
+  background:linear-gradient(135deg, var(--gold-1,#E7C878), var(--gold-2,#C79A3D));
+  border:2px solid var(--gold-3,#A97F2A); color:#fff; font-weight:900; font-size:22px;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* ===== نافذة معاينة الشهادة على الشاشة ===== */
+.cert-modal-overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:9999;
+  display:flex; align-items:center; justify-content:center; padding:16px;
+  animation:fadeIn 0.25s ease-in;
+}
+.cert-modal-box{
+  background:#F7F2E4; border-radius:18px; width:100%; max-width:880px; max-height:92vh;
+  overflow:hidden; position:relative; box-shadow:0 14px 44px rgba(0,0,0,0.35);
+  display:flex; flex-direction:column;
+}
+.cert-modal-close{
+  position:absolute; top:10px; left:10px; z-index:2; width:32px; height:32px; border-radius:50%;
+  border:1.3px solid var(--gold-3,#A97F2A); background:#FFFDF7; color:#33260A; font-weight:800;
+  font-size:14px; cursor:pointer;
+}
+.cert-modal-scroll{ overflow:auto; padding:16px; }
+.cert-preview-wrap{
+  transform:scale(0.62); transform-origin:top center; margin:-140px auto -190px;
+}
+.cert-modal-actions{
+  padding:12px 16px 16px; border-top:1.3px solid rgba(169,127,42,0.3); text-align:center;
+}
+.cert-download-btn{
+  background:linear-gradient(135deg, var(--gold-1,#E7C878), var(--gold-2,#C79A3D));
+  color:#33260A; border:1.3px solid var(--gold-3,#A97F2A); border-radius:999px;
+  font-weight:800; font-size:13.5px; padding:11px 28px; cursor:pointer;
+}
+.cert-download-btn:disabled{ opacity:0.7; cursor:default; }
+
+@media (max-width:720px){
+  .cert-preview-wrap{ transform:scale(0.34); margin:-260px auto -330px; }
+}
