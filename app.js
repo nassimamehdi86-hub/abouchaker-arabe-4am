@@ -912,7 +912,8 @@ const CATEGORY_META = {
   qawaid: { icon:'📘', title:'قواعد اللغة' },
   jumal:  { icon:'📙', title:'الجمل التي لها محلّ من الإعراب' },
   balagha:{ icon:'📕', title:'الظواهر البلاغية' },
-  anmat:  { icon:'📓', title:'أنماط النصوص' }
+  anmat:  { icon:'📓', title:'أنماط النصوص' },
+  itisaq: { icon:'📔', title:'الاتساق والانسجام' }
 };
 
 function renderLessonsScreen(){
@@ -920,7 +921,7 @@ function renderLessonsScreen(){
   wrap.innerHTML = '<div class="sf-label">جاري التحميل…</div>';
   Locks.load().then(()=>{
     let html = '';
-    ['tawabi','qawaid','jumal','balagha','anmat'].forEach((cat, idx)=>{
+    ['tawabi','qawaid','jumal','balagha','anmat','itisaq'].forEach((cat, idx)=>{
       const meta = CATEGORY_META[cat];
       const lessons = window.LESSONS.filter(l=>l.category===cat).sort((a,b)=>a.order-b.order);
       const categoryId = `category-${cat}`;
