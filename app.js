@@ -166,13 +166,13 @@ const Student = {
    وثيقة واحدة: state/locks  =>  { lessons: {lessonId: true/false}, trimesters: {t1:bool, t2:bool, t3:bool} }
    ========================================================================================= */
 const Locks = {
-  data:{ lessons:{}, trimesters:{t1:false, t2:false, t3:false} }, ready:false,
+  data:{ lessons:{}, trimesters:{t1:false, t2:false, t3:false}, situations:{} }, ready:false,
 
   async load(){
     if(!fbReady) { this.ready = true; return; }
     try{
       const snap = await db.collection('state').doc('locks').get();
-      if(snap.exists) this.data = Object.assign({lessons:{}, trimesters:{t1:false,t2:false,t3:false}}, snap.data());
+      if(snap.exists) this.data = Object.assign({lessons:{}, trimesters:{t1:false,t2:false,t3:false}, situations:{}}, snap.data());
     }catch(e){
       /* هذا الخطأ يخفي المشكلة الحقيقية غالبًا: عدم سماح قواعد Firestore بقراءة state/locks
          بدون Firebase Auth. لو فشلت هذه القراءة، تبقى كل الدروس تظهر "مقفلة" حتى لو فتحها
@@ -184,6 +184,7 @@ const Locks = {
   },
   isLessonLocked(id){ return !this.data.lessons || this.data.lessons[id] !== true; }, // افتراضيًا مقفل حتى يُفتح صراحة
   isTrimesterOpen(t){ return !!(this.data.trimesters && this.data.trimesters[t]); },
+  isSituationLocked(key){ return !this.data.situations || this.data.situations[key] !== true; }, // افتراضيًا مقفل حتى يُفتح صراحة
 
   async setLesson(id, open){
     if(!fbReady) return;
@@ -197,12 +198,18 @@ const Locks = {
     this.data.trimesters[t] = !!open;
     await db.collection('state').doc('locks').set(this.data, {merge:true});
   },
+  async setSituation(key, open){
+    if(!fbReady) return;
+    this.data.situations = this.data.situations || {};
+    this.data.situations[key] = !!open;
+    await db.collection('state').doc('locks').set(this.data, {merge:true});
+  },
 
   /* استماع لحظي للتغييرات حتى تنعكس فورًا عند كل التلاميذ */
   listen(onChange){
     if(!fbReady) return;
     db.collection('state').doc('locks').onSnapshot(snap=>{
-      if(snap.exists) this.data = Object.assign({lessons:{}, trimesters:{t1:false,t2:false,t3:false}}, snap.data());
+      if(snap.exists) this.data = Object.assign({lessons:{}, trimesters:{t1:false,t2:false,t3:false}, situations:{}}, snap.data());
       if(onChange) onChange();
     }, error=>{
       console.error('تعذّر الاستماع لحالة القفل (state/locks) — تحقق من قواعد Firestore:', error);
@@ -792,6 +799,7 @@ const Screens = {
   },
 
   show(name){
+    if(name !== 'situation' && typeof stopStoryNarration === 'function') stopStoryNarration();
     Object.values(this.el).forEach(e=>{ if(e) e.style.display = 'none'; });
     if(this.el[name]) this.el[name].style.display = 'block';
     window.scrollTo({top:0, behavior:'instant'});
@@ -1614,6 +1622,212 @@ function renderSituationScreen(){
       exportMindmapPDF(s, document.getElementById('situationMindmapPdfBtn'));
     situationRendered = true;
   }
+  Locks.load().then(renderSituationPracticeTabs);
+}
+
+/* ---------- تبويبات «وضعيات للاستئناس» حسب المقاطع الثمانية (يتحكم بفتحها/إغلاقها الأستاذ/المشرف) ---------- */
+let situPracticeActiveKey = null;
+let situActiveStoryId = null;
+function renderSituationPracticeTabs(){
+  const data = window.SITU_PRACTICE;
+  const tabsWrap = document.getElementById('situPracticeTabs');
+  if(!data || !tabsWrap) return;
+
+  if(!situPracticeActiveKey) situPracticeActiveKey = data[0].key;
+
+  tabsWrap.innerHTML = data.map(seg => {
+    const locked = Locks.isSituationLocked(seg.key);
+    return `
+    <button type="button" class="situ-tab ${seg.key === situPracticeActiveKey ? 'active' : ''} ${locked ? 'is-locked' : ''}" data-key="${seg.key}">
+      <span class="situ-tab-num">${String(seg.num).padStart(2,'0')}</span>
+      <span class="situ-tab-icon">${seg.icon}</span>
+      <span class="situ-tab-label">${seg.title}</span>
+      <span class="situ-tab-lock">${locked ? '🔒' : '🔓'}</span>
+    </button>`;
+  }).join('');
+
+  tabsWrap.querySelectorAll('.situ-tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(situPracticeActiveKey === btn.getAttribute('data-key')){ renderSituationPracticePanel(); return; }
+      situPracticeActiveKey = btn.getAttribute('data-key');
+      situActiveStoryId = null;
+      tabsWrap.querySelectorAll('.situ-tab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      btn.scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'});
+      renderSituationPracticePanel();
+    });
+  });
+
+  renderSituationPracticePanel();
+}
+
+function renderSituationPracticePanel(){
+  const data = window.SITU_PRACTICE;
+  const panel = document.getElementById('situPracticePanel');
+  if(!data || !panel) return;
+  stopStoryNarration();
+  const seg = data.find(x => x.key === situPracticeActiveKey) || data[0];
+
+  if(Locks.isSituationLocked(seg.key)){
+    situActiveStoryId = null;
+    panel.innerHTML = `
+      <div class="exam-panel">
+        <span class="lock-icon">🔒</span>
+        سيُفتح هذا المقطع «${seg.title}» من قبل الأستاذ أو المشرف في الوقت المناسب
+      </div>`;
+    return;
+  }
+
+  /* مقاطع من نوع "قصص للقراءة" (عناوين تُفتح كل واحدة على حدة) */
+  if(seg.stories && seg.stories.length){
+    if(situActiveStoryId){
+      const story = seg.stories.find(s => s.id === situActiveStoryId);
+      if(story){ renderStoryReader(seg, story); return; }
+    }
+    renderStoryTitlesList(seg);
+    return;
+  }
+
+  situActiveStoryId = null;
+  panel.innerHTML = `
+    <div class="situ-panel c-${seg.color || 'blue'}">
+      <div class="situ-panel-head">
+        <span class="situ-panel-icon">${seg.icon}</span>
+        <span class="situ-panel-title">المقطع ${seg.num}: ${seg.title}</span>
+      </div>
+      ${(seg.situations||[]).map(sit => `
+        <div class="situ-card">
+          <div class="situ-card-title">${sit.title}</div>
+          <div class="situ-block">
+            <span class="situ-block-label">🔹 السياق</span>
+            <p class="situ-block-text">${sit.context}</p>
+          </div>
+          <div class="situ-block">
+            <span class="situ-block-label">🔹 السند</span>
+            <p class="situ-block-text">${sit.support}</p>
+          </div>
+          <div class="situ-block">
+            <span class="situ-block-label">🔹 التعليمة</span>
+            <p class="situ-block-text">${sit.instruction}</p>
+          </div>
+          ${sit.pattern ? `<div class="situ-pattern">🧭 النمط المقترح: <b>${sit.pattern}</b></div>` : ''}
+        </div>`).join('')}
+    </div>`;
+}
+
+/* ---------- قائمة عناوين القصص داخل مقطع (يُضغط على العنوان لفتح القصة كاملة) ---------- */
+function renderStoryTitlesList(seg){
+  const panel = document.getElementById('situPracticePanel');
+  panel.innerHTML = `
+    <div class="situ-panel c-${seg.color || 'blue'}">
+      <div class="situ-panel-head">
+        <span class="situ-panel-icon">${seg.icon}</span>
+        <span class="situ-panel-title">المقطع ${seg.num}: ${seg.title}</span>
+      </div>
+      <div class="story-hint">📖 اضغط على عنوان الوضعية لقراءتها كاملة</div>
+      <div class="story-list">
+        ${seg.stories.map(st => `
+          <div class="story-list-item" data-story="${st.id}">
+            <span class="story-list-icon">${st.icon}</span>
+            <span class="story-list-title">${st.title}</span>
+            <span class="story-list-arrow">‹</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  panel.querySelectorAll('.story-list-item').forEach(item=>{
+    item.addEventListener('click', ()=>{
+      situActiveStoryId = item.getAttribute('data-story');
+      renderSituationPracticePanel();
+    });
+  });
+}
+
+/* ---------- قارئ القصة الكاملة (بشكلها التام) + زر الاستماع بصوت حنون ---------- */
+function renderStoryReader(seg, story){
+  const panel = document.getElementById('situPracticePanel');
+  const bodyHtml = story.blocks.map(b=>{
+    if(b.type === 'quote') return `<div class="story-quote">${b.text}</div>`;
+    if(b.type === 'moral') return `<div class="story-moral"><span class="story-moral-badge">🖊️ العبرة</span><p>${b.text}</p></div>`;
+    if(b.type === 'scene') return `<div class="story-scene"><span class="story-scene-icon">${b.icon}</span><span class="story-scene-caption">${b.caption||''}</span></div>`;
+    return `<p class="story-p">${b.text}</p>`;
+  }).join('');
+
+  panel.innerHTML = `
+    <div class="situ-panel c-${seg.color || 'blue'}">
+      <button type="button" class="story-back-btn" id="storyBackBtn">‹ رجوع إلى عناوين المقطع</button>
+      <div class="story-reader">
+        <div class="story-reader-head">
+          <span class="story-reader-icon">${story.icon}</span>
+          <h3 class="story-reader-title">${story.title}</h3>
+        </div>
+        <button type="button" class="story-listen-btn" id="storyListenBtn">🔊 استمع إلى الوضعية</button>
+        <div class="story-body" id="storyBody">${bodyHtml}</div>
+      </div>
+    </div>`;
+
+  document.getElementById('storyBackBtn').addEventListener('click', ()=>{
+    situActiveStoryId = null;
+    renderSituationPracticePanel();
+  });
+
+  document.getElementById('storyListenBtn').addEventListener('click', (e)=>{
+    if(storyNarrationActive){ stopStoryNarration(); return; }
+    startStoryNarration(story, e.currentTarget);
+  });
+}
+
+/* ---------- الاستماع للقصة بصوت حنون: قراءة متأنية، فقرة فقرة، مع وقفات هادئة ---------- */
+let storyNarrationActive = false;
+let storyNarrationQueue = [];
+let storyNarrationIdx = 0;
+
+function pickArabicVoice(){
+  if(!('speechSynthesis' in window)) return null;
+  const voices = window.speechSynthesis.getVoices() || [];
+  return voices.find(v => /^ar/i.test(v.lang)) || null;
+}
+
+function startStoryNarration(story, btnEl){
+  if(!('speechSynthesis' in window)){
+    alert('عذرًا، متصفحك لا يدعم خاصية الاستماع الصوتي.');
+    return;
+  }
+  window.speechSynthesis.cancel();
+  storyNarrationQueue = story.blocks
+    .map(b => (b.text || '').replace(/<[^>]+>/g, ''))
+    .filter(t => t && t.trim());
+  storyNarrationIdx = 0;
+  storyNarrationActive = true;
+  if(btnEl){ btnEl.textContent = '⏹ إيقاف الاستماع'; btnEl.classList.add('is-playing'); }
+  speakNextBlock(btnEl);
+}
+
+function speakNextBlock(btnEl){
+  if(!storyNarrationActive) return;
+  if(storyNarrationIdx >= storyNarrationQueue.length){
+    stopStoryNarration();
+    return;
+  }
+  const text = storyNarrationQueue[storyNarrationIdx++];
+  const utter = new SpeechSynthesisUtterance(text);
+  const voice = pickArabicVoice();
+  if(voice) utter.voice = voice;
+  utter.lang = voice ? voice.lang : 'ar-SA';
+  utter.rate = 0.82;   /* قراءة متأنية ليسهل الفهم */
+  utter.pitch = 1.08;  /* نبرة أكثر دفئًا وحنوًا */
+  utter.volume = 1;
+  utter.onend = ()=>{ setTimeout(()=> speakNextBlock(btnEl), 380); /* وقفة هادئة بين الفقرات */ };
+  utter.onerror = ()=> stopStoryNarration();
+  window.speechSynthesis.speak(utter);
+}
+
+function stopStoryNarration(){
+  storyNarrationActive = false;
+  storyNarrationQueue = [];
+  storyNarrationIdx = 0;
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+  const btn = document.getElementById('storyListenBtn');
+  if(btn){ btn.textContent = '🔊 استمع إلى الوضعية'; btn.classList.remove('is-playing'); }
 }
 
 /* ---------- شاشة الفروض والاختبارات ---------- */
@@ -1961,6 +2175,17 @@ async function renderAdminPanel(){
   });
   trimestersBody += `</div>`;
 
+  let situationsBody = `<div class="lesson-list">`;
+  (window.SITU_PRACTICE || []).forEach(seg=>{
+    const open = !Locks.isSituationLocked(seg.key);
+    situationsBody += `<div class="lesson-row">
+      <div class="lr-num">${String(seg.num).padStart(2,'0')}</div>
+      <div class="lr-text"><div class="lr-title">${seg.icon} ${seg.title}</div></div>
+      <button class="al-key" style="width:auto;padding:6px 14px" data-toggle-situation="${seg.key}">${open?'🔓 مفتوح — اضغط للإغلاق':'🔒 مغلق — اضغط للفتح'}</button>
+    </div>`;
+  });
+  situationsBody += `</div>`;
+
   const statsBody = `<div id="adminStatsMount"></div>`;
   const aiTeacherBody = `
     <div class="note" style="margin-bottom:12px">🧠 وحدة منفصلة تتيح إنشاء اختبار (نص/جدول/رسوم)، طباعته، ورفع تلميذ صورة إجابته لتصحّح تلقائيًا بالذكاء الاصطناعي مع علامة وتقرير فوري.
@@ -1973,6 +2198,7 @@ async function renderAdminPanel(){
     adminAccordionHTML('approved', `👥 التلاميذ المقبولون <span class="aa-badge">${totalStudents}</span>`, approvedBody) +
     adminAccordionHTML('lessons', `📖 فتح/إغلاق الدروس`, lessonsBody) +
     adminAccordionHTML('trimesters', `📝 فتح/إغلاق الفروض والاختبارات`, trimestersBody) +
+    adminAccordionHTML('situations', `📝 فتح/إغلاق وضعيات الاستئناس (المقاطع)`, situationsBody) +
     adminAccordionHTML('aiTeacher', `🧠 المعلّم الذكي — اختبارات وتصحيح آلي`, aiTeacherBody) +
     adminAccordionHTML('stats', `📊 إحصائيات كل درس`, statsBody);
 
@@ -2051,6 +2277,18 @@ async function renderAdminPanel(){
     await Locks.setTrimester(k, !open);
     renderAdminPanel();
   }));
+  wrap.querySelectorAll('[data-toggle-situation]').forEach(b=> b.addEventListener('click', async ()=>{
+    const k = b.getAttribute('data-toggle-situation');
+    const open = !Locks.isSituationLocked(k);
+    try{
+      await Locks.setSituation(k, !open);
+    }catch(error){
+      console.error('فشل تحديث حالة قفل المقطع (تحقق من قواعد Firestore لمجموعة state):', error);
+      if(typeof showFbPermissionNotice === 'function') showFbPermissionNotice('locks');
+      alert('تعذّر حفظ حالة المقطع في قاعدة البيانات. راجع التنبيه الظاهر أعلى الصفحة.');
+    }
+    renderAdminPanel();
+  }));
 
   const statsMount = document.getElementById('adminStatsMount');
   for(const l of window.LESSONS){
@@ -2086,7 +2324,10 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     document.getElementById('fbNotice').innerHTML = fbUnavailableNotice();
   }
 
-  Locks.listen(()=>{ if(document.getElementById('screen-lessons').style.display !== 'none') renderLessonsScreen(); });
+  Locks.listen(()=>{
+    if(document.getElementById('screen-lessons').style.display !== 'none') renderLessonsScreen();
+    if(document.getElementById('screen-situation').style.display !== 'none') renderSituationPracticeTabs();
+  });
 
   const resumed = await Student.resume();
   if(resumed){ renderWelcome(); }

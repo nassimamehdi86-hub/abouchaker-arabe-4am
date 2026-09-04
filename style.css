@@ -716,6 +716,140 @@
   }
   .exam-panel .lock-icon{ font-size:30px; display:block; margin-bottom:8px; }
 
+  /* ============ تبويبات «وضعيات للاستئناس» حسب المقاطع الثمانية ============ */
+  .situ-tabs-scroll{
+    overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; margin:0 -2px 16px;
+    padding:2px 2px 8px; scrollbar-width:thin;
+  }
+  .situ-tabs-scroll::-webkit-scrollbar{ height:5px; }
+  .situ-tabs-scroll::-webkit-scrollbar-thumb{ background:var(--gold-3); border-radius:999px; }
+  .situ-tabs{ display:flex; gap:9px; width:max-content; }
+  .situ-tab{
+    flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:2px;
+    min-width:84px; padding:10px 12px 9px; border-radius:15px; cursor:pointer;
+    font-family:'Cairo', sans-serif; font-weight:800; font-size:11px; color:var(--ink-soft);
+    border:1.6px solid rgba(169,127,42,0.35); background:linear-gradient(160deg, #FFFDF7, #F3ECD5);
+    box-shadow:0 6px 14px rgba(169,127,42,0.08), inset 0 1px 0 rgba(255,255,255,0.7);
+    transition:.18s; -webkit-tap-highlight-color:transparent;
+  }
+  .situ-tab-num{
+    font-family:'Aref Ruqaa', serif; font-size:10px; font-weight:700; color:var(--gold-3);
+    background:rgba(169,127,42,0.12); border-radius:999px; padding:0 7px; line-height:1.6;
+  }
+  .situ-tab-icon{ font-size:19px; margin:2px 0 1px; }
+  .situ-tab-label{ white-space:nowrap; }
+  .situ-tab-lock{ font-size:9.5px; margin-top:2px; opacity:.8; }
+  .situ-tab.active{
+    background:linear-gradient(160deg, #FBEDC3, #E7C878 60%, #D8AE52); color:#3A2A0A;
+    border-color:var(--gold-3); box-shadow:0 10px 22px rgba(169,127,42,0.32), inset 0 1px 0 rgba(255,255,255,0.5);
+    transform:translateY(-2px);
+  }
+  .situ-tab.active .situ-tab-num{ background:rgba(51,38,10,0.15); color:#3A2A0A; }
+  .situ-tab.is-locked{ opacity:.72; }
+  .situ-tab.is-locked.active{ opacity:1; }
+
+  .situ-panel{
+    border:1.6px solid var(--gold-3); border-radius:18px; padding:16px 15px 18px;
+    background:linear-gradient(160deg, rgba(255,255,255,0.6), rgba(255,255,255,0.28));
+    box-shadow:0 8px 18px rgba(169,127,42,0.10);
+    animation:situFade .25s ease;
+  }
+  @keyframes situFade{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
+  .situ-panel-head{
+    display:flex; align-items:center; gap:9px; margin-bottom:14px; padding-bottom:10px;
+    border-bottom:2px solid rgba(169,127,42,0.3);
+  }
+  .situ-panel-icon{ font-size:21px; }
+  .situ-panel-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:16.5px; color:var(--ink); }
+
+  .situ-card{
+    background:var(--paper); border:2px solid rgba(169,127,42,0.4); border-radius:14px;
+    padding:13px 14px 14px; margin-bottom:12px;
+  }
+  .situ-card:last-child{ margin-bottom:0; }
+  .situ-card-title{
+    font-weight:800; font-size:12.5px; color:#fff; background:var(--gold-3);
+    display:inline-block; padding:3px 12px; border-radius:999px; margin-bottom:10px;
+  }
+  .situ-block{ margin-bottom:9px; }
+  .situ-block:last-of-type{ margin-bottom:0; }
+  .situ-block-label{ font-weight:800; font-size:11px; color:var(--gold-3); display:block; margin-bottom:3px; }
+  .situ-block-text{ font-size:12px; font-weight:600; line-height:1.9; color:var(--ink); margin:0; }
+  .situ-pattern{
+    margin-top:11px; padding-top:9px; border-top:1.3px dashed rgba(169,127,42,0.35);
+    font-size:11.5px; font-weight:700; color:var(--ink-soft);
+  }
+  .situ-pattern b{ color:var(--gold-3); }
+
+  /* ============ قائمة عناوين «القصص للقراءة» داخل المقطع ============ */
+  .story-hint{ font-size:11.5px; font-weight:700; color:var(--ink-soft); margin-bottom:12px; text-align:center; }
+  .story-list{ display:flex; flex-direction:column; gap:10px; }
+  .story-list-item{
+    display:flex; align-items:center; gap:11px; padding:14px 15px; border-radius:14px; cursor:pointer;
+    background:linear-gradient(150deg, #FFFDF7, #F3ECD5); border:1.6px solid rgba(169,127,42,0.4);
+    box-shadow:0 6px 14px rgba(169,127,42,0.08); transition:.18s; -webkit-tap-highlight-color:transparent;
+  }
+  .story-list-item:active{ transform:scale(0.98); }
+  .story-list-icon{ font-size:24px; flex-shrink:0; }
+  .story-list-title{ flex:1; font-family:'Aref Ruqaa', serif; font-weight:700; font-size:15.5px; color:var(--ink); }
+  .story-list-arrow{ font-size:18px; color:var(--gold-3); font-weight:800; }
+
+  /* ============ قارئ القصة الكاملة — شكل صفحة كتاب دافئة ============ */
+  .story-back-btn{
+    display:inline-block; margin-bottom:14px; padding:6px 16px; border-radius:999px; cursor:pointer;
+    background:rgba(169,127,42,0.12); border:1.3px solid var(--gold-3); color:var(--gold-3);
+    font-weight:800; font-size:12px; font-family:'Cairo', sans-serif;
+  }
+  .story-reader{
+    background:linear-gradient(170deg, #FFFEFA, #FBF6E8); border:1.8px solid var(--gold-3); border-radius:18px;
+    padding:20px 18px 24px; box-shadow:0 10px 24px rgba(169,127,42,0.14), inset 0 1px 0 rgba(255,255,255,0.8);
+  }
+  .story-reader-head{ display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; margin-bottom:14px; }
+  .story-reader-icon{ font-size:40px; }
+  .story-reader-title{ margin:0; font-family:'Aref Ruqaa', serif; font-weight:700; font-size:22px; color:var(--ink); }
+
+  .story-listen-btn{
+    display:block; width:100%; margin-bottom:18px; padding:11px 14px; border-radius:14px; cursor:pointer;
+    background:linear-gradient(135deg, var(--gold-1), var(--gold-2)); border:1.4px solid var(--gold-3);
+    color:#33260A; font-weight:800; font-size:13px; font-family:'Cairo', sans-serif;
+    box-shadow:0 8px 18px rgba(169,127,42,0.22), inset 0 1px 0 rgba(255,255,255,0.55);
+    transition:.18s;
+  }
+  .story-listen-btn.is-playing{
+    background:linear-gradient(135deg, #F0DDB0, #D8AE52); animation:storyPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes storyPulse{ 0%,100%{ box-shadow:0 8px 18px rgba(169,127,42,0.22); } 50%{ box-shadow:0 8px 26px rgba(169,127,42,0.4); } }
+
+  .story-body{ font-family:'Cairo', sans-serif; }
+  .story-p{
+    font-size:13.5px; font-weight:600; line-height:2.15; color:var(--ink); margin:0 0 14px;
+    text-align:justify;
+  }
+  .story-quote{
+    position:relative; margin:0 6px 16px; padding:12px 18px; border-radius:14px;
+    background:rgba(169,127,42,0.08); border-right:4px solid var(--gold-3);
+    font-family:'Aref Ruqaa', serif; font-size:15px; font-weight:700; color:#7A5A1E; line-height:1.9;
+  }
+  .story-scene{
+    display:flex; flex-direction:column; align-items:center; gap:6px; margin:8px 0 20px;
+  }
+  .story-scene-icon{
+    width:64px; height:64px; display:flex; align-items:center; justify-content:center; font-size:32px;
+    border-radius:50%; background:linear-gradient(160deg, #FFFDF7, #F3ECD5); border:2px solid var(--gold-3);
+    box-shadow:0 8px 18px rgba(169,127,42,0.18);
+  }
+  .story-scene-caption{ font-size:11px; font-weight:700; color:var(--ink-soft); }
+  .story-moral{
+    margin-top:6px; padding:16px 16px 14px; border-radius:16px; text-align:center;
+    background:linear-gradient(160deg, #FBEDC3, #E7C878); border:1.6px solid var(--gold-3);
+    box-shadow:0 10px 22px rgba(169,127,42,0.24), inset 0 1px 0 rgba(255,255,255,0.5);
+  }
+  .story-moral-badge{
+    display:inline-block; margin-bottom:8px; padding:2px 14px; border-radius:999px; font-size:11px;
+    font-weight:800; background:#33260A; color:#F3ECD5;
+  }
+  .story-moral p{ margin:0; font-family:'Aref Ruqaa', serif; font-weight:700; font-size:15px; color:#33260A; line-height:1.9; }
+
   /* ============ زر الانطلاق البارز + الشرح بدون إطار (اختبار الفهم / تمارين الدرس) ============ */
   .lesson-cta-btn{
     display:flex; align-items:center; justify-content:center; gap:10px; width:100%;
