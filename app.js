@@ -1794,7 +1794,7 @@ function startStoryNarration(story, btnEl){
   }
   window.speechSynthesis.cancel();
   storyNarrationQueue = story.blocks
-    .map(b => (b.text || '').replace(/<[^>]+>/g, ''))
+    .map(b => (b.speech || b.caption || b.text || '').replace(/<[^>]+>/g, ''))
     .filter(t => t && t.trim());
   storyNarrationIdx = 0;
   storyNarrationActive = true;
