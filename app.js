@@ -659,7 +659,7 @@ function createQuizEngine(lesson, mountEl){
         <div class="result-msg">${msg}</div>
       </div>
       <div style="text-align:center; margin-top:14px;">
-        ${tier !== 'retry' ? `<button class="cert-download-btn" id="quizCertBtn" style="margin-bottom:12px">🎓 احصل على شهادة تقديرك</button><br>` : ''}
+        ${wrongCount === 0 ? `<button class="cert-download-btn" id="quizCertBtn" style="margin-bottom:12px">🎓 احصل على شهادة تقديرك</button><br>` : ''}
         ${wrongCount > 0
           ? `<button class="quiz-retry-btn">🔁 أعد الأسئلة الخاطئة فقط (${wrongCount})</button>
              <p style="font-size:11.5px;color:#5B6E62;margin-top:10px">أنت من يقرر: يمكنك التوقف الآن أو إعادة المحاولة لرفع نسبتك أكثر.</p>`
@@ -667,7 +667,7 @@ function createQuizEngine(lesson, mountEl){
         ${passed ? `<button class="quiz-retry-btn" id="quizRevealBtn" style="margin-top:10px">📖 إظهار الإجابات الصحيحة والتفسير</button>` : ''}
       </div>
       <div id="quizReviewMount" style="margin-top:16px"></div>`;
-    if(tier !== 'retry'){
+    if(wrongCount === 0){
       document.getElementById('quizCertBtn').addEventListener('click', ()=>{
         openCertificateModal(lesson, pct);
       });
@@ -1381,10 +1381,10 @@ async function finishExercise(lesson, mountEl, pct){
     ${res && res.ok
       ? '<p style="text-align:center;font-weight:800;color:#3F6350;margin-top:10px">✅ تم تسجيل نتيجتك في ترتيب هذا الدرس.</p>'
       : '<p style="text-align:center;font-weight:700;color:#c0392b;margin-top:10px">⚠️ تعذّر حفظ نتيجتك في قاعدة البيانات (تحقق من الاتصال). راجع الأستاذ إن استمرت المشكلة.</p>'}
-    ${tier !== 'retry' ? `<div style="text-align:center;margin-top:12px"><button class="cert-download-btn" id="exerciseCertBtn">🎓 احصل على شهادة تقديرك</button></div>` : ''}
+    ${pct === 100 ? `<div style="text-align:center;margin-top:12px"><button class="cert-download-btn" id="exerciseCertBtn">🎓 احصل على شهادة تقديرك</button></div>` : ''}
     <div id="pdfButtonsContainer"></div>`;
 
-  if(tier !== 'retry'){
+  if(pct === 100){
     document.getElementById('exerciseCertBtn').addEventListener('click', ()=>{
       openCertificateModal(lesson, pct);
     });

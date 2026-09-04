@@ -1760,8 +1760,11 @@
 }
 
 .cert-page{
+  /* لون خلفية صلب فقط (بلا أي تدرّج) — التدرّجات داخل أي عنصر يُلتقط عبر html2canvas
+     قد تسبب خطأ addColorStop الشهير وتُفشل توليد الشهادة بالكامل، بنفس القيد المطبَّق
+     أصلاً على قالب طباعة الخريطة الذهنية (.pp-page) في هذا الملف. */
   font-family:'Cairo', sans-serif; direction:rtl; width:1123px; height:794px;
-  background:linear-gradient(160deg, #FFFDF7 0%, #FBF6E8 55%, #F3ECD5 100%);
+  background:#FBF6E8;
   padding:26px; box-sizing:border-box;
 }
 
@@ -1813,7 +1816,7 @@
 .cert-score-label{ font-weight:700; font-size:12px; color:#5B6E62; }
 .cert-score-value{
   font-weight:900; font-size:20px; color:#fff;
-  background:linear-gradient(135deg, var(--gold-1,#E7C878), var(--gold-2,#C79A3D));
+  background:var(--gold-2,#C79A3D);
   border:1.4px solid var(--gold-3,#A97F2A); border-radius:999px; padding:3px 16px;
 }
 .cert-msg{ font-weight:700; font-size:12.5px; color:var(--sage-deep,#3F6350); margin-top:12px; line-height:1.8; }
@@ -1831,7 +1834,7 @@
 }
 .cert-seal{
   width:52px; height:52px; border-radius:50%; margin:0 auto;
-  background:linear-gradient(135deg, var(--gold-1,#E7C878), var(--gold-2,#C79A3D));
+  background:var(--gold-2,#C79A3D);
   border:2px solid var(--gold-3,#A97F2A); color:#fff; font-weight:900; font-size:22px;
   display:flex; align-items:center; justify-content:center;
 }
