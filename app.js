@@ -628,8 +628,10 @@ function createQuizEngine(lesson, mountEl){
         const ok = oi === item.correct;
         const ex = mountEl.querySelector('.quiz-explain');
         if(ok){
+          if(window.SoundFX) SoundFX.correct();
           b.classList.add('correct'); correctSet.add(qIndex);
         } else {
+          if(window.SoundFX) SoundFX.wrong();
           /* لا نكشف أي إجابة صحيحة أو تفسير هنا — فقط نُشير أن اختيار التلميذ كان خاطئًا،
              حتى لا تظهر له الإجابة الصحيحة قبل أن يتجاوز نسبة النجاح المطلوبة */
           b.classList.add('wrong');
@@ -751,6 +753,7 @@ function createIrabEngine(data, mountEl, titleText){
           document.getElementById('irabHeard').textContent = `🗣️ سمعتُ: «${transcript}»`;
           document.getElementById('irabHeard').classList.add('show');
           const ok = gradeExamAnswer(transcript, item);
+          if(window.SoundFX) (ok ? SoundFX.correct() : SoundFX.wrong());
           if(ok) score++; else { wrong++; document.getElementById('irabAnswer').classList.add('show'); }
           const v = document.getElementById('irabVerdict');
           v.classList.add('show', ok?'ok':'no'); v.textContent = ok ? '✅ إجابة صحيحة' : '❌ إجابة غير دقيقة';
@@ -805,6 +808,7 @@ const Screens = {
   },
 
   show(name){
+    if(window.SoundFX) SoundFX.navigate();
     if(name !== 'situation' && typeof stopStoryNarration === 'function') stopStoryNarration();
     Object.values(this.el).forEach(e=>{ if(e) e.style.display = 'none'; });
     if(this.el[name]) this.el[name].style.display = 'block';
@@ -852,6 +856,7 @@ function renderWelcome(){
     box.style.display = 'flex';
     document.getElementById('studentLogoutBtn').addEventListener('click', ()=>{
       if(!confirm('هل تريد تسجيل الخروج من المنصة؟')) return;
+      if(window.SoundFX) SoundFX.logout();
       Student.logout();
       location.reload();
     });
@@ -1131,8 +1136,9 @@ function createExerciseEngine(lesson, questions, mountEl){
         btns.forEach(x=>x.disabled = true);
         const oi = parseInt(b.getAttribute('data-oi'));
         const ok = oi === item.correct;
-        if(ok){ b.classList.add('correct'); correctCount++; }
+        if(ok){ if(window.SoundFX) SoundFX.correct(); b.classList.add('correct'); correctCount++; }
         else {
+          if(window.SoundFX) SoundFX.wrong();
           b.classList.add('wrong');
           if(btns[item.correct]) btns[item.correct].classList.add('correct');
           const ex = mountEl.querySelector('.quiz-explain');
@@ -1271,6 +1277,7 @@ function createOpenExerciseEngine(lesson, units, mountEl){
         ok = isMatchAr(val, u.answer, true);
         note = ok ? '✓ إجابة صحيحة' : '✗ إجابة غير مطابقة';
       }
+      if(window.SoundFX) (ok ? SoundFX.correct() : SoundFX.wrong());
       scoreSum += ok ? 1 : 0;
       inputEl.disabled = true;
       document.getElementById('unitCheckBtn').disabled = true;
@@ -1339,6 +1346,7 @@ function createOpenExerciseEngine(lesson, units, mountEl){
         else { row.style.color = '#C94848'; }
       });
       const ratio = u.pairs.length ? matched / u.pairs.length : 0;
+      if(window.SoundFX) (ratio >= 1 ? SoundFX.correct() : SoundFX.wrong());
       scoreSum += Math.min(1, ratio);
       Array.from(tbody.querySelectorAll('input')).forEach(i=> i.disabled = true);
       document.getElementById('extractAddBtn').disabled = true;
@@ -2255,6 +2263,7 @@ async function renderAdminPanel(){
 
   document.getElementById('adminLogoutBtn').addEventListener('click', ()=>{
     if(!confirm('هل تريد تسجيل الخروج من لوحة التحكم؟')) return;
+    if(window.SoundFX) SoundFX.logout();
     Admin.authed = false;
     Screens.show('home');
   });
@@ -2364,6 +2373,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     if(res.status === 'pending'){ msgBox.textContent = '⏳ طلبك قيد المراجعة، يرجى الانتظار حتى يوافق الأستاذ أو المشرف.'; return; }
     if(res.status === 'rejected'){ msgBox.textContent = '❌ لم تتم الموافقة على طلبك. تواصل مع الأستاذ لمزيد من التفاصيل.'; return; }
     document.getElementById('loginModal').classList.remove('show');
+    if(window.SoundFX) SoundFX.login();
     renderWelcome();
   });
 
