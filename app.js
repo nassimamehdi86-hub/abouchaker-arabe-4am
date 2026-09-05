@@ -119,8 +119,9 @@ const Student = {
     return { ok:true, status:'approved', fullName:this.fullName };
   },
 
-  /* إنشاء حساب جديد فقط — إن كان رقم الهاتف مسجَّلًا من قبل، لا يُنشأ طلب مكرَّر
-     بل تُعاد status:'already_exists' لتوجيه التلميذ لاستخدام "تسجيل الدخول" بدلًا من ذلك. */
+  /* إنشاء حساب جديد فقط — إن كان رقم الهاتف مسجَّلًا من قبل بحالة "مقبول" أو "قيد الانتظار"،
+     لا يُنشأ طلب مكرَّر، بل تُعاد status:'already_exists'.
+     أما إن كان مرفوضًا سابقًا، فيُسمح للتلميذ بإعادة التسجيل: نُحدِّث نفس السجل ونعيده إلى "قيد الانتظار". */
   async register(fullName, phone, receiptDataUrl){
     if(!fbReady) return { ok:false, reason:'no-firebase' };
     const key = this.normalizedKey(fullName);
@@ -132,8 +133,23 @@ const Student = {
     const existing = await col.where('phoneKey','==', phoneKey).limit(1).get();
 
     if(!existing.empty){
-      /* رقم الهاتف مسجَّل مسبقًا (بأي حالة) — لا ننشئ حسابًا مكرَّرًا */
-      return { ok:true, status:'already_exists' };
+      const docSnap = existing.docs[0];
+      const data = docSnap.data();
+
+      if(data.status !== 'rejected'){
+        /* مقبول أو قيد الانتظار: لا ننشئ حسابًا مكرَّرًا */
+        return { ok:true, status:'already_exists' };
+      }
+
+      /* كان مرفوضًا سابقًا: نسمح له بإعادة إرسال طلب جديد على نفس السجل */
+      await docSnap.ref.update({
+        fullName: fullName.trim(), nameKey:key, status:'pending',
+        receiptImage: receiptDataUrl || null,
+        resubmittedAt: firebase.firestore.FieldValue.serverTimestamp(), currentSession:null
+      });
+      this.id = docSnap.id; this.fullName = fullName.trim(); this.phone = phone.trim(); this.status = 'pending';
+      lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_phone', this.phone);
+      return { ok:true, status:'pending', fullName:this.fullName };
     }
 
     /* لا يوجد سجل سابق برقم الهاتف هذا: إنشاء طلب جديد بحالة الانتظار */
@@ -2467,7 +2483,7 @@ function setupLoginModal(){
     lsSet('remembered_phone', phone); lsSet('remembered_name', res.fullName || name);
 
     if(res.status === 'pending'){ msgBox.textContent = '⏳ طلبك قيد المراجعة، يرجى الانتظار حتى يوافق الأستاذ أو المشرف.'; return; }
-    if(res.status === 'rejected'){ msgBox.textContent = '❌ لم تتم الموافقة على طلبك. تواصل مع الأستاذ لمزيد من التفاصيل.'; return; }
+    if(res.status === 'rejected'){ msgBox.textContent = '❌ لم تتم الموافقة على طلبك. اضغط "رجوع" ثم اختر "إنشاء حساب جديد" لإعادة إرسال طلبك من جديد، أو تواصل مع الأستاذ.'; return; }
     document.getElementById('loginModal').classList.remove('show');
     if(window.SoundFX) SoundFX.login();
     renderWelcome();
