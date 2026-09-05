@@ -87,8 +87,41 @@ const Student = {
   /* تطبيع رقم الهاتف: نحتفظ فقط بالأرقام (نحذف المسافات والرموز) لضمان تطابق موحّد */
   normalizedPhone(phone){ return (phone||'').replace(/[^0-9]/g,''); },
 
-  /* محاولة الدخول أو التسجيل برقم الهاتف + الاسم واللقب — receiptDataUrl: صورة وصل مضغوطة (Base64)، اختيارية */
-  async loginOrRegister(fullName, phone, receiptDataUrl){
+  /* تسجيل الدخول بحساب موجود مسبقًا فقط — لا يُنشئ أي طلب جديد أبدًا.
+     إن لم يوجد رقم الهاتف في القاعدة، تُعاد status:'not_found' لتظهر رسالة خطأ للتلميذ. */
+  async login(fullName, phone){
+    if(!fbReady) return { ok:false, reason:'no-firebase' };
+    const phoneKey = this.normalizedPhone(phone);
+    if(!phoneKey) return { ok:false, reason:'empty-phone' };
+
+    const col = db.collection('students');
+    const existing = await col.where('phoneKey','==', phoneKey).limit(1).get();
+
+    if(existing.empty){
+      return { ok:true, status:'not_found' };
+    }
+
+    const docSnap = existing.docs[0];
+    const data = docSnap.data();
+    this.id = docSnap.id; this.fullName = data.fullName; this.phone = data.phone; this.status = data.status;
+
+    if(data.status === 'pending')  return { ok:true, status:'pending', fullName:this.fullName };
+    if(data.status === 'rejected') return { ok:true, status:'rejected', fullName:this.fullName };
+
+    /* موافق عليه: نبدأ جلسة جديدة (تطرد أي جلسة سابقة تلقائيًا) */
+    const newSession = genSessionId();
+    await col.doc(this.id).update({ currentSession:newSession, lastSeen:firebase.firestore.FieldValue.serverTimestamp() });
+    this.sessionId = newSession;
+    lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_session', newSession);
+    lsSet('student_phone', this.phone);
+    this.watchSession();
+    await this.updateStreak();
+    return { ok:true, status:'approved', fullName:this.fullName };
+  },
+
+  /* إنشاء حساب جديد فقط — إن كان رقم الهاتف مسجَّلًا من قبل، لا يُنشأ طلب مكرَّر
+     بل تُعاد status:'already_exists' لتوجيه التلميذ لاستخدام "تسجيل الدخول" بدلًا من ذلك. */
+  async register(fullName, phone, receiptDataUrl){
     if(!fbReady) return { ok:false, reason:'no-firebase' };
     const key = this.normalizedKey(fullName);
     const phoneKey = this.normalizedPhone(phone);
@@ -96,26 +129,11 @@ const Student = {
     if(!phoneKey) return { ok:false, reason:'empty-phone' };
 
     const col = db.collection('students');
-    /* رقم الهاتف هو المعرّف الفريد للتلميذ (أكثر دقة من الاسم وحده، فقد يتشابه اسمان) */
     const existing = await col.where('phoneKey','==', phoneKey).limit(1).get();
 
     if(!existing.empty){
-      const docSnap = existing.docs[0];
-      const data = docSnap.data();
-      this.id = docSnap.id; this.fullName = data.fullName; this.phone = data.phone; this.status = data.status;
-
-      if(data.status === 'pending')  return { ok:true, status:'pending', fullName:this.fullName };
-      if(data.status === 'rejected') return { ok:true, status:'rejected', fullName:this.fullName };
-
-      /* موافق عليه: نبدأ جلسة جديدة (تطرد أي جلسة سابقة تلقائيًا) */
-      const newSession = genSessionId();
-      await col.doc(this.id).update({ currentSession:newSession, lastSeen:firebase.firestore.FieldValue.serverTimestamp() });
-      this.sessionId = newSession;
-      lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_session', newSession);
-      lsSet('student_phone', this.phone);
-      this.watchSession();
-      await this.updateStreak();
-      return { ok:true, status:'approved', fullName:this.fullName };
+      /* رقم الهاتف مسجَّل مسبقًا (بأي حالة) — لا ننشئ حسابًا مكرَّرًا */
+      return { ok:true, status:'already_exists' };
     }
 
     /* لا يوجد سجل سابق برقم الهاتف هذا: إنشاء طلب جديد بحالة الانتظار */
@@ -2354,6 +2372,9 @@ function setupLoginModal(){
   const submitBtn       = document.getElementById('loginSubmitBtn');
   const msgBox          = document.getElementById('loginMsg');
 
+  /* يحدّد الوضع الحالي للنموذج: 'signin' (دخول لحساب موجود فقط) أو 'signup' (إنشاء حساب جديد فقط) */
+  let currentMode = 'signin';
+
   /* يفصل الاسم الكامل المحفوظ إلى اسم أول ولقب لتعبئة الخانتين تلقائيًا */
   function splitSavedName(fullName){
     const parts = (fullName||'').trim().split(/\s+/);
@@ -2383,6 +2404,7 @@ function setupLoginModal(){
   }
 
   function openForm(mode){ /* mode: 'signin' | 'signup' */
+    currentMode = mode;
     welcomeStep.style.display = 'none';
     formStep.style.display = 'block';
     msgBox.textContent = '';
@@ -2422,10 +2444,24 @@ function setupLoginModal(){
     submitBtn.disabled = true; submitBtn.textContent = 'جارٍ التحقق…';
     msgBox.textContent = '';
 
-    const res = await Student.loginOrRegister(name, phone, null);
+    /* الوضعان منفصلان تمامًا: تسجيل الدخول لا يُنشئ أي طلب أبدًا،
+       وإنشاء حساب جديد لا يُنشئ طلبًا مكرَّرًا لرقم هاتف مسجَّل من قبل */
+    const res = (currentMode === 'signup')
+      ? await Student.register(name, phone, null)
+      : await Student.login(name, phone);
+
     submitBtn.disabled = false; submitBtn.textContent = 'دخول';
 
     if(!res.ok){ msgBox.textContent = 'تعذّر الاتصال بالمنصة، تحقق من إعداد Firebase.'; return; }
+
+    if(res.status === 'not_found'){
+      msgBox.textContent = '❌ لا يوجد حساب مسجَّل بهذا رقم الهاتف. إن كنت تلميذًا جديدًا، اضغط "رجوع" ثم اختر "إنشاء حساب جديد".';
+      return;
+    }
+    if(res.status === 'already_exists'){
+      msgBox.textContent = 'ℹ️ يوجد حساب مسجَّل بهذا رقم الهاتف من قبل. اضغط "رجوع" ثم اختر "تسجيل الدخول" بدلًا من إنشاء حساب جديد.';
+      return;
+    }
 
     /* نحفظ رقم الهاتف والاسم محليًا على هذا الجهاز لتُسترجَع تلقائيًا في المرة القادمة */
     lsSet('remembered_phone', phone); lsSet('remembered_name', res.fullName || name);
@@ -2437,8 +2473,9 @@ function setupLoginModal(){
     renderWelcome();
   });
 
-  /* عند فتح النافذة أول مرة: إن وُجدت معلومات محفوظة سابقًا نتخطى شاشة الترحيب ونعرض النموذج مباشرة */
+  /* عند فتح النافذة أول مرة: إن وُجدت معلومات محفوظة سابقًا نتخطى شاشة الترحيب ونعرض نموذج تسجيل الدخول مباشرة */
   if(fillFromLocalMemory()){
+    currentMode = 'signin';
     welcomeStep.style.display = 'none';
     formStep.style.display = 'block';
     formTitle.textContent = 'تسجيل الدخول';
