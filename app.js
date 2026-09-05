@@ -84,42 +84,49 @@ const Student = {
     }catch(e){ this.streak = 0; }
   },
 
-  /* محاولة الدخول أو التسجيل بالاسم واللقب — receiptDataUrl: صورة وصل مضغوطة (Base64)، فقط عند أول تسجيل (اختيارية الآن) */
-  async loginOrRegister(fullName, receiptDataUrl){
+  /* تطبيع رقم الهاتف: نحتفظ فقط بالأرقام (نحذف المسافات والرموز) لضمان تطابق موحّد */
+  normalizedPhone(phone){ return (phone||'').replace(/[^0-9]/g,''); },
+
+  /* محاولة الدخول أو التسجيل برقم الهاتف + الاسم واللقب — receiptDataUrl: صورة وصل مضغوطة (Base64)، اختيارية */
+  async loginOrRegister(fullName, phone, receiptDataUrl){
     if(!fbReady) return { ok:false, reason:'no-firebase' };
     const key = this.normalizedKey(fullName);
+    const phoneKey = this.normalizedPhone(phone);
     if(!key) return { ok:false, reason:'empty-name' };
+    if(!phoneKey) return { ok:false, reason:'empty-phone' };
 
     const col = db.collection('students');
-    const existing = await col.where('nameKey','==', key).limit(1).get();
+    /* رقم الهاتف هو المعرّف الفريد للتلميذ (أكثر دقة من الاسم وحده، فقد يتشابه اسمان) */
+    const existing = await col.where('phoneKey','==', phoneKey).limit(1).get();
 
     if(!existing.empty){
       const docSnap = existing.docs[0];
       const data = docSnap.data();
-      this.id = docSnap.id; this.fullName = data.fullName; this.status = data.status;
+      this.id = docSnap.id; this.fullName = data.fullName; this.phone = data.phone; this.status = data.status;
 
-      if(data.status === 'pending')  return { ok:true, status:'pending' };
-      if(data.status === 'rejected') return { ok:true, status:'rejected' };
+      if(data.status === 'pending')  return { ok:true, status:'pending', fullName:this.fullName };
+      if(data.status === 'rejected') return { ok:true, status:'rejected', fullName:this.fullName };
 
       /* موافق عليه: نبدأ جلسة جديدة (تطرد أي جلسة سابقة تلقائيًا) */
       const newSession = genSessionId();
       await col.doc(this.id).update({ currentSession:newSession, lastSeen:firebase.firestore.FieldValue.serverTimestamp() });
       this.sessionId = newSession;
       lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_session', newSession);
+      lsSet('student_phone', this.phone);
       this.watchSession();
       await this.updateStreak();
-      return { ok:true, status:'approved' };
+      return { ok:true, status:'approved', fullName:this.fullName };
     }
 
-    /* لا يوجد سجل سابق: إنشاء طلب جديد بحالة الانتظار */
+    /* لا يوجد سجل سابق برقم الهاتف هذا: إنشاء طلب جديد بحالة الانتظار */
     const newDoc = await col.add({
-      fullName: fullName.trim(), nameKey:key, status:'pending',
+      fullName: fullName.trim(), nameKey:key, phone: phone.trim(), phoneKey, status:'pending',
       receiptImage: receiptDataUrl || null, /* صورة وصل اختيارية */
       createdAt: firebase.firestore.FieldValue.serverTimestamp(), currentSession:null
     });
-    this.id = newDoc.id; this.fullName = fullName.trim(); this.status = 'pending';
-    lsSet('student_id', this.id); lsSet('student_name', this.fullName);
-    return { ok:true, status:'pending' };
+    this.id = newDoc.id; this.fullName = fullName.trim(); this.phone = phone.trim(); this.status = 'pending';
+    lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_phone', this.phone);
+    return { ok:true, status:'pending', fullName:this.fullName };
   },
 
   /* محاولة استرجاع جلسة محفوظة محليًا عند فتح التطبيق */
@@ -156,8 +163,8 @@ const Student = {
 
   logout(){
     if(this.unsubscribe) this.unsubscribe();
-    localStorage.removeItem('student_id'); localStorage.removeItem('student_name'); localStorage.removeItem('student_session');
-    this.id=null; this.fullName=null; this.status=null; this.sessionId=null;
+    localStorage.removeItem('student_id'); localStorage.removeItem('student_name'); localStorage.removeItem('student_session'); localStorage.removeItem('student_phone');
+    this.id=null; this.fullName=null; this.phone=null; this.status=null; this.sessionId=null;
   }
 };
 
@@ -2332,6 +2339,114 @@ async function renderAdminPanel(){
 }
 
 /* =========================================================================================
+   نافذة تسجيل دخول التلميذ (شاشة ترحيب + نموذج برقم الهاتف مع استرجاع المعلومات المحفوظة)
+   ========================================================================================= */
+function setupLoginModal(){
+  const welcomeStep   = document.getElementById('loginWelcomeStep');
+  const formStep       = document.getElementById('loginFormStep');
+  const formTitle      = document.getElementById('loginFormTitle');
+  const formSub        = document.getElementById('loginFormSub');
+  const phoneInput      = document.getElementById('loginPhoneInput');
+  const firstNameInput  = document.getElementById('loginFirstNameInput');
+  const lastNameInput   = document.getElementById('loginLastNameInput');
+  const recalledBox     = document.getElementById('loginRecalledBox');
+  const recalledName    = document.getElementById('loginRecalledName');
+  const submitBtn       = document.getElementById('loginSubmitBtn');
+  const msgBox          = document.getElementById('loginMsg');
+
+  /* يفصل الاسم الكامل المحفوظ إلى اسم أول ولقب لتعبئة الخانتين تلقائيًا */
+  function splitSavedName(fullName){
+    const parts = (fullName||'').trim().split(/\s+/);
+    return { first: parts[0] || '', last: parts.slice(1).join(' ') || '' };
+  }
+
+  /* تعبئة النموذج من آخر بيانات محفوظة محليًا على هذا الجهاز (إن وُجدت) */
+  function fillFromLocalMemory(){
+    const savedPhone = lsGet('remembered_phone');
+    const savedName  = lsGet('remembered_name');
+    if(savedPhone && savedName){
+      const { first, last } = splitSavedName(savedName);
+      phoneInput.value = savedPhone;
+      firstNameInput.value = first;
+      lastNameInput.value = last;
+      recalledName.textContent = savedName;
+      recalledBox.style.display = 'block';
+      return true;
+    }
+    recalledBox.style.display = 'none';
+    return false;
+  }
+
+  function clearFormFields(){
+    phoneInput.value = ''; firstNameInput.value = ''; lastNameInput.value = '';
+    recalledBox.style.display = 'none'; msgBox.textContent = '';
+  }
+
+  function openForm(mode){ /* mode: 'signin' | 'signup' */
+    welcomeStep.style.display = 'none';
+    formStep.style.display = 'block';
+    msgBox.textContent = '';
+    if(mode === 'signup'){
+      formTitle.textContent = 'إنشاء حساب جديد';
+      formSub.textContent = 'أدخل رقم هاتفك واسمك ولقبك لإرسال طلب تسجيل';
+      clearFormFields();
+    } else {
+      formTitle.textContent = 'تسجيل الدخول';
+      formSub.textContent = 'أدخل رقم هاتفك واسمك ولقبك، أو تحقق من معلوماتك المسترجَعة أدناه';
+      fillFromLocalMemory();
+    }
+  }
+
+  document.getElementById('loginGoSigninBtn').addEventListener('click', ()=> openForm('signin'));
+  document.getElementById('loginGoSignupBtn').addEventListener('click', ()=> openForm('signup'));
+  document.getElementById('loginBackToWelcomeLink').addEventListener('click', (e)=>{
+    e.preventDefault();
+    formStep.style.display = 'none';
+    welcomeStep.style.display = 'block';
+  });
+  document.getElementById('loginNotMeLink').addEventListener('click', (e)=>{
+    e.preventDefault();
+    localStorage.removeItem('remembered_phone');
+    localStorage.removeItem('remembered_name');
+    clearFormFields();
+  });
+
+  submitBtn.addEventListener('click', async ()=>{
+    const phone = phoneInput.value.trim();
+    const firstName = firstNameInput.value.trim();
+    const lastName = lastNameInput.value.trim();
+    if(!phone){ alert('يرجى كتابة رقم الهاتف.'); return; }
+    if(!firstName || !lastName){ alert('يرجى كتابة الاسم واللقب في الخانتين.'); return; }
+    const name = firstName + ' ' + lastName;
+
+    submitBtn.disabled = true; submitBtn.textContent = 'جارٍ التحقق…';
+    msgBox.textContent = '';
+
+    const res = await Student.loginOrRegister(name, phone, null);
+    submitBtn.disabled = false; submitBtn.textContent = 'دخول';
+
+    if(!res.ok){ msgBox.textContent = 'تعذّر الاتصال بالمنصة، تحقق من إعداد Firebase.'; return; }
+
+    /* نحفظ رقم الهاتف والاسم محليًا على هذا الجهاز لتُسترجَع تلقائيًا في المرة القادمة */
+    lsSet('remembered_phone', phone); lsSet('remembered_name', res.fullName || name);
+
+    if(res.status === 'pending'){ msgBox.textContent = '⏳ طلبك قيد المراجعة، يرجى الانتظار حتى يوافق الأستاذ أو المشرف.'; return; }
+    if(res.status === 'rejected'){ msgBox.textContent = '❌ لم تتم الموافقة على طلبك. تواصل مع الأستاذ لمزيد من التفاصيل.'; return; }
+    document.getElementById('loginModal').classList.remove('show');
+    if(window.SoundFX) SoundFX.login();
+    renderWelcome();
+  });
+
+  /* عند فتح النافذة أول مرة: إن وُجدت معلومات محفوظة سابقًا نتخطى شاشة الترحيب ونعرض النموذج مباشرة */
+  if(fillFromLocalMemory()){
+    welcomeStep.style.display = 'none';
+    formStep.style.display = 'block';
+    formTitle.textContent = 'تسجيل الدخول';
+    formSub.textContent = 'أدخل رقم هاتفك واسمك ولقبك، أو تحقق من معلوماتك المسترجَعة أدناه';
+  }
+}
+
+/* =========================================================================================
    الإقلاع
    ========================================================================================= */
 document.addEventListener('DOMContentLoaded', async ()=>{
@@ -2354,28 +2469,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   const resumed = await Student.resume();
   if(resumed){ renderWelcome(); }
 
-  document.getElementById('loginSubmitBtn').addEventListener('click', async ()=>{
-    const firstName = document.getElementById('loginFirstNameInput').value.trim();
-    const lastName = document.getElementById('loginLastNameInput').value.trim();
-    if(!firstName || !lastName){ alert('يرجى كتابة الاسم واللقب في الخانتين.'); return; }
-    const name = firstName + ' ' + lastName;
-    const btn = document.getElementById('loginSubmitBtn');
-    const msgBox = document.getElementById('loginMsg');
-
-    btn.disabled = true; btn.textContent = 'جارٍ التحقق…';
-    msgBox.textContent = '';
-
-    /* لا حاجة للبحث عن receipt — يتم التسجيل بالاسم واللقب فقط */
-    const res = await Student.loginOrRegister(name, null);
-    btn.disabled = false; btn.textContent = 'دخول';
-
-    if(!res.ok){ msgBox.textContent = 'تعذّر الاتصال بالمنصة، تحقق من إعداد Firebase.'; return; }
-    if(res.status === 'pending'){ msgBox.textContent = '⏳ طلبك قيد المراجعة، يرجى الانتظار حتى يوافق الأستاذ أو المشرف.'; return; }
-    if(res.status === 'rejected'){ msgBox.textContent = '❌ لم تتم الموافقة على طلبك. تواصل مع الأستاذ لمزيد من التفاصيل.'; return; }
-    document.getElementById('loginModal').classList.remove('show');
-    if(window.SoundFX) SoundFX.login();
-    renderWelcome();
-  });
+  setupLoginModal();
 
   if(Student.status !== 'approved'){
     document.getElementById('loginModal').classList.add('show');
