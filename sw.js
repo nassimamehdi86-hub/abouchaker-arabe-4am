@@ -7,12 +7,12 @@
    يُستخدم التخزين المؤقت فقط كخطة بديلة عند انقطاع الإنترنت تمامًا (وضع عدم الاتصال).
    ========================================================================================= */
 
-const CACHE_NAME = 'abou-chaker-lâabbadi-v9'; /* غيّر الرقم هنا مستقبلاً فقط إذا أردت تفريغ ذاكرة كل الأجهزة قسرًا — رُفع الآن لإضافة ميزة "شهادة التقدير" (certificate-generator.js) */
+const CACHE_NAME = 'abou-chaker-lâabbadi-v10'; /* رُفع الرقم لإضافة ميزة جديدة: ورقة "تحليل الدرس ومراجعة شاملة" (lesson-analysis-generator.js) */
 const CORE_ASSETS = [
   './index.html', './style.css', './app.js', './lessons-data.js', './irab-data.js',
   './firebase-config.js', './manifest.json', './icon-192.png', './icon-512.png',
   './teacher-avatar.jpg', './teacher-watermark.jpg', './smart-teacher.html',
-  './certificate-generator.js', './exercise-pdf-generator.js'
+  './certificate-generator.js', './exercise-pdf-generator.js', './lesson-analysis-generator.js'
 ];
 
 self.addEventListener('install', (e)=>{

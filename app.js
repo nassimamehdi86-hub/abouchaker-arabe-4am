@@ -1049,6 +1049,9 @@ function openLessonDetail(id){
   }
   renderMindmap(lesson, document.getElementById('ldMindmap'));
   document.getElementById('ldMindmapPdfBtn').onclick = ()=> exportMindmapPDF(lesson);
+  if(typeof renderLessonAnalysisButton === 'function'){
+    renderLessonAnalysisButton(lesson, document.getElementById('ldAnalysisBox'));
+  }
 
   const quizMount = document.getElementById('ldQuiz');
   document.getElementById('ldQuizStartBtn').onclick = ()=>{

@@ -1553,6 +1553,17 @@
 .ep-answer-text{ font-size:9.5px; color:#22352B; margin-top:2px; line-height:1.7; }
 .ep-footer{ text-align:center; font-size:8px; color:#8A5626; margin-top:6px; opacity:.85; }
 
+/* ===== إضافات خاصة بملف "تحليل الدرس وورقة المراجعة" (lesson-analysis-generator.js) ===== */
+.ep-header.theme-blue{ background:#2E6DA4; }
+.ep-section-title.theme-blue{ color:#2E6DA4; }
+.ep-bullet{ font-size:10px; font-weight:600; color:#22352B; line-height:1.9; padding-right:14px; position:relative; }
+.ep-bullet::before{ content:'•'; position:absolute; right:0; color:#A97F2A; font-weight:900; }
+.ep-highlight-box{ background:#FDEDED; border:1.4px solid #C0392B; border-radius:10px; padding:9px 11px; font-size:9.5px; font-weight:600; color:#3a3a3a; line-height:1.85; }
+.ep-highlight-box.theme-blue{ background:#EAF2FB; border-color:#2E6DA4; }
+.ep-mcq-opt{ font-size:9.5px; font-weight:600; color:#22352B; padding-right:14px; line-height:1.85; }
+.ep-mcq-opt.is-correct{ color:#29806B; font-weight:800; }
+.ep-rubric-row{ font-size:9.5px; font-weight:700; color:#22352B; display:flex; justify-content:space-between; border-bottom:1px dashed #cbb27a; padding:4px 2px; }
+
 /* ========================= خانة إحصائيات المنصّة الثابتة (منضمّون / متصلون الآن) ========================= */
 .platform-stats-widget{
   position:fixed; top:16px; right:20px; z-index:1000;
