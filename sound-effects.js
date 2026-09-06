@@ -37,7 +37,9 @@ window.SoundFX = (function () {
     return ctx;
   }
 
-  /* نغمة واحدة ناعمة مع صعود/هبوط سلس للصوت (envelope) لتفادي أي "طقطقة" عند البداية/النهاية */
+  /* نغمة واحدة ناعمة مع صعود/هبوط سلس للصوت (envelope) لتفادي أي "طقطقة" عند البداية/النهاية.
+     دعم اختياري لفلتر تمرير منخفض (lowpass) لتنعيم حدة الأصوات وإعطائها طابعًا "مكتومًا" عصريًا
+     بدل الطنين الحاد الناتج عن موجة جيبية خام. */
   function scheduleTone(startTime, note) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -51,7 +53,17 @@ window.SoundFX = (function () {
     gain.gain.setValueAtTime(0.0001, startTime);
     gain.gain.exponentialRampToValueAtTime(peak, startTime + Math.min(0.015, dur / 3));
     gain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
-    osc.connect(gain);
+
+    let lastNode = osc;
+    if (note.filterFreq) {
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = note.filterFreq;
+      filter.Q.value = note.filterQ != null ? note.filterQ : 0.7;
+      osc.connect(filter);
+      lastNode = filter;
+    }
+    lastNode.connect(gain);
     gain.connect(masterGain);
     osc.start(startTime);
     osc.stop(startTime + dur + 0.03);
@@ -66,8 +78,10 @@ window.SoundFX = (function () {
   }
 
   return {
-    /* نقرة خفيفة جدًا لأزرار الواجهة والتبويبات العامة */
-    click() { playNotes([{ freq: 880, dur: 0.05, peak: 0.18 }]); },
+    /* نقرة خفيفة جدًا لأزرار الواجهة والتبويبات العامة — صوت "تِك" ناعم ومكتوم بفلتر
+       تمرير منخفض بدل الطنين الجيبي الحاد، مع تردد أخفض ومستوى أهدأ ومدة أقصر لإحساس عصري
+       غير مزعج حتى عند تكراره كثيرًا */
+    click() { playNotes([{ freq: 520, dur: 0.03, peak: 0.09, type: 'triangle', filterFreq: 1800 }]); },
 
     /* تنقّل بين شاشات التطبيق: نغمة قصيرة صاعدة خفيفة أشبه بـ"سواش" ناعم */
     navigate() { playNotes([{ freq: 480, dur: 0.09, peak: 0.16, glideTo: 720 }]); },
