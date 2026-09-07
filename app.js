@@ -268,6 +268,14 @@ const Locks = {
    لانعكاس أي تحديث فورًا عند كل التلاميذ دون الحاجة لإعادة تحميل الصفحة، ودون أي تعديل
    مستقبلي على الكود عند إضافة دروس جديدة.
    ========================================================================================= */
+/* يوحّد أي قيمة قديمة (رابط واحد كنص) أو جديدة (مصفوفة روابط) إلى مصفوفة نصوص نظيفة دون فراغات،
+   حتى تبقى البيانات القديمة المحفوظة قبل هذا التحديث صالحة للعرض دون أي عملية ترحيل يدوية */
+function normalizeZoomLinkList(v){
+  if(Array.isArray(v)) return v.map(x=> String(x==null?'':x).trim()).filter(Boolean);
+  if(typeof v === 'string' && v.trim()) return [v.trim()];
+  return [];
+}
+
 const ZoomLinks = {
   data:{ lessons:{} }, ready:false,
 
@@ -283,14 +291,18 @@ const ZoomLinks = {
     this.ready = true;
   },
 
-  /* يُعيد دائمًا كائنًا بالأفواج الأربعة، وكل فوج بحقوله الثلاثة (فارغة إن لم تُحفظ بعد)
-     لتسهيل الاستعمال بأمان دون الحاجة للتحقق من وجودها في كل مكان تُستعمل فيه */
+  /* يُعيد دائمًا كائنًا بالأفواج الأربعة، وكل فوج بحقوله الثلاثة كمصفوفات روابط (فارغة إن لم تُحفظ
+     بعد) — كل فوج يمكن أن يملك أكثر من رابط فيديو وأكثر من رابط ملخّص وأكثر من رابط تمارين */
   getLinks(lessonId){
     const l = (this.data.lessons && this.data.lessons[lessonId]) || {};
     const out = {};
     ['g1','g2','g3','g4'].forEach(k=>{
       const g = l[k] || {};
-      out[k] = { video:g.video||'', summary:g.summary||'', exercises:g.exercises||'' };
+      out[k] = {
+        video: normalizeZoomLinkList(g.video),
+        summary: normalizeZoomLinkList(g.summary),
+        exercises: normalizeZoomLinkList(g.exercises)
+      };
     });
     return out;
   },
@@ -299,7 +311,7 @@ const ZoomLinks = {
      (تُستعمل لعرض مؤشر في قائمة الأستاذ) */
   hasAnyLink(lessonId){
     const l = this.getLinks(lessonId);
-    return ['g1','g2','g3','g4'].some(k=> l[k].video || l[k].summary || l[k].exercises);
+    return ['g1','g2','g3','g4'].some(k=> l[k].video.length || l[k].summary.length || l[k].exercises.length);
   },
 
   async setLinks(lessonId, groups){
@@ -309,7 +321,9 @@ const ZoomLinks = {
     ['g1','g2','g3','g4'].forEach(k=>{
       const g = groups[k] || {};
       clean[k] = {
-        video:(g.video||'').trim(), summary:(g.summary||'').trim(), exercises:(g.exercises||'').trim()
+        video: normalizeZoomLinkList(g.video),
+        summary: normalizeZoomLinkList(g.summary),
+        exercises: normalizeZoomLinkList(g.exercises)
       };
     });
     this.data.lessons[lessonId] = clean;
@@ -1272,18 +1286,37 @@ function renderZoomGroupsBox(lesson){
       const g = links[key];
       playerBox.style.display = '';
 
-      /* أزرار وثائق هذا الفوج تحديدًا (ملخّص + تمارين) — تظهر فقط إن أضاف الأستاذ رابطها،
-         وتُخفى تمامًا إن لم يُضِف شيئًا حتى لا تُترك أزرار فارغة على الشاشة */
+      /* أزرار وثائق هذا الفوج تحديدًا (ملخّص + تمارين) — تظهر فقط إن أضاف الأستاذ روابطها،
+         وتُخفى تمامًا إن لم يُضِف شيئًا. كل رابط إضافي (إن وُجد أكثر من رابط لنفس النوع) يظهر
+         بزر مستقل مرقّم حتى يميّز التلميذ بينها */
       const docsHtml = ZOOM_DOCS
-        .filter(d=> !!g[d.key])
-        .map(d=> `<a class="zoom-doc-btn" href="${escZoomText(g[d.key])}" target="_blank" rel="noopener">${d.icon} ${d.btnLabel}</a>`)
+        .map(d=> g[d.key].map((url,idx)=>
+          `<a class="zoom-doc-btn" href="${escZoomText(url)}" target="_blank" rel="noopener">${d.icon} ${d.btnLabel}${g[d.key].length>1?' '+(idx+1):''}</a>`
+        ).join(''))
         .join('');
       const docsRow = docsHtml ? `<div class="zoom-docs-row">${docsHtml}</div>` : '';
 
-      if(!g.video){
+      if(!g.video.length){
         playerBox.innerHTML = docsRow + `<div class="zoom-empty-msg">⏳ لم يُضِف الأستاذ بعد تسجيل حصة هذا الفوج — حاول لاحقًا.</div>`;
+      } else if(g.video.length === 1){
+        playerBox.innerHTML = docsRow + buildZoomEmbedHTML(g.video[0]);
       } else {
-        playerBox.innerHTML = docsRow + buildZoomEmbedHTML(g.video);
+        /* أكثر من رابط فيديو لهذا الفوج (مثلاً أكثر من حصة) — أزرار تبديل أعلى المشغّل،
+           الفيديو الأول معروض افتراضيًا */
+        const videoTabsHtml = g.video.map((url,idx)=>
+          `<button type="button" class="zoom-video-tab-btn${idx===0?' active':''}" data-zoom-video-idx="${idx}">🎥 فيديو ${idx+1}</button>`
+        ).join('');
+        playerBox.innerHTML = docsRow + `<div class="zoom-video-tabs">${videoTabsHtml}</div><div class="zoom-video-embed">${buildZoomEmbedHTML(g.video[0])}</div>`;
+        const videoTabBtns = Array.from(playerBox.querySelectorAll('[data-zoom-video-idx]'));
+        const embedBox = playerBox.querySelector('.zoom-video-embed');
+        videoTabBtns.forEach(vbtn=>{
+          vbtn.addEventListener('click', ()=>{
+            if(window.SoundFX) SoundFX.click();
+            videoTabBtns.forEach(b=> b.classList.toggle('active', b===vbtn));
+            const idx = parseInt(vbtn.getAttribute('data-zoom-video-idx'), 10);
+            embedBox.innerHTML = buildZoomEmbedHTML(g.video[idx]);
+          });
+        });
       }
     });
   });
@@ -2648,39 +2681,76 @@ async function renderZoomManagerList(overlay){
   });
 }
 
+/* الحقول الثلاثة القابلة للتكرار داخل كل فوج — فيديو الحصة، ملخّص الدرس، تمارينه.
+   كل حقل الآن قد يحمل أكثر من رابط واحد (مثلاً أكثر من حصة، أو ملخّص على أكثر من جزء) */
+const ZOOM_FORM_FIELDS = [
+  { key:'video',     label:'🎥 روابط تسجيل الحصة (فيديو)', addLabel:'+ إضافة رابط فيديو آخر' },
+  { key:'summary',   label:'📄 روابط ملخّص الدرس',          addLabel:'+ إضافة رابط ملخّص آخر' },
+  { key:'exercises', label:'📝 روابط تمارين الدرس',          addLabel:'+ إضافة رابط تمارين آخر' }
+];
+
+/* يضيف صفًّا جديدًا (حقل إدخال + زر حذف) داخل حاوية روابط حقل معيّن */
+function addZoomLinkRow(container, value){
+  const row = document.createElement('div');
+  row.className = 'zoom-link-row';
+  row.innerHTML = `
+    <input type="text" class="zoom-form-input" placeholder="https://…" value="${escZoomText(value||'')}">
+    <button type="button" class="zoom-link-remove-btn" title="حذف هذا الرابط">✕</button>`;
+  row.querySelector('.zoom-link-remove-btn').addEventListener('click', ()=>{
+    if(window.SoundFX) SoundFX.click();
+    row.remove();
+  });
+  container.appendChild(row);
+}
+
 function renderZoomManagerForm(overlay, lesson){
   const body = overlay.querySelector('#zoomModalBody');
   overlay.querySelector('#zoomModalSubtitle').textContent = lesson.title;
   const links = ZoomLinks.getLinks(lesson.id);
 
-  /* لكل فوج قسم مستقل بثلاثة حقول: فيديو الحصة + ملخّص الدرس + تمارينه — لأن كل فوج قد
-     يملك توقيتًا ووثائق مختلفة تمامًا عن الأفواج الأخرى */
+  /* لكل فوج قسم مستقل بثلاثة حقول قابلة للتكرار: فيديو الحصة + ملخّص الدرس + تمارينه — لأن
+     كل فوج قد يملك توقيتًا ووثائق مختلفة تمامًا عن الأفواج الأخرى، وقد يحتاج أكثر من رابط
+     واحد لكل نوع (أكثر من حصة، ملخّص على أجزاء…) */
   const groupsHtml = ZOOM_GROUPS.map(g=>{
-    const gl = links[g.key];
-    return `
-      <div class="zoom-form-divider"><span>${g.label}</span></div>
+    const fieldsHtml = ZOOM_FORM_FIELDS.map(f=> `
       <div class="zoom-form-group">
-        <label class="zoom-form-label" for="zoomInput-${g.key}-video">🎥 رابط تسجيل الحصة (فيديو)</label>
-        <input type="text" class="zoom-form-input" id="zoomInput-${g.key}-video" placeholder="https://…" value="${escZoomText(gl.video)}">
-      </div>
-      <div class="zoom-form-group">
-        <label class="zoom-form-label" for="zoomInput-${g.key}-summary">📄 رابط ملخّص الدرس</label>
-        <input type="text" class="zoom-form-input" id="zoomInput-${g.key}-summary" placeholder="https://…" value="${escZoomText(gl.summary)}">
-      </div>
-      <div class="zoom-form-group">
-        <label class="zoom-form-label" for="zoomInput-${g.key}-exercises">📝 رابط تمارين الدرس</label>
-        <input type="text" class="zoom-form-input" id="zoomInput-${g.key}-exercises" placeholder="https://…" value="${escZoomText(gl.exercises)}">
-      </div>`;
+        <label class="zoom-form-label">${f.label}</label>
+        <div class="zoom-link-rows" id="zoomRows-${g.key}-${f.key}"></div>
+        <button type="button" class="zoom-add-link-btn" data-zoom-add="${g.key}-${f.key}">${f.addLabel}</button>
+      </div>`).join('');
+    return `<div class="zoom-form-divider"><span>${g.label}</span></div>${fieldsHtml}`;
   }).join('');
 
   body.innerHTML = `
     <button type="button" class="zoom-back-btn" id="zoomFormBackBtn">→ رجوع لقائمة الدروس</button>
-    <div class="zoom-form-note">لكل فوج 3 روابط مستقلة: تسجيل الحصة، ملخّص الدرس، وتمارينه. اترك أي حقل فارغًا إن لم يتوفّر بعد، ثم اضغط «حفظ الروابط» في الأسفل.
+    <div class="zoom-form-note">لكل فوج 3 حقول: تسجيل الحصة، ملخّص الدرس، وتمارينه — ويمكنك إضافة أكثر من رابط لكل حقل بالضغط على «+ إضافة رابط آخر». اترك الحقل فارغًا إن لم يتوفّر بعد، ثم اضغط «حفظ الروابط» في الأسفل.
       <br>✅ روابط يوتيوب/فيميو/Google Drive الخاصة بالفيديو تُشغَّل مباشرة داخل الصفحة.
       <br>📨 روابط تيليجرام (مثل <bdi style="direction:ltr;display:inline-block">t.me/c/…</bdi>) — سواء للفيديو أو للوثائق — تظهر للتلميذ كزر "فتح على تيليجرام"، لأن تيليجرام لا يسمح بالتضمين المباشر، ويشترط أن يكون التلميذ عضوًا مقبولًا في قناة/مجموعة فوجه.</div>
     ${groupsHtml}
     <button type="button" class="zoom-save-btn" id="zoomSaveBtn">💾 حفظ الروابط</button>
     <div class="zoom-save-feedback" id="zoomSaveFeedback"></div>`;
+
+  /* تعبئة كل حاوية بصفوفها الحالية (رابط واحد فارغ افتراضيًا إن لم يكن هناك أي رابط محفوظ بعد،
+     حتى يبقى هناك دومًا حقل واحد جاهز للكتابة، تمامًا كما كانت الواجهة سابقًا) */
+  ZOOM_GROUPS.forEach(g=>{
+    ZOOM_FORM_FIELDS.forEach(f=>{
+      const container = body.querySelector(`#zoomRows-${g.key}-${f.key}`);
+      const vals = links[g.key][f.key];
+      if(vals.length){
+        vals.forEach(v=> addZoomLinkRow(container, v));
+      } else {
+        addZoomLinkRow(container, '');
+      }
+    });
+  });
+
+  body.querySelectorAll('[data-zoom-add]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(window.SoundFX) SoundFX.click();
+      const containerId = 'zoomRows-' + btn.getAttribute('data-zoom-add');
+      addZoomLinkRow(body.querySelector('#'+containerId), '');
+    });
+  });
 
   body.querySelector('#zoomFormBackBtn').addEventListener('click', ()=> renderZoomManagerList(overlay));
 
@@ -2689,11 +2759,12 @@ function renderZoomManagerForm(overlay, lesson){
     const feedback = body.querySelector('#zoomSaveFeedback');
     const newGroups = {};
     ZOOM_GROUPS.forEach(g=>{
-      newGroups[g.key] = {
-        video:     body.querySelector(`#zoomInput-${g.key}-video`).value.trim(),
-        summary:   body.querySelector(`#zoomInput-${g.key}-summary`).value.trim(),
-        exercises: body.querySelector(`#zoomInput-${g.key}-exercises`).value.trim()
-      };
+      newGroups[g.key] = {};
+      ZOOM_FORM_FIELDS.forEach(f=>{
+        const container = body.querySelector(`#zoomRows-${g.key}-${f.key}`);
+        const inputs = Array.from(container.querySelectorAll('.zoom-form-input'));
+        newGroups[g.key][f.key] = inputs.map(inp=> inp.value.trim()).filter(Boolean);
+      });
     });
 
     saveBtn.disabled = true; saveBtn.textContent = '⏳ جاري الحفظ…';

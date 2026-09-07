@@ -1949,6 +1949,21 @@
 .zoom-save-btn:disabled{ opacity:0.7; cursor:default; transform:none; }
 .zoom-save-feedback{ margin-top:10px; font-size:12.5px; font-weight:700; text-align:center; min-height:16px; }
 
+/* صفّ رابط واحد قابل للحذف داخل حقل قابل للتكرار (فيديو/ملخّص/تمارين)، وزر إضافة صفّ جديد */
+.zoom-link-rows{ display:flex; flex-direction:column; gap:8px; }
+.zoom-link-row{ display:flex; align-items:center; gap:8px; }
+.zoom-link-row .zoom-form-input{ flex:1; }
+.zoom-link-remove-btn{
+  flex:none; width:34px; height:34px; border-radius:10px; border:1.4px solid rgba(181,67,42,0.4);
+  background:rgba(181,67,42,0.08); color:#b5432a; font-weight:800; font-size:14px; cursor:pointer;
+}
+.zoom-link-remove-btn:active{ transform:scale(0.95); }
+.zoom-add-link-btn{
+  display:inline-block; margin-top:8px; background:none; border:none; color:var(--gold-3);
+  font-weight:800; font-size:12.5px; cursor:pointer; padding:4px 0;
+}
+.zoom-add-link-btn:active{ transform:translateY(1px); }
+
 /* ----- واجهة التلميذ: صندوق "تسجيلات حصص الزوم" داخل صفحة الدرس ----- */
 .zoom-groups-wrap{ background:var(--paper); border:1.6px solid var(--gold-3); border-radius:16px; padding:16px; margin:24px 0; }
 .zoom-groups-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:17px; margin-bottom:12px; color:var(--ink); text-align:center; }
@@ -1971,6 +1986,18 @@
   border-radius:999px; padding:9px 16px; text-decoration:none; transition:.15s ease;
 }
 .zoom-doc-btn:active{ transform:translateY(1px); }
+/* أزرار تبديل الفيديو عند وجود أكثر من رابط فيديو واحد لنفس الفوج (مثلاً أكثر من حصة) */
+.zoom-video-tabs{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-bottom:10px; }
+.zoom-video-tab-btn{
+  font-family:'Cairo', sans-serif; font-weight:800; font-size:12px; color:var(--ink);
+  background:linear-gradient(150deg, #FFFDF7, #F3ECD5); border:1.4px solid rgba(169,127,42,0.35);
+  border-radius:999px; padding:8px 14px; cursor:pointer; transition:.15s ease;
+}
+.zoom-video-tab-btn:active{ transform:translateY(1px); }
+.zoom-video-tab-btn.active{
+  background:linear-gradient(135deg, var(--gold-1), var(--gold-2)); border-color:var(--gold-3);
+  color:#33260A; box-shadow:0 6px 14px rgba(169,127,42,0.28);
+}
 .zoom-player-box{ margin-top:14px; }
 .zoom-player-box iframe, .zoom-player-box video{
   position:relative; width:100%; aspect-ratio:16/9; border-radius:12px; border:0; background:#000; display:block;
