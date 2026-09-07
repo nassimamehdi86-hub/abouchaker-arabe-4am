@@ -2027,6 +2027,20 @@
   line-height:1.9; color:var(--ink-soft); text-align:center;
 }
 
+/* ----- واجهة التلميذ: إرسال حل التمرين — صفّ مصغّر داخل تبويب الفوج المفتوح ----- */
+.solution-inline-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:14px; }
+.solution-inline-file{
+  flex:1; min-width:140px; max-width:220px; padding:8px 10px; border-radius:11px;
+  border:1.4px solid rgba(169,127,42,0.4); font-family:'Cairo', sans-serif; font-size:11.5px;
+  background:var(--paper); color:var(--ink);
+}
+.solution-file-preview{ margin-top:10px; text-align:center; }
+.solution-file-preview img{ max-width:100%; max-height:220px; border-radius:12px; border:1.4px solid rgba(169,127,42,0.35); }
+.solution-file-name{
+  display:inline-block; font-size:12.5px; font-weight:700; color:var(--ink-soft);
+  background:rgba(199,154,61,0.08); border:1.2px dashed var(--gold-3); border-radius:10px; padding:8px 12px;
+}
+
 @media (max-width:380px){
   .zoom-tabs{ grid-template-columns:1fr 1fr; }
   .zoom-tab-btn{ font-size:12px; padding:10px 6px; }

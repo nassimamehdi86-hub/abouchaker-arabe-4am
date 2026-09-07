@@ -1284,6 +1284,7 @@ function renderZoomGroupsBox(lesson){
       const key = btn.getAttribute('data-zoom-tab');
       tabBtns.forEach(b=> b.classList.toggle('active', b===btn));
       const g = links[key];
+      const groupLabel = ZOOM_GROUPS.find(x=> x.key===key).label;
       playerBox.style.display = '';
 
       /* أزرار وثائق هذا الفوج تحديدًا (ملخّص + تمارين) — تظهر فقط إن أضاف الأستاذ روابطها،
@@ -1296,17 +1297,23 @@ function renderZoomGroupsBox(lesson){
         .join('');
       const docsRow = docsHtml ? `<div class="zoom-docs-row">${docsHtml}</div>` : '';
 
+      let videoHtml;
       if(!g.video.length){
-        playerBox.innerHTML = docsRow + `<div class="zoom-empty-msg">⏳ لم يُضِف الأستاذ بعد تسجيل حصة هذا الفوج — حاول لاحقًا.</div>`;
+        videoHtml = `<div class="zoom-empty-msg">⏳ لم يُضِف الأستاذ بعد تسجيل حصة هذا الفوج — حاول لاحقًا.</div>`;
       } else if(g.video.length === 1){
-        playerBox.innerHTML = docsRow + buildZoomEmbedHTML(g.video[0]);
+        videoHtml = buildZoomEmbedHTML(g.video[0]);
       } else {
         /* أكثر من رابط فيديو لهذا الفوج (مثلاً أكثر من حصة) — أزرار تبديل أعلى المشغّل،
            الفيديو الأول معروض افتراضيًا */
         const videoTabsHtml = g.video.map((url,idx)=>
           `<button type="button" class="zoom-video-tab-btn${idx===0?' active':''}" data-zoom-video-idx="${idx}">🎥 فيديو ${idx+1}</button>`
         ).join('');
-        playerBox.innerHTML = docsRow + `<div class="zoom-video-tabs">${videoTabsHtml}</div><div class="zoom-video-embed">${buildZoomEmbedHTML(g.video[0])}</div>`;
+        videoHtml = `<div class="zoom-video-tabs">${videoTabsHtml}</div><div class="zoom-video-embed">${buildZoomEmbedHTML(g.video[0])}</div>`;
+      }
+
+      playerBox.innerHTML = docsRow + videoHtml + buildSolutionInlineHtml();
+
+      if(g.video.length > 1){
         const videoTabBtns = Array.from(playerBox.querySelectorAll('[data-zoom-video-idx]'));
         const embedBox = playerBox.querySelector('.zoom-video-embed');
         videoTabBtns.forEach(vbtn=>{
@@ -1318,7 +1325,104 @@ function renderZoomGroupsBox(lesson){
           });
         });
       }
+
+      wireSolutionInline(playerBox, lesson, key, groupLabel);
     });
+  });
+}
+
+/* =========================================================================================
+   إرسال حل التمرين (صورة/ملف) إلى الأستاذ عبر بوت تيليجرام — يظهر مباشرة تحت تسجيل/وثائق
+   الفوج الذي اختاره التلميذ، فالفوج معروف تلقائيًا من التبويب المفتوح دون أي اختيار إضافي.
+   يرفق تلقائيًا اسم التلميذ ولقبه ورقم هاتفه المسجَّل به وفوجه، حتى يعرف الأستاذ فورًا صاحب
+   الحل عند استلامه في تيليجرام دون أي بحث يدوي.
+   ========================================================================================= */
+const SolutionSubmit = {
+  async send(lesson, groupLabel, file){
+    if(!TELEGRAM_CONFIG || !TELEGRAM_CONFIG.botToken || !TELEGRAM_CONFIG.chatId){
+      return { ok:false, reason:'not-configured' };
+    }
+    const caption =
+      `📥 حل تمرين جديد\n` +
+      `👤 الاسم: ${Student.fullName || '—'}\n` +
+      `📞 الهاتف: ${Student.phone || '—'}\n` +
+      `👥 الفوج: ${groupLabel}\n` +
+      `📘 الدرس: ${lesson.title}`;
+
+    const isImage = /^image\//.test(file.type);
+    const endpoint  = isImage ? 'sendPhoto' : 'sendDocument';
+    const fieldName = isImage ? 'photo' : 'document';
+
+    const form = new FormData();
+    form.append('chat_id', TELEGRAM_CONFIG.chatId);
+    form.append('caption', caption);
+    form.append(fieldName, file, file.name || 'solution.jpg');
+
+    try{
+      const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_CONFIG.botToken}/${endpoint}`, { method:'POST', body:form });
+      const data = await res.json();
+      if(data && data.ok) return { ok:true };
+      console.error('فشل إرسال حل التمرين إلى تيليجرام (رد البوت):', data);
+      return { ok:false, reason:'telegram-error' };
+    }catch(e){
+      console.error('تعذّر الاتصال بخادم تيليجرام لإرسال حل التمرين:', e);
+      return { ok:false, reason:'network' };
+    }
+  }
+};
+
+/* عنصر مصغّر بلا أي شرح: حقل ملف + زر إرسال فقط — لا يظهر إطلاقًا لتلميذ غير مسجَّل دخوله */
+function buildSolutionInlineHtml(){
+  if(!Student.id || !Student.fullName) return '';
+  return `
+    <div class="solution-inline-row">
+      <input type="file" id="solutionFileInput" accept="image/*,.pdf" class="solution-inline-file">
+      <button type="button" class="zoom-doc-btn" id="solutionSendBtn">📨 إرسال حل التمرين</button>
+    </div>
+    <div class="solution-file-preview" id="solutionFilePreview" style="display:none"></div>
+    <div class="zoom-save-feedback" id="solutionSendFeedback"></div>`;
+}
+
+function wireSolutionInline(playerBox, lesson, groupKey, groupLabel){
+  const fileInput = playerBox.querySelector('#solutionFileInput');
+  const sendBtn = playerBox.querySelector('#solutionSendBtn');
+  if(!fileInput || !sendBtn) return;
+
+  const preview = playerBox.querySelector('#solutionFilePreview');
+  fileInput.addEventListener('change', ()=>{
+    const file = fileInput.files[0];
+    if(!file){ preview.style.display = 'none'; preview.innerHTML = ''; return; }
+    if(/^image\//.test(file.type)){
+      preview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="معاينة الحل">`;
+    } else {
+      preview.innerHTML = `<div class="solution-file-name">📄 ${escZoomText(file.name)}</div>`;
+    }
+    preview.style.display = 'block';
+  });
+
+  sendBtn.addEventListener('click', async ()=>{
+    const feedback = playerBox.querySelector('#solutionSendFeedback');
+    const file = fileInput.files[0];
+    if(!file){
+      feedback.textContent = '⚠️ الرجاء اختيار صورة أو ملف الحل أولاً.'; feedback.style.color = '#b5432a'; return;
+    }
+
+    sendBtn.disabled = true; sendBtn.textContent = '⏳ جاري الإرسال…';
+    const res = await SolutionSubmit.send(lesson, groupLabel, file);
+
+    if(res.ok){
+      if(window.SoundFX) SoundFX.correct();
+      feedback.textContent = '✅ تم إرسال حلّك إلى الأستاذ بنجاح.';
+      feedback.style.color = 'var(--sage-deep,#3F6350)';
+      fileInput.value = ''; preview.style.display = 'none'; preview.innerHTML = '';
+    } else if(res.reason === 'not-configured'){
+      feedback.textContent = '⚠️ إرسال الحلول غير مُفعّل بعد من طرف الأستاذ. حاول لاحقًا.';
+      feedback.style.color = '#b5432a';
+    } else {
+      feedback.textContent = '⚠️ تعذّر إرسال الحل، تحقق من اتصالك بالإنترنت وأعد المحاولة.';
+      feedback.style.color = '#b5432a';
+    }
+    sendBtn.disabled = false; sendBtn.textContent = '📨 إرسال حل التمرين';
   });
 }
 
