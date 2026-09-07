@@ -1874,3 +1874,133 @@
 @media (max-width:720px){
   .cert-preview-wrap{ transform:scale(0.34); margin:-260px auto -330px; }
 }
+
+/* =========================================================================================
+   إدارة حصص الزوم — لوحة الأستاذ (نافذة منبثقة) + واجهة التلميذ (تبويبات الأفواج)
+   ========================================================================================= */
+
+/* ----- بطاقة الدخول البارزة في لوحة الأستاذ ----- */
+.zoom-manage-card{ transition:transform .15s ease, box-shadow .15s ease; }
+.zoom-manage-card:hover{ transform:translateY(-2px); box-shadow:0 14px 26px rgba(169,127,42,0.22); }
+.zoom-manage-card:active{ transform:translateY(1px); }
+
+/* ----- النافذة المنبثقة (Overlay + Popup) ----- */
+.zoom-modal-overlay{
+  position:fixed; inset:0; z-index:2100;
+  background:rgba(34,53,43,0.45); backdrop-filter:blur(3px);
+  display:flex; align-items:center; justify-content:center;
+  padding:16px; animation:fadeInLeaderboardModal 0.25s ease;
+}
+.zoom-modal-popup{
+  position:relative; width:100%; max-width:520px; max-height:88vh;
+  background:#FFFDF7; border-radius:22px; border:1.5px solid var(--gold-3);
+  box-shadow:0 20px 60px rgba(34,53,43,0.28), inset 0 1px 0 rgba(255,255,255,0.8);
+  display:flex; flex-direction:column; overflow:hidden;
+  animation:slideUpLeaderboardModal 0.3s ease;
+}
+.zoom-modal-header{
+  position:relative; padding:20px 52px 16px 18px; border-bottom:1.5px solid var(--gold-3);
+  background:linear-gradient(135deg, rgba(199,154,61,0.10), rgba(63,99,80,0.05));
+  text-align:right;
+}
+.zoom-modal-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:18px; color:var(--ink); margin-bottom:4px; }
+.zoom-modal-subtitle{ font-size:12px; color:var(--ink-soft); font-weight:600; }
+.zoom-modal-close{
+  position:absolute; top:14px; left:14px; width:32px; height:32px; border-radius:50%;
+  border:1.3px solid var(--gold-3); background:linear-gradient(135deg, var(--gold-1), var(--gold-2));
+  color:#33260A; font-size:18px; font-weight:700; cursor:pointer; padding:0;
+  display:flex; align-items:center; justify-content:center; transition:all .2s ease;
+}
+.zoom-modal-close:hover{ background:#A97F2A; color:#fff; transform:rotate(90deg); }
+.zoom-modal-body{ flex:1; overflow-y:auto; padding:16px 16px 20px; }
+.zoom-lesson-row{ cursor:pointer; }
+.zoom-lesson-row:active{ transform:scale(0.99); }
+
+/* ----- نموذج إدخال روابط الأفواج الأربعة ----- */
+.zoom-back-btn{
+  display:inline-block; background:none; border:none; color:var(--gold-3); font-weight:800;
+  font-size:13px; cursor:pointer; padding:4px 0; margin-bottom:10px;
+}
+.zoom-form-note{
+  font-size:12px; color:var(--ink-soft); line-height:1.9; margin-bottom:14px;
+  background:rgba(199,154,61,0.08); border:1.2px dashed var(--gold-3); border-radius:12px; padding:10px 12px;
+}
+.zoom-form-group{ margin-bottom:14px; }
+.zoom-form-label{ display:block; font-family:'Aref Ruqaa', serif; font-weight:700; font-size:14.5px; color:var(--ink); margin-bottom:6px; }
+.zoom-form-input{
+  width:100%; padding:11px 14px; border-radius:11px; border:1.4px solid rgba(169,127,42,0.4);
+  font-family:'Cairo', sans-serif; font-size:13px; background:var(--paper); color:var(--ink);
+  direction:ltr; text-align:left;
+}
+.zoom-form-input:focus{ outline:none; border-color:var(--gold-3); box-shadow:0 0 0 3px rgba(199,154,61,0.18); }
+.zoom-form-divider{
+  display:flex; align-items:center; gap:10px; margin:22px 0 12px; text-align:center;
+  font-family:'Aref Ruqaa', serif; font-weight:700; font-size:14px; color:var(--gold-3);
+}
+.zoom-form-divider::before, .zoom-form-divider::after{ content:''; flex:1; height:1.3px; background:rgba(169,127,42,0.3); }
+.zoom-save-btn{
+  display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
+  font-family:'Aref Ruqaa', serif; font-weight:700; font-size:16px; color:#33260A;
+  background:linear-gradient(135deg, var(--gold-1), var(--gold-2)); border:1.6px solid var(--gold-3);
+  border-radius:14px; padding:12px 18px; margin-top:6px; cursor:pointer;
+  box-shadow:0 8px 18px rgba(169,127,42,0.25); transition:transform .15s ease;
+}
+.zoom-save-btn:hover{ transform:translateY(-1px); }
+.zoom-save-btn:disabled{ opacity:0.7; cursor:default; transform:none; }
+.zoom-save-feedback{ margin-top:10px; font-size:12.5px; font-weight:700; text-align:center; min-height:16px; }
+
+/* ----- واجهة التلميذ: صندوق "تسجيلات حصص الزوم" داخل صفحة الدرس ----- */
+.zoom-groups-wrap{ background:var(--paper); border:1.6px solid var(--gold-3); border-radius:16px; padding:16px; margin:24px 0; }
+.zoom-groups-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:17px; margin-bottom:12px; color:var(--ink); text-align:center; }
+.zoom-tabs{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.zoom-tab-btn{
+  font-family:'Cairo', sans-serif; font-weight:800; font-size:13px; color:var(--ink);
+  background:linear-gradient(150deg, #FFFDF7, #F3ECD5); border:1.5px solid rgba(169,127,42,0.35);
+  border-radius:13px; padding:12px 8px; cursor:pointer; transition:.15s ease;
+}
+.zoom-tab-btn:active{ transform:translateY(1px); }
+.zoom-tab-btn.active{
+  background:linear-gradient(135deg, var(--gold-1), var(--gold-2)); border-color:var(--gold-3);
+  color:#33260A; box-shadow:0 8px 18px rgba(169,127,42,0.28);
+}
+/* أزرار وثائق الدرس (ملخّص + تمارين) — تظهر أعلى تبويبات الأفواج، لأنها مشتركة بين الجميع */
+.zoom-docs-row{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-bottom:14px; }
+.zoom-doc-btn{
+  display:inline-flex; align-items:center; gap:7px; font-family:'Cairo', sans-serif; font-weight:800; font-size:12px;
+  color:var(--sage-deep); background:linear-gradient(150deg, #E4EFE6, #C9DFCE); border:1.4px solid rgba(63,99,80,0.35);
+  border-radius:999px; padding:9px 16px; text-decoration:none; transition:.15s ease;
+}
+.zoom-doc-btn:active{ transform:translateY(1px); }
+.zoom-player-box{ margin-top:14px; }
+.zoom-player-box iframe, .zoom-player-box video{
+  position:relative; width:100%; aspect-ratio:16/9; border-radius:12px; border:0; background:#000; display:block;
+}
+.zoom-fallback-link{
+  display:block; text-align:center; margin-top:8px; font-size:11.5px; font-weight:700;
+  color:var(--gold-3); text-decoration:none;
+}
+.zoom-empty-msg{
+  text-align:center; padding:22px 14px; border:1.3px dashed rgba(169,127,42,0.4); border-radius:14px;
+  background:rgba(255,255,255,0.5); font-size:13px; font-weight:700; color:var(--ink-soft);
+}
+/* بطاقة "فتح على تيليجرام" — بديل مشغّل الفيديو للروابط التي لا يمكن تضمينها داخل إطار */
+.zoom-telegram-box{
+  text-align:center; padding:26px 18px; border-radius:16px;
+  background:linear-gradient(150deg, #FFFDF7, #F3ECD5); border:1.6px solid var(--gold-3);
+}
+.zoom-telegram-icon{ font-size:34px; margin-bottom:10px; }
+.zoom-telegram-text{ font-size:12.5px; color:var(--ink-soft); line-height:1.9; margin-bottom:14px; }
+.zoom-telegram-btn{
+  display:inline-flex; align-items:center; gap:8px; font-family:'Aref Ruqaa', serif; font-weight:700; font-size:15px;
+  color:#33260A; background:linear-gradient(135deg, var(--gold-1), var(--gold-2)); border:1.6px solid var(--gold-3);
+  border-radius:999px; padding:11px 24px; text-decoration:none; box-shadow:0 8px 18px rgba(169,127,42,0.25);
+}
+.zoom-note{
+  margin:14px 4px 0; font-family:'Cairo', sans-serif; font-weight:300; font-style:italic; font-size:12px;
+  line-height:1.9; color:var(--ink-soft); text-align:center;
+}
+
+@media (max-width:380px){
+  .zoom-tabs{ grid-template-columns:1fr 1fr; }
+  .zoom-tab-btn{ font-size:12px; padding:10px 6px; }
+}

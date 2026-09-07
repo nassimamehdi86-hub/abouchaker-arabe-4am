@@ -260,6 +260,77 @@ const Locks = {
 };
 
 /* =========================================================================================
+   روابط تسجيلات حصص الزوم للأفواج الأربعة (يديرها الأستاذ من لوحة التحكم)
+   وثيقة واحدة: state/zoomLinks
+   => { lessons: { lessonId: { g1:{video,summary,exercises}, g2:{...}, g3:{...}, g4:{...} } } }
+   كل فوج له 3 روابط مستقلة: فيديو الحصة، ملخّص الدرس، تمارين الدرس — لأن كل فوج قد يملك
+   وثائق ومواعيد مختلفة عن الآخر. نفس نمط وحدة Locks تمامًا: تحميل مرة واحدة + استماع لحظي
+   لانعكاس أي تحديث فورًا عند كل التلاميذ دون الحاجة لإعادة تحميل الصفحة، ودون أي تعديل
+   مستقبلي على الكود عند إضافة دروس جديدة.
+   ========================================================================================= */
+const ZoomLinks = {
+  data:{ lessons:{} }, ready:false,
+
+  async load(){
+    if(!fbReady){ this.ready = true; return; }
+    try{
+      const snap = await db.collection('state').doc('zoomLinks').get();
+      if(snap.exists) this.data = Object.assign({lessons:{}}, snap.data());
+    }catch(e){
+      console.error('تعذّرت قراءة روابط حصص الزوم (state/zoomLinks) — تحقق من قواعد Firestore:', e);
+      if(typeof showFbPermissionNotice === 'function') showFbPermissionNotice('zoomLinks');
+    }
+    this.ready = true;
+  },
+
+  /* يُعيد دائمًا كائنًا بالأفواج الأربعة، وكل فوج بحقوله الثلاثة (فارغة إن لم تُحفظ بعد)
+     لتسهيل الاستعمال بأمان دون الحاجة للتحقق من وجودها في كل مكان تُستعمل فيه */
+  getLinks(lessonId){
+    const l = (this.data.lessons && this.data.lessons[lessonId]) || {};
+    const out = {};
+    ['g1','g2','g3','g4'].forEach(k=>{
+      const g = l[k] || {};
+      out[k] = { video:g.video||'', summary:g.summary||'', exercises:g.exercises||'' };
+    });
+    return out;
+  },
+
+  /* هل يوجد رابط واحد على الأقل (فيديو أو وثيقة) محفوظ لأي فوج في هذا الدرس؟
+     (تُستعمل لعرض مؤشر في قائمة الأستاذ) */
+  hasAnyLink(lessonId){
+    const l = this.getLinks(lessonId);
+    return ['g1','g2','g3','g4'].some(k=> l[k].video || l[k].summary || l[k].exercises);
+  },
+
+  async setLinks(lessonId, groups){
+    if(!fbReady) return { ok:false, reason:'no-firebase' };
+    this.data.lessons = this.data.lessons || {};
+    const clean = {};
+    ['g1','g2','g3','g4'].forEach(k=>{
+      const g = groups[k] || {};
+      clean[k] = {
+        video:(g.video||'').trim(), summary:(g.summary||'').trim(), exercises:(g.exercises||'').trim()
+      };
+    });
+    this.data.lessons[lessonId] = clean;
+    await db.collection('state').doc('zoomLinks').set(this.data, {merge:true});
+    return { ok:true };
+  },
+
+  /* استماع لحظي: أي رابط يحفظه الأستاذ ينعكس فورًا في صفحة الدرس عند كل التلاميذ المتصلين حاليًا */
+  listen(onChange){
+    if(!fbReady) return;
+    db.collection('state').doc('zoomLinks').onSnapshot(snap=>{
+      if(snap.exists) this.data = Object.assign({lessons:{}}, snap.data());
+      if(onChange) onChange();
+    }, error=>{
+      console.error('تعذّر الاستماع لروابط حصص الزوم (state/zoomLinks) — تحقق من قواعد Firestore:', error);
+      if(typeof showFbPermissionNotice === 'function') showFbPermissionNotice('zoomLinks');
+    });
+  }
+};
+
+/* =========================================================================================
    لوحة تحكم الأستاذ/المشرف — الرقم السري + طلبات الانتظار + الإحصائيات
    ========================================================================================= */
 const Admin = {
@@ -968,6 +1039,7 @@ async function renderBadges(){
 
 /* ---------- تصنيفات الدروس (كما تصنيف الفهرس) ---------- */
 const CATEGORY_META = {
+  taqweem:{ icon:'📋', title:'التقويم التشخيصي' },
   tawabi: { icon:'📗', title:'التوابع' },
   qawaid: { icon:'📘', title:'قواعد اللغة' },
   jumal:  { icon:'📙', title:'الجمل التي لها محلّ من الإعراب' },
@@ -981,7 +1053,7 @@ function renderLessonsScreen(){
   wrap.innerHTML = '<div class="sf-label">جاري التحميل…</div>';
   Locks.load().then(()=>{
     let html = '';
-    ['tawabi','qawaid','jumal','balagha','anmat','itisaq'].forEach((cat, idx)=>{
+    ['taqweem','tawabi','qawaid','jumal','balagha','anmat','itisaq'].forEach((cat, idx)=>{
       const meta = CATEGORY_META[cat];
       const lessons = window.LESSONS.filter(l=>l.category===cat).sort((a,b)=>a.order-b.order);
       const categoryId = `category-${cat}`;
@@ -1061,11 +1133,13 @@ function renderLessonsScreen(){
 function openLessonDetail(id){
   const lesson = window.LESSONS.find(l=>l.id===id);
   if(!lesson) return;
+  const zoomOnly = !!lesson.zoomOnly;
+
   Screens.show('lessonDetail');
   document.getElementById('ldTitle').textContent = lesson.title;
   document.getElementById('ldSubtitle').textContent = lesson.subtitle||'';
-  
-  /* إضافة زر عرض الترتيب */
+
+  /* إضافة زر عرض الترتيب (غير مجدٍ لدرس بلا تمارين — يُخفى في هذه الحالة) */
   let leaderBtn = document.getElementById('ldLeaderboardBtn');
   if(!leaderBtn){
     leaderBtn = document.createElement('button');
@@ -1076,33 +1150,146 @@ function openLessonDetail(id){
     const hub = document.querySelector('.hub');
     if(hub) hub.insertBefore(leaderBtn, hub.firstChild);
   }
+  leaderBtn.style.display = zoomOnly ? 'none' : '';
   leaderBtn.onclick = ()=>showLeaderboardPopup(lesson);
-  document.getElementById('ldDef').innerHTML = lesson.def||'';
+
+  /* درس "بلا محتوى" (zoomOnly): يُعرض فقط العنوان + تسجيلات حصص الزوم، وتُخفى بقية الأقسام
+     (الشرح، الخريطة الذهنية، اختبار الفهم، تمارين الدرس) بدل تركها فارغة على الشاشة */
+  const ldDef = document.getElementById('ldDef');
+  const mindmapSection = document.getElementById('ldMindmapSection');
+  const quizSection = document.getElementById('ldQuizSection');
+  const exercisesSection = document.getElementById('ldExercisesSection');
+
+  ldDef.style.display = zoomOnly ? 'none' : '';
+  ldDef.innerHTML = lesson.def||'';
+
   const videos = Array.isArray(lesson.video) ? lesson.video : (lesson.video ? [lesson.video] : []);
   const videoFrame = document.getElementById('ldVideo');
   const listenWrap = videoFrame.closest('.listen-wrap');
-  if(videos.length && videos[0] && videos[0].yt){
+  if(!zoomOnly && videos.length && videos[0] && videos[0].yt){
     videoFrame.src = `https://www.youtube.com/embed/${videos[0].yt}?rel=0`;
     if(listenWrap) listenWrap.style.display = '';
   } else {
     videoFrame.src = '';
     if(listenWrap) listenWrap.style.display = 'none';
   }
-  renderMindmap(lesson, document.getElementById('ldMindmap'));
-  document.getElementById('ldMindmapPdfBtn').onclick = ()=> exportMindmapPDF(lesson);
 
-  const quizMount = document.getElementById('ldQuiz');
-  document.getElementById('ldQuizStartBtn').onclick = ()=>{
-    document.getElementById('ldQuizStartBtn').style.display='none';
-    createQuizEngine(lesson, quizMount);
-  };
-  quizMount.innerHTML = '';
-  document.getElementById('ldQuizStartBtn').style.display='inline-block';
+  mindmapSection.style.display = zoomOnly ? 'none' : '';
+  if(!zoomOnly){
+    renderMindmap(lesson, document.getElementById('ldMindmap'));
+    document.getElementById('ldMindmapPdfBtn').onclick = ()=> exportMindmapPDF(lesson);
+  }
 
-  renderLessonExercisesBox(lesson);
+  window.currentOpenLessonId = lesson.id;
+  renderZoomGroupsBox(lesson);
+
+  quizSection.style.display = zoomOnly ? 'none' : '';
+  exercisesSection.style.display = zoomOnly ? 'none' : '';
+  if(!zoomOnly){
+    const quizMount = document.getElementById('ldQuiz');
+    document.getElementById('ldQuizStartBtn').onclick = ()=>{
+      document.getElementById('ldQuizStartBtn').style.display='none';
+      createQuizEngine(lesson, quizMount);
+    };
+    quizMount.innerHTML = '';
+    document.getElementById('ldQuizStartBtn').style.display='inline-block';
+
+    renderLessonExercisesBox(lesson);
+  }
 }
 
-/* ---------- صندوق "تمارين الدرس" — تحميل ديناميكي + محاولة واحدة + دخول الترتيب ---------- */
+/* =========================================================================================
+   صندوق "تسجيلات حصص الزوم" — 4 تبويبات (الأفواج) تحت قسم الشرح في صفحة الدرس
+   يجلب الرابط المخزَّن من طرف الأستاذ (ZoomLinks) ويشغّله داخل مشغل فيديو مدمج بالواجهة،
+   بلا أي خروج لتطبيق خارجي وبلا أي تعديل على الكود عند إضافة دروس جديدة مستقبلاً.
+   ========================================================================================= */
+
+/* يبني HTML مشغّل الفيديو المناسب حسب نوع الرابط (يوتيوب، درايف، تيليجرام، ملف مباشر، أو أي رابط آخر) */
+function buildZoomEmbedHTML(url){
+  const clean = (url||'').trim();
+  if(!clean) return '';
+
+  /* يوتيوب */
+  let m = clean.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{6,})/i);
+  if(m) return `<iframe src="https://www.youtube.com/embed/${m[1]}?rel=0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>`;
+
+  /* فيميو */
+  m = clean.match(/vimeo\.com\/(\d+)/i);
+  if(m) return `<iframe src="https://player.vimeo.com/video/${m[1]}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="lazy"></iframe>`;
+
+  /* Google Drive */
+  m = clean.match(/drive\.google\.com\/file\/d\/([\w-]+)/i);
+  if(m) return `<iframe src="https://drive.google.com/file/d/${m[1]}/preview" allow="autoplay" allowfullscreen loading="lazy"></iframe>`;
+
+  /* تيليجرام (t.me / telegram.me) — روابط القنوات الخاصة بصيغة t.me/c/CHANNEL_ID/MSG_ID لا يمكن
+     تضمينها داخل iframe إطلاقًا (تيليجرام يمنع ذلك، ويشترط أن يكون المشاهد نفسه عضوًا مسجّلاً
+     دخوله في تيليجرام أصلاً). لذلك نعرض بطاقة أنيقة بزر فتح مباشر بدل إطار سيبقى فارغًا/معطوبًا. */
+  if(/(?:^|\/\/)(?:www\.)?(?:t|telegram)\.me\//i.test(clean)){
+    return `<div class="zoom-telegram-box">
+      <div class="zoom-telegram-icon">📨</div>
+      <div class="zoom-telegram-text">هذا التسجيل مرفوع على تيليجرام — لا يمكن عرضه داخل الصفحة مباشرة،
+        اضغط الزر أدناه لمشاهدته (يشترط أن تكون منضمًا للقناة/المجموعة الخاصة بفوجك في تيليجرام).</div>
+      <a class="zoom-telegram-btn" href="${escZoomText(clean)}" target="_blank" rel="noopener">▶️ فتح الحصة على تيليجرام</a>
+    </div>`;
+  }
+
+  /* ملف فيديو مباشر (mp4/webm/ogg/mov/m3u8...) */
+  if(/\.(mp4|webm|ogg|mov|m3u8)(\?.*)?$/i.test(clean)){
+    return `<video controls playsinline preload="metadata" src="${escZoomText(clean)}"></video>`;
+  }
+
+  /* أي رابط آخر (مثل رابط تسجيل زوم السحابي) — تضمين عام داخل الواجهة مع رابط احتياطي للفتح
+     في نافذة جديدة إن رفض المصدر نفسه الفتح داخل إطار (X-Frame-Options) خارج عن إرادة المنصة */
+  return `<iframe src="${escZoomText(clean)}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+    <a class="zoom-fallback-link" href="${escZoomText(clean)}" target="_blank" rel="noopener">فتح الفيديو في نافذة جديدة ⬈</a>`;
+}
+
+
+function renderZoomGroupsBox(lesson){
+  const box = document.getElementById('ldZoomBox');
+  if(!box) return;
+
+  const links = ZoomLinks.getLinks(lesson.id);
+
+  const tabsHtml = ZOOM_GROUPS.map((g,i)=>
+    `<button type="button" class="zoom-tab-btn" data-zoom-tab="${g.key}">${g.label}</button>`
+  ).join('');
+
+  box.innerHTML = `
+    <div class="zoom-groups-title">🎥 تسجيلات حصص الزوم</div>
+    <div class="zoom-tabs">${tabsHtml}</div>
+    <div class="zoom-player-box" id="zoomPlayerBox" style="display:none"></div>
+    <div class="zoom-note">ملاحظة: لن تتمكن من مشاهدة الحصة إلا إذا كنت منضماً ومقبولاً مسبقاً في مخزن الفوج الخاص بك من طرف الأستاذ.</div>`;
+
+  const playerBox = box.querySelector('#zoomPlayerBox');
+  const tabBtns = Array.from(box.querySelectorAll('[data-zoom-tab]'));
+
+  tabBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(window.SoundFX) SoundFX.click();
+      const key = btn.getAttribute('data-zoom-tab');
+      tabBtns.forEach(b=> b.classList.toggle('active', b===btn));
+      const g = links[key];
+      playerBox.style.display = '';
+
+      /* أزرار وثائق هذا الفوج تحديدًا (ملخّص + تمارين) — تظهر فقط إن أضاف الأستاذ رابطها،
+         وتُخفى تمامًا إن لم يُضِف شيئًا حتى لا تُترك أزرار فارغة على الشاشة */
+      const docsHtml = ZOOM_DOCS
+        .filter(d=> !!g[d.key])
+        .map(d=> `<a class="zoom-doc-btn" href="${escZoomText(g[d.key])}" target="_blank" rel="noopener">${d.icon} ${d.btnLabel}</a>`)
+        .join('');
+      const docsRow = docsHtml ? `<div class="zoom-docs-row">${docsHtml}</div>` : '';
+
+      if(!g.video){
+        playerBox.innerHTML = docsRow + `<div class="zoom-empty-msg">⏳ لم يُضِف الأستاذ بعد تسجيل حصة هذا الفوج — حاول لاحقًا.</div>`;
+      } else {
+        playerBox.innerHTML = docsRow + buildZoomEmbedHTML(g.video);
+      }
+    });
+  });
+}
+
+
 async function renderLessonExercisesBox(lesson){
   const box = document.getElementById('ldExercisesBox');
   box.innerHTML = '<div class="sf-label">جاري التحقق من التمارين…</div>';
@@ -2255,7 +2442,18 @@ async function renderAdminPanel(){
     <a class="al-key" style="display:inline-block;width:auto;padding:9px 22px;text-decoration:none" href="smart-teacher.html" target="_blank" rel="noopener">🧠 فتح لوحة المعلّم الذكي</a>
     <div class="note" style="margin-top:12px">💡 بعد نشر اختبار هناك، انسخ رابطه وأرسله لكل التلاميذ عبر قسم "👥 التلاميذ المقبولون" أدناه أو أي وسيلة تواصل معتادة.</div>`;
 
+  /* زر بارز لإدارة روابط تسجيلات حصص الزوم للأفواج الأربعة — يفتح نافذة منبثقة مستقلة */
+  const zoomManageCard = `
+    <div class="home-card-wide zoom-manage-card" id="zoomManageBtn" style="margin-bottom:16px;cursor:pointer">
+      <div class="hc-icon-wrap" style="background:linear-gradient(150deg,#FBEDC3,#E7C878)">🎥</div>
+      <div>
+        <div class="hc-title">إدارة حصص الزوم</div>
+        <div class="hc-sub">أضف/حدّث روابط تسجيلات كل درس للأفواج الأربعة — تظهر فورًا للتلاميذ</div>
+      </div>
+    </div>`;
+
   wrap.innerHTML =
+    zoomManageCard +
     adminAccordionHTML('pending', `⏳ طلبات الانتظار <span class="aa-badge">${pending.length}</span>`, pendingBody) +
     adminAccordionHTML('approved', `👥 التلاميذ المقبولون <span class="aa-badge">${totalStudents}</span>`, approvedBody) +
     adminAccordionHTML('lessons', `📖 فتح/إغلاق الدروس`, lessonsBody) +
@@ -2265,6 +2463,11 @@ async function renderAdminPanel(){
     adminAccordionHTML('stats', `📊 إحصائيات كل درس`, statsBody);
 
   wireAdminAccordions(wrap);
+
+  document.getElementById('zoomManageBtn').addEventListener('click', ()=>{
+    if(window.SoundFX) SoundFX.click();
+    openZoomManagerModal();
+  });
 
   const toggleBtn = document.getElementById('toggleApprovedBtn');
   const listContainer = document.getElementById('approvedListContainer');
@@ -2370,6 +2573,147 @@ async function renderAdminPanel(){
       <div class="progress-track"><div class="progress-fill" style="width:${st.avg}%"></div></div>`;
     statsMount.appendChild(card);
   }
+}
+
+/* =========================================================================================
+   نافذة "إدارة حصص الزوم" — منبثقة مستقلة من لوحة تحكم الأستاذ
+   خطوتان داخل نفس النافذة: 1) قائمة كل الدروس  2) نموذج 4 حقول (الأفواج) للدرس المختار
+   كل درس جديد يُضاف مستقبلاً إلى LESSONS يظهر هنا تلقائيًا دون أي تعديل على هذا الكود.
+   ========================================================================================= */
+const ZOOM_GROUPS = [
+  { key:'g1', label:'الفوج الأول' },
+  { key:'g2', label:'الفوج الثاني' },
+  { key:'g3', label:'الفوج الثالث' },
+  { key:'g4', label:'الفوج الرابع' }
+];
+
+/* وثيقتا "ملخّص الدرس" و"تمارينه" — رابط مستقل لكل فوج (كل فوج له وثائقه ورابط فيديو خاص به) */
+const ZOOM_DOCS = [
+  { key:'summary',   label:'📄 رابط ملخّص الدرس', icon:'📄', btnLabel:'تحميل ملخّص الدرس' },
+  { key:'exercises', label:'📝 رابط تمارين الدرس', icon:'📝', btnLabel:'تحميل تمارين الدرس' }
+];
+
+/* تفادي حقن HTML عند عرض روابط/عناوين داخل سمات value="" أو نص عادي */
+function escZoomText(s){
+  return String(s==null ? '' : s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function openZoomManagerModal(){
+  if(!fbReady){
+    alert('Firebase غير مفعّل. لا يمكن حفظ روابط حصص الزوم بدونه.');
+    return;
+  }
+  const overlay = document.createElement('div');
+  overlay.className = 'zoom-modal-overlay';
+  overlay.innerHTML = `
+    <div class="zoom-modal-popup">
+      <div class="zoom-modal-header">
+        <div class="zoom-modal-title">🎥 إدارة حصص الزوم</div>
+        <div class="zoom-modal-subtitle" id="zoomModalSubtitle">اختر درسًا لإضافة أو تعديل روابط تسجيلاته</div>
+        <button type="button" class="zoom-modal-close" id="zoomModalCloseBtn">✕</button>
+      </div>
+      <div class="zoom-modal-body" id="zoomModalBody"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e)=>{ if(e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#zoomModalCloseBtn').addEventListener('click', ()=> overlay.remove());
+
+  renderZoomManagerList(overlay);
+}
+
+async function renderZoomManagerList(overlay){
+  const body = overlay.querySelector('#zoomModalBody');
+  overlay.querySelector('#zoomModalSubtitle').textContent = 'اختر درسًا لإضافة أو تعديل روابط تسجيلاته';
+  body.innerHTML = '<div class="sf-label">جاري التحميل…</div>';
+
+  await ZoomLinks.load();
+
+  const rows = window.LESSONS.map(l=>{
+    const has = ZoomLinks.hasAnyLink(l.id);
+    return `<div class="lesson-row zoom-lesson-row" data-zoom-lesson="${l.id}">
+      <div class="lr-num">${String(l.order).padStart(2,'0')}</div>
+      <div class="lr-text"><div class="lr-title">${escZoomText(l.title)}</div></div>
+      <div class="lr-status" title="${has?'توجد روابط محفوظة':'لا توجد روابط بعد'}">${has?'🎬':'➕'}</div>
+    </div>`;
+  }).join('');
+
+  body.innerHTML = `<div class="lesson-list">${rows}</div>`;
+
+  body.querySelectorAll('[data-zoom-lesson]').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      if(window.SoundFX) SoundFX.click();
+      const lesson = window.LESSONS.find(l=>l.id === row.getAttribute('data-zoom-lesson'));
+      if(lesson) renderZoomManagerForm(overlay, lesson);
+    });
+  });
+}
+
+function renderZoomManagerForm(overlay, lesson){
+  const body = overlay.querySelector('#zoomModalBody');
+  overlay.querySelector('#zoomModalSubtitle').textContent = lesson.title;
+  const links = ZoomLinks.getLinks(lesson.id);
+
+  /* لكل فوج قسم مستقل بثلاثة حقول: فيديو الحصة + ملخّص الدرس + تمارينه — لأن كل فوج قد
+     يملك توقيتًا ووثائق مختلفة تمامًا عن الأفواج الأخرى */
+  const groupsHtml = ZOOM_GROUPS.map(g=>{
+    const gl = links[g.key];
+    return `
+      <div class="zoom-form-divider"><span>${g.label}</span></div>
+      <div class="zoom-form-group">
+        <label class="zoom-form-label" for="zoomInput-${g.key}-video">🎥 رابط تسجيل الحصة (فيديو)</label>
+        <input type="text" class="zoom-form-input" id="zoomInput-${g.key}-video" placeholder="https://…" value="${escZoomText(gl.video)}">
+      </div>
+      <div class="zoom-form-group">
+        <label class="zoom-form-label" for="zoomInput-${g.key}-summary">📄 رابط ملخّص الدرس</label>
+        <input type="text" class="zoom-form-input" id="zoomInput-${g.key}-summary" placeholder="https://…" value="${escZoomText(gl.summary)}">
+      </div>
+      <div class="zoom-form-group">
+        <label class="zoom-form-label" for="zoomInput-${g.key}-exercises">📝 رابط تمارين الدرس</label>
+        <input type="text" class="zoom-form-input" id="zoomInput-${g.key}-exercises" placeholder="https://…" value="${escZoomText(gl.exercises)}">
+      </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <button type="button" class="zoom-back-btn" id="zoomFormBackBtn">→ رجوع لقائمة الدروس</button>
+    <div class="zoom-form-note">لكل فوج 3 روابط مستقلة: تسجيل الحصة، ملخّص الدرس، وتمارينه. اترك أي حقل فارغًا إن لم يتوفّر بعد، ثم اضغط «حفظ الروابط» في الأسفل.
+      <br>✅ روابط يوتيوب/فيميو/Google Drive الخاصة بالفيديو تُشغَّل مباشرة داخل الصفحة.
+      <br>📨 روابط تيليجرام (مثل <bdi style="direction:ltr;display:inline-block">t.me/c/…</bdi>) — سواء للفيديو أو للوثائق — تظهر للتلميذ كزر "فتح على تيليجرام"، لأن تيليجرام لا يسمح بالتضمين المباشر، ويشترط أن يكون التلميذ عضوًا مقبولًا في قناة/مجموعة فوجه.</div>
+    ${groupsHtml}
+    <button type="button" class="zoom-save-btn" id="zoomSaveBtn">💾 حفظ الروابط</button>
+    <div class="zoom-save-feedback" id="zoomSaveFeedback"></div>`;
+
+  body.querySelector('#zoomFormBackBtn').addEventListener('click', ()=> renderZoomManagerList(overlay));
+
+  body.querySelector('#zoomSaveBtn').addEventListener('click', async ()=>{
+    const saveBtn = body.querySelector('#zoomSaveBtn');
+    const feedback = body.querySelector('#zoomSaveFeedback');
+    const newGroups = {};
+    ZOOM_GROUPS.forEach(g=>{
+      newGroups[g.key] = {
+        video:     body.querySelector(`#zoomInput-${g.key}-video`).value.trim(),
+        summary:   body.querySelector(`#zoomInput-${g.key}-summary`).value.trim(),
+        exercises: body.querySelector(`#zoomInput-${g.key}-exercises`).value.trim()
+      };
+    });
+
+    saveBtn.disabled = true; saveBtn.textContent = '⏳ جاري الحفظ…';
+    try{
+      const res = await ZoomLinks.setLinks(lesson.id, newGroups);
+      if(res && res.ok){
+        if(window.SoundFX) SoundFX.correct();
+        feedback.textContent = '✅ تم حفظ الروابط بنجاح — أصبحت متاحة فورًا للتلاميذ.';
+        feedback.style.color = 'var(--sage-deep,#3F6350)';
+      } else {
+        throw new Error(res && res.reason || 'unknown');
+      }
+    }catch(error){
+      console.error('فشل حفظ روابط حصص الزوم (تحقق من قواعد Firestore لمجموعة state):', error);
+      if(typeof showFbPermissionNotice === 'function') showFbPermissionNotice('zoomLinks');
+      feedback.textContent = '⚠️ تعذّر حفظ الروابط. راجع التنبيه الظاهر أعلى الصفحة.';
+      feedback.style.color = '#b5432a';
+    }
+    saveBtn.disabled = false; saveBtn.textContent = '💾 حفظ الروابط';
+  });
 }
 
 /* =========================================================================================
@@ -2517,6 +2861,21 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   Locks.listen(()=>{
     if(document.getElementById('screen-lessons').style.display !== 'none') renderLessonsScreen();
     if(document.getElementById('screen-situation').style.display !== 'none') renderSituationPracticeTabs();
+  });
+
+  /* روابط حصص الزوم: تحميل أولي، ثم استماع لحظي — أي تحديث من الأستاذ ينعكس فورًا في صفحة
+     الدرس المفتوحة حاليًا عند التلميذ دون الحاجة لإعادة تحميل الصفحة */
+  ZoomLinks.load().then(()=>{
+    if(window.currentOpenLessonId && document.getElementById('screen-lessonDetail').style.display !== 'none'){
+      const lesson = window.LESSONS.find(l=>l.id===window.currentOpenLessonId);
+      if(lesson) renderZoomGroupsBox(lesson);
+    }
+  });
+  ZoomLinks.listen(()=>{
+    if(window.currentOpenLessonId && document.getElementById('screen-lessonDetail').style.display !== 'none'){
+      const lesson = window.LESSONS.find(l=>l.id===window.currentOpenLessonId);
+      if(lesson) renderZoomGroupsBox(lesson);
+    }
   });
 
   const resumed = await Student.resume();

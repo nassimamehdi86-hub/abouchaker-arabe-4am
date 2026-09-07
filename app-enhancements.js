@@ -18,7 +18,8 @@ function showFbPermissionNotice(context){
   if (!el) return;
   const labels = {
     notifications: 'الإشعارات وجرس التنبيهات',
-    locks: 'حالة فتح/إغلاق الدروس'
+    locks: 'حالة فتح/إغلاق الدروس',
+    zoomLinks: 'روابط حصص الزوم للأفواج'
   };
   el.innerHTML += `<div class="note" style="margin:10px 0;border-color:#c0392b">
     <b>⚠️ تعذّر الاتصال بقاعدة البيانات لتحديث: ${labels[context] || context}.</b><br>
