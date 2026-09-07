@@ -1241,8 +1241,6 @@ function buildZoomEmbedHTML(url){
   if(/(?:^|\/\/)(?:www\.)?(?:t|telegram)\.me\//i.test(clean)){
     return `<div class="zoom-telegram-box">
       <div class="zoom-telegram-icon">📨</div>
-      <div class="zoom-telegram-text">هذا التسجيل مرفوع على تيليجرام — لا يمكن عرضه داخل الصفحة مباشرة،
-        اضغط الزر أدناه لمشاهدته (يشترط أن تكون منضمًا للقناة/المجموعة الخاصة بفوجك في تيليجرام).</div>
       <a class="zoom-telegram-btn" href="${escZoomText(clean)}" target="_blank" rel="noopener">▶️ فتح الحصة على تيليجرام</a>
     </div>`;
   }
@@ -1311,7 +1309,8 @@ function renderZoomGroupsBox(lesson){
         videoHtml = `<div class="zoom-video-tabs">${videoTabsHtml}</div><div class="zoom-video-embed">${buildZoomEmbedHTML(g.video[0])}</div>`;
       }
 
-      playerBox.innerHTML = docsRow + videoHtml + buildSolutionInlineHtml();
+      /* الترتيب المطلوب: الفيديو أولاً، ثم وثائق الدرس (ملخّص/تمارين)، وأخيرًا إرفاق حل التمرين */
+      playerBox.innerHTML = videoHtml + docsRow + buildSolutionInlineHtml();
 
       if(g.video.length > 1){
         const videoTabBtns = Array.from(playerBox.querySelectorAll('[data-zoom-video-idx]'));

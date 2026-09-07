@@ -2015,8 +2015,7 @@
   text-align:center; padding:26px 18px; border-radius:16px;
   background:linear-gradient(150deg, #FFFDF7, #F3ECD5); border:1.6px solid var(--gold-3);
 }
-.zoom-telegram-icon{ font-size:34px; margin-bottom:10px; }
-.zoom-telegram-text{ font-size:12.5px; color:var(--ink-soft); line-height:1.9; margin-bottom:14px; }
+.zoom-telegram-icon{ font-size:34px; margin-bottom:14px; }
 .zoom-telegram-btn{
   display:inline-flex; align-items:center; gap:8px; font-family:'Aref Ruqaa', serif; font-weight:700; font-size:15px;
   color:#33260A; background:linear-gradient(135deg, var(--gold-1), var(--gold-2)); border:1.6px solid var(--gold-3);
