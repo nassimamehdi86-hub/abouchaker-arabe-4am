@@ -492,6 +492,7 @@
     pointer-events:none;
   }
   .home-card-wide .hc-icon-wrap{ text-shadow:0 2px 2px rgba(60,38,8,0.4); }
+  .home-card-wide .hc-svg-icon{ position:relative; z-index:1; width:74%; height:74%; filter:drop-shadow(0 3px 3px rgba(60,38,8,0.45)) drop-shadow(0 1px 0 rgba(255,255,255,0.5)); }
   .home-card-wide .hc-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:17px; color:var(--ink); }
   .home-card-wide .hc-sub{ font-size:11px; color:var(--ink-soft); margin-top:3px; font-weight:600; line-height:1.6; }
 
@@ -622,6 +623,28 @@
     font-size:14px; color:#33260A; transition:transform .3s ease; flex-shrink:0;
   }
   .admin-accordion-header[aria-expanded="true"] .aa-chevron{ transform:rotate(180deg); }
+
+  /* أيقونة صغيرة مجسّمة بنفس طراز بطاقات الشاشة الرئيسية، لعناوين أقسام لوحة تحكم الأستاذ */
+  .admin-accordion-header .aa-icon-wrap{
+    position:relative; overflow:hidden; flex-shrink:0;
+    width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    border:1.2px solid rgba(122,82,22,0.5); background:linear-gradient(150deg,#FBEDC3,#E7C878);
+    box-shadow:
+      0 4px 8px rgba(122,82,22,0.28),
+      0 1px 2px rgba(80,52,10,0.22),
+      inset 0 1.5px 1.5px rgba(255,255,255,0.8),
+      inset 0 -3px 4px rgba(90,58,12,0.35);
+  }
+  .admin-accordion-header .aa-icon-wrap::before{
+    content:""; position:absolute; inset:0; opacity:0.55; mix-blend-mode:multiply; pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cg fill='none' stroke='%23A9772A' stroke-width='0.7' opacity='0.65'%3E%3Cpath d='M11 1 L21 11 L11 21 L1 11 Z'/%3E%3Cpath d='M11 1 L11 21 M1 11 L21 11'/%3E%3Ccircle cx='11' cy='11' r='3.4'/%3E%3Cpath d='M4.5 4.5 L7.5 7.5 M17.5 4.5 L14.5 7.5 M4.5 17.5 L7.5 14.5 M17.5 17.5 L14.5 14.5'/%3E%3C/g%3E%3C/svg%3E");
+    background-size:12px 12px;
+  }
+  .admin-accordion-header .aa-icon-wrap::after{
+    content:""; position:absolute; top:0; left:0; right:0; height:46%;
+    background:linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0)); pointer-events:none;
+  }
+  .admin-accordion-header .aa-svg-icon{ position:relative; z-index:1; width:72%; height:72%; filter:drop-shadow(0 2px 2px rgba(60,38,8,0.4)); }
   .admin-accordion-body-wrap{
     display:grid; grid-template-rows:0fr; transition:grid-template-rows .32s ease;
   }
