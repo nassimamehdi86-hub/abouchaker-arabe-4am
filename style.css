@@ -508,9 +508,13 @@
   .lesson-list{ display:flex; flex-direction:column; gap:11px; }
   .lesson-row{
     position:relative; display:flex; align-items:center; gap:13px; border-radius:16px; padding:13px 16px;
-    background:linear-gradient(150deg, #FFFDF7, #F7F1DF);
     border:1.3px solid var(--gold-3); overflow:hidden;
     box-shadow:0 6px 14px rgba(169,127,42,0.08), inset 0 1px 0 rgba(255,255,255,0.7);
+    background:
+      linear-gradient(150deg, #FFFDF7, #F7F1DF),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26'%3E%3Cg fill='none' stroke='%23A97F2A' stroke-width='0.7' opacity='0.5'%3E%3Cpath d='M13 1 L25 13 L13 25 L1 13 Z'/%3E%3Ccircle cx='13' cy='13' r='3.2'/%3E%3C/g%3E%3C/svg%3E");
+    background-blend-mode:normal, multiply;
+    background-size:auto, 26px 26px;
   }
   .lesson-row .lr-num{
     position:relative; overflow:hidden;
@@ -612,10 +616,33 @@
   /* ============ عنوان تصنيف الدروس (مستوحى من الفهرس، بالذهبي بدل الوردي) ============ */
   .group-header{
     display:flex; align-items:center; gap:8px; border-radius:12px; padding:9px 16px; margin:18px 0 11px;
-    background:linear-gradient(120deg, #F3ECD5, #E7C878); border:1.2px solid var(--gold-3);
+    border:1.2px solid var(--gold-3);
+    background:
+      linear-gradient(120deg, #F3ECD5, #E7C878),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Cg fill='none' stroke='%23A97F2A' stroke-width='0.8' opacity='0.7'%3E%3Cpath d='M15 1 L29 15 L15 29 L1 15 Z'/%3E%3Ccircle cx='15' cy='15' r='4'/%3E%3C/g%3E%3C/svg%3E");
+    background-blend-mode:normal, multiply;
+    background-size:auto, 30px 30px;
   }
   .group-header:first-child{ margin-top:0; }
-  .group-header .gh-icon{ font-size:15px; }
+  .group-header .gh-icon{
+    font-size:15px;
+    display:inline-flex; align-items:center; justify-content:center;
+    width:32px; height:32px; flex-shrink:0; border-radius:50%; position:relative;
+    background:radial-gradient(circle at 50% 45%, #FFFBF0 35%, #F3ECD5 70%, var(--gold-1) 100%);
+    border:1.3px solid var(--gold-3);
+    box-shadow:0 0 0 2px #FFF8E7, 0 2px 4px rgba(169,127,42,0.25);
+  }
+  .group-header .gh-icon::before{
+    content:'';
+    position:absolute; inset:-6px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g fill='none' stroke='%23A97F2A' stroke-width='2.4' opacity='0.6'><path d='M50 2 L61 33 L94 33 L67 53 L78 84 L50 64 L22 84 L33 53 L6 33 L39 33 Z'/></g></svg>");
+    background-size:contain; background-repeat:no-repeat; background-position:center;
+    pointer-events:none;
+  }
+  .group-header .gh-icon::after{
+    content:''; position:absolute; inset:-2px; border-radius:50%;
+    border:1px dashed rgba(169,127,42,0.55);
+  }
   .group-header .gh-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:15px; color:#3A2A0A; }
   .group-header .gh-count{ margin-inline-start:auto; font-size:10px; font-weight:800; color:#5C4413; background:rgba(255,255,255,0.5); border-radius:999px; padding:2px 10px; }
 
