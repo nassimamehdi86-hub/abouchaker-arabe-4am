@@ -1132,7 +1132,7 @@ function renderLessonsScreen(){
       const meta = CATEGORY_META[cat];
       const lessons = window.LESSONS.filter(l=>l.category===cat).sort((a,b)=>a.order-b.order);
       const categoryId = `category-${cat}`;
-      const isOpen = idx === 0; /* فتح أول وحدة افتراضياً، الباقي مغلق */
+      const isOpen = false; /* كل التصنيفات مغلقة افتراضيًا عند فتح صفحة الدروس، بما فيها التقويم التشخيصي */
       
       html += `
         <div class="lesson-accordion">
