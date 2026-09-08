@@ -7,8 +7,9 @@
    ========================================================================================= */
 
 const TELEGRAM_CONFIG = {
-  botToken: '8693960743:AAFuCcMOC4ru8PBghWUHAmVE_hZLJ4f9y98',
-  chatId:   '5932134668'
+  botToken:    '8693960743:AAFuCcMOC4ru8PBghWUHAmVE_hZLJ4f9y98',
+  chatId:      '5932134668',
+  botUsername: 'abouchaker_laabodi_bot' // يُستخدم لفتح محادثة البوت مباشرة من لوحة الأستاذ (زر "حلول التلاميذ لتمارين الزوم")
 };
 
 // ✅ التحقق من الإعدادات

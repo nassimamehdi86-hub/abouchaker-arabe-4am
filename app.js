@@ -2588,8 +2588,19 @@ async function renderAdminPanel(){
       </div>
     </div>`;
 
+  /* زر لفتح محادثة بوت تيليجرام مباشرة — هناك تصل حلول التمارين التي يرسلها التلاميذ */
+  const solutionsCard = `
+    <div class="home-card-wide zoom-manage-card" id="solutionsBotBtn" style="margin-bottom:16px;cursor:pointer">
+      <div class="hc-icon-wrap" style="background:linear-gradient(150deg,#D9EAD9,#8FC98F)">📨</div>
+      <div>
+        <div class="hc-title">حلول التلاميذ لتمارين الزوم</div>
+        <div class="hc-sub">افتح محادثة البوت على تيليجرام لمشاهدة الحلول المُرسلة من التلاميذ</div>
+      </div>
+    </div>`;
+
   wrap.innerHTML =
     zoomManageCard +
+    solutionsCard +
     adminAccordionHTML('pending', `⏳ طلبات الانتظار <span class="aa-badge">${pending.length}</span>`, pendingBody) +
     adminAccordionHTML('approved', `👥 التلاميذ المقبولون <span class="aa-badge">${totalStudents}</span>`, approvedBody) +
     adminAccordionHTML('lessons', `📖 فتح/إغلاق الدروس`, lessonsBody) +
@@ -2603,6 +2614,15 @@ async function renderAdminPanel(){
   document.getElementById('zoomManageBtn').addEventListener('click', ()=>{
     if(window.SoundFX) SoundFX.click();
     openZoomManagerModal();
+  });
+
+  document.getElementById('solutionsBotBtn').addEventListener('click', ()=>{
+    if(window.SoundFX) SoundFX.click();
+    if(!TELEGRAM_CONFIG || !TELEGRAM_CONFIG.botUsername){
+      alert('معرّف البوت (username) غير مضبوط في telegram-config.js');
+      return;
+    }
+    window.open(`https://t.me/${TELEGRAM_CONFIG.botUsername}`, '_blank', 'noopener');
   });
 
   const toggleBtn = document.getElementById('toggleApprovedBtn');
