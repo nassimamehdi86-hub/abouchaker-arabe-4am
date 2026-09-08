@@ -1214,6 +1214,10 @@ function openLessonDetail(id){
   document.getElementById('ldTitle').textContent = lesson.title;
   document.getElementById('ldSubtitle').textContent = lesson.subtitle||'';
 
+  /* تلوين الدائرة حسب وحدة الدرس (كل وحدة لها لونها الخاص لتمييزها بسرعة) */
+  const ldBadge = document.getElementById('ldBadge');
+  if(ldBadge) ldBadge.className = 'badge cat-' + (lesson.category || 'taqweem');
+
   /* إضافة زر عرض الترتيب (غير مجدٍ لدرس بلا تمارين — يُخفى في هذه الحالة) */
   let leaderBtn = document.getElementById('ldLeaderboardBtn');
   if(!leaderBtn){

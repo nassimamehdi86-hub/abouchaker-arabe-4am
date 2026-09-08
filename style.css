@@ -1044,8 +1044,33 @@
   display:inline-block; background:var(--paper); border:3px solid var(--gold-3); border-radius:50%;
   width:170px; height:170px; padding-top:38px; box-shadow:6px 6px 0 rgba(169,127,42,0.12); transform:rotate(-2deg);
 }
-.hub .badge b{ display:block; font-family:'Aref Ruqaa', serif; font-weight:700; font-size:22px; color:var(--ink); }
+.hub .badge b{
+  display:block; font-family:'Aref Ruqaa', serif; font-weight:800; font-size:23px; color:var(--ink);
+  letter-spacing:.2px; text-shadow:0 1px 0 rgba(255,255,255,0.55);
+}
 .hub .badge span{ display:block; font-size:11px; color:var(--ink-soft); margin-top:8px; padding:0 16px; line-height:1.6; }
+
+/* ============ ألوان دائرة الدرس حسب وحدته — لتمييز كل وحدة بلمحة ============ */
+.hub .badge.cat-taqweem{ border-color:#A97F2A; box-shadow:6px 6px 0 rgba(169,127,42,0.18); }
+.hub .badge.cat-taqweem b{ color:#7A5216; }
+
+.hub .badge.cat-tawabi{ border-color:#2F7D4F; box-shadow:6px 6px 0 rgba(47,125,79,0.18); }
+.hub .badge.cat-tawabi b{ color:#1E5C38; }
+
+.hub .badge.cat-qawaid{ border-color:#2E6DA4; box-shadow:6px 6px 0 rgba(46,109,164,0.18); }
+.hub .badge.cat-qawaid b{ color:#1F4E77; }
+
+.hub .badge.cat-jumal{ border-color:#C97A2B; box-shadow:6px 6px 0 rgba(201,122,43,0.18); }
+.hub .badge.cat-jumal b{ color:#95591C; }
+
+.hub .badge.cat-balagha{ border-color:#B23B3B; box-shadow:6px 6px 0 rgba(178,59,59,0.18); }
+.hub .badge.cat-balagha b{ color:#8A2C2C; }
+
+.hub .badge.cat-anmat{ border-color:#4A5568; box-shadow:6px 6px 0 rgba(74,85,104,0.18); }
+.hub .badge.cat-anmat b{ color:#333D4D; }
+
+.hub .badge.cat-itisaq{ border-color:#9B4F96; box-shadow:6px 6px 0 rgba(155,79,150,0.18); }
+.hub .badge.cat-itisaq b{ color:#733E70; }
 .hub-def{
   max-width:520px; margin:14px auto 0; text-align:center; font-size:14px; line-height:2; color:var(--ink);
   background:var(--paper); border:2px solid var(--gold-3); border-radius:14px; padding:14px 18px;
