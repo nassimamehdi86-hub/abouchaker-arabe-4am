@@ -419,10 +419,32 @@
     transition:.15s;
   }
   .home-card:active{ transform:translateY(2px); }
+
+  /* ===== إطار الأيقونة: عمق ثلاثي الأبعاد + زخرفة أرابيسك ذهبية ===== */
   .home-card .hc-icon-wrap{
-    width:58px; height:58px; margin:0 auto 12px; border-radius:16px; display:flex; align-items:center; justify-content:center;
-    font-size:27px; border:1.3px solid rgba(169,127,42,0.3);
+    position:relative; overflow:hidden;
+    width:62px; height:62px; margin:0 auto 12px; border-radius:17px; display:flex; align-items:center; justify-content:center;
+    font-size:27px; border:1.4px solid rgba(122,82,22,0.55);
+    box-shadow:
+      0 7px 14px rgba(122,82,22,0.32),
+      0 2px 3px rgba(80,52,10,0.28),
+      inset 0 2px 2px rgba(255,255,255,0.85),
+      inset 0 -4px 6px rgba(90,58,12,0.38);
   }
+  /* نسيج الأرابيسك الذهبي داخل إطار الأيقونة */
+  .home-card .hc-icon-wrap::before{
+    content:""; position:absolute; inset:0; opacity:0.55; mix-blend-mode:multiply; pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cg fill='none' stroke='%23A9772A' stroke-width='0.7' opacity='0.65'%3E%3Cpath d='M11 1 L21 11 L11 21 L1 11 Z'/%3E%3Cpath d='M11 1 L11 21 M1 11 L21 11'/%3E%3Ccircle cx='11' cy='11' r='3.4'/%3E%3Cpath d='M4.5 4.5 L7.5 7.5 M17.5 4.5 L14.5 7.5 M4.5 17.5 L7.5 14.5 M17.5 17.5 L14.5 14.5'/%3E%3C/g%3E%3C/svg%3E");
+    background-size:15px 15px;
+  }
+  /* بريق علوي لإيهام العمق */
+  .home-card .hc-icon-wrap::after{
+    content:""; position:absolute; top:0; left:0; right:0; height:46%; border-radius:17px 17px 50% 50%/17px 17px 60% 60%;
+    background:linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0));
+    pointer-events:none;
+  }
+  .home-card .hc-svg-icon{ position:relative; z-index:1; width:74%; height:74%; filter:drop-shadow(0 3px 3px rgba(60,38,8,0.45)) drop-shadow(0 1px 0 rgba(255,255,255,0.5)); }
+
   .home-card.c1 .hc-icon-wrap{ background:linear-gradient(150deg,#F3ECD5,#E7C878); }
   .home-card.c2 .hc-icon-wrap{ background:linear-gradient(150deg,#E4EFE6,#C9DFCE); }
   .home-card.c3 .hc-icon-wrap{ background:linear-gradient(150deg,#FBEDC3,#E7C878); }
@@ -449,10 +471,27 @@
   }
   .home-card-wide:active{ transform:translateY(2px); }
   .home-card-wide .hc-icon-wrap{
-    flex-shrink:0; width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center;
-    font-size:24px; border:1.3px solid rgba(169,127,42,0.3);
-    background:linear-gradient(150deg,#E4EFE6,#C9DFCE);
+    position:relative; overflow:hidden;
+    flex-shrink:0; width:54px; height:54px; border-radius:15px; display:flex; align-items:center; justify-content:center;
+    font-size:24px; border:1.4px solid rgba(122,82,22,0.55);
+    background:linear-gradient(150deg,#FBEDC3,#E7C878);
+    box-shadow:
+      0 7px 14px rgba(122,82,22,0.32),
+      0 2px 3px rgba(80,52,10,0.28),
+      inset 0 2px 2px rgba(255,255,255,0.85),
+      inset 0 -4px 6px rgba(90,58,12,0.38);
   }
+  .home-card-wide .hc-icon-wrap::before{
+    content:""; position:absolute; inset:0; opacity:0.55; mix-blend-mode:multiply; pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cg fill='none' stroke='%23A9772A' stroke-width='0.7' opacity='0.65'%3E%3Cpath d='M11 1 L21 11 L11 21 L1 11 Z'/%3E%3Cpath d='M11 1 L11 21 M1 11 L21 11'/%3E%3Ccircle cx='11' cy='11' r='3.4'/%3E%3Cpath d='M4.5 4.5 L7.5 7.5 M17.5 4.5 L14.5 7.5 M4.5 17.5 L7.5 14.5 M17.5 17.5 L14.5 14.5'/%3E%3C/g%3E%3C/svg%3E");
+    background-size:15px 15px;
+  }
+  .home-card-wide .hc-icon-wrap::after{
+    content:""; position:absolute; top:0; left:0; right:0; height:46%;
+    background:linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0));
+    pointer-events:none;
+  }
+  .home-card-wide .hc-icon-wrap{ text-shadow:0 2px 2px rgba(60,38,8,0.4); }
   .home-card-wide .hc-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:17px; color:var(--ink); }
   .home-card-wide .hc-sub{ font-size:11px; color:var(--ink-soft); margin-top:3px; font-weight:600; line-height:1.6; }
 

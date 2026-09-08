@@ -17,6 +17,47 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- ===== تدرّجات ذهبية مشتركة لأيقونات الشاشة الرئيسية المجسّمة ===== -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="hcGoldMetal" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#FBEDC3"/>
+        <stop offset="0.45" stop-color="#E7C878"/>
+        <stop offset="1" stop-color="#A9772A"/>
+      </linearGradient>
+      <linearGradient id="hcGoldDark" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#C79A3D"/>
+        <stop offset="1" stop-color="#7A5216"/>
+      </linearGradient>
+      <radialGradient id="hcGoldMedallion" cx="0.35" cy="0.3" r="0.8">
+        <stop offset="0" stop-color="#FFF6DE"/>
+        <stop offset="0.5" stop-color="#E7C878"/>
+        <stop offset="1" stop-color="#96702A"/>
+      </radialGradient>
+      <linearGradient id="hcMaroonCover" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#8A3421"/>
+        <stop offset="0.55" stop-color="#63200F"/>
+        <stop offset="1" stop-color="#3C130A"/>
+      </linearGradient>
+      <linearGradient id="hcSageGem" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#C9DFCE"/>
+        <stop offset="0.5" stop-color="#6E8F73"/>
+        <stop offset="1" stop-color="#33503A"/>
+      </linearGradient>
+      <linearGradient id="hcWood" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#6B4A2C"/>
+        <stop offset="1" stop-color="#3E2A18"/>
+      </linearGradient>
+      <linearGradient id="hcInk" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#3F6350"/>
+        <stop offset="1" stop-color="#22352B"/>
+      </linearGradient>
+      <linearGradient id="hcCream" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#FFFDF7"/>
+        <stop offset="1" stop-color="#EFE2BE"/>
+      </linearGradient>
+    </defs>
+  </svg>
 
 <!-- ============ زر فتح المتصفح الحقيقي (يظهر تلقائياً داخل تيليجرام/إنستغرام...) ============ -->
 <div id="openInBrowserBar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:#A97F2A;color:#fff;padding:10px 14px;text-align:center;font-family:'Cairo',sans-serif;font-weight:700;font-size:15px;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer" onclick="__openInRealBrowser()">
@@ -129,17 +170,55 @@
   <div id="screen-home">
     <div class="home-menu">
       <div class="home-card c1" data-nav="lessons">
-        <div class="hc-icon-wrap">📖</div><div class="hc-title">الدروس</div><div class="hc-sub">حسب المنهاج</div>
+        <div class="hc-icon-wrap">
+          <svg class="hc-svg-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 16 L50 12 L52 50 L16 54 Z" fill="url(#hcCream)" stroke="#D8AE52" stroke-width="1"/>
+            <path d="M16 18 L16 52 M20 17.5 L20 52.5 M24 17 L24 53" stroke="#D8AE52" stroke-width="0.7" opacity="0.6"/>
+            <path d="M10 14 L46 9 L48 47 L12 51 Z" fill="url(#hcMaroonCover)" stroke="#2B0D08" stroke-width="1"/>
+            <path d="M10 14 L15 14.6 L17 49 L12 51 Z" fill="#A0472C" opacity="0.55"/>
+            <path d="M10 14 L46 9 L46 12.5 L10 17.5 Z" fill="#fff" opacity="0.22"/>
+            <rect x="17" y="17" width="26" height="30" rx="2.5" fill="none" stroke="url(#hcGoldMetal)" stroke-width="1.4" opacity="0.95" transform="rotate(-2 30 32)"/>
+            <circle cx="29" cy="31" r="8" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="1"/>
+            <path d="M29 24.5 L31 29 L36 29.3 L32.3 32.3 L33.6 37 L29 34.2 L24.4 37 L25.7 32.3 L22 29.3 L27 29 Z" fill="#7A5216" opacity="0.85"/>
+            <circle cx="29" cy="31" r="2.1" fill="#FFF6DE"/>
+          </svg>
+        </div><div class="hc-title">الدروس</div><div class="hc-sub">حسب المنهاج</div>
       </div>
       <div class="home-card c4" data-nav="situation">
-        <div class="hc-icon-wrap">🧩</div><div class="hc-title">الوضعية الإدماجية</div><div class="hc-sub">تدريبات الإدماج</div>
+        <div class="hc-icon-wrap">
+          <svg class="hc-svg-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 12 h16 c0,-3.5 2.8,-6 6,-6 c3.2,0 6,2.5 6,6 h4 v16 c3.5,0 6,2.8 6,6 c0,3.2 -2.5,6 -6,6 v14 h-16 c0,3.5 -2.8,6 -6,6 c-3.2,0 -6,-2.5 -6,-6 h-10 v-16 c-3.5,0 -6,-2.8 -6,-6 c0,-3.2 2.5,-6 6,-6 v-14 Z"
+                  fill="url(#hcGoldMetal)" stroke="#7A5216" stroke-width="1.2" stroke-linejoin="round" transform="translate(-4,2) scale(0.86)"/>
+            <path d="M30 30 h16 c0,-3.5 2.8,-6 6,-6 c3.2,0 6,2.5 6,6 h4 v16 c3.5,0 6,2.8 6,6 c0,3.2 -2.5,6 -6,6 v14 h-16 c0,3.5 -2.8,6 -6,6 c-3.2,0 -6,-2.5 -6,-6 h-10 v-16 c-3.5,0 -6,-2.8 -6,-6 c0,-3.2 2.5,-6 6,-6 v-14 Z"
+                  fill="url(#hcSageGem)" stroke="#2E4A34" stroke-width="1.2" stroke-linejoin="round" transform="translate(-16,-16) scale(0.56)"/>
+            <ellipse cx="20" cy="18" rx="7" ry="4" fill="#fff" opacity="0.3" transform="rotate(-20 20 18)"/>
+            <circle cx="34" cy="34" r="5.5" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="1"/>
+          </svg>
+        </div><div class="hc-title">الوضعية الإدماجية</div><div class="hc-sub">تدريبات الإدماج</div>
       </div>
       <div class="home-card c3" data-nav="irab" id="irabHomeCard">
-        <div class="hc-icon-wrap">✍️</div><div class="hc-title">إعراب الجمل</div><div class="hc-sub">101 جملة وجملة</div>
+        <div class="hc-icon-wrap">
+          <svg class="hc-svg-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 50 C22 40 34 28 46 15 L51 20 C39 32 27 44 17 54 Z" fill="url(#hcWood)" stroke="#241708" stroke-width="1"/>
+            <path d="M46 15 L51 20 L54 17 C55.5 15.5 55.5 13.5 54 12 C52.5 10.5 50.5 10.5 49 12 Z" fill="url(#hcGoldMetal)" stroke="#7A5216" stroke-width="1"/>
+            <path d="M12 50 L17 54 L14 58 C13 59 11 58.6 11 57 Z" fill="#1D1408"/>
+            <path d="M15 47 C25 37 35 27 45 17" stroke="#fff" stroke-width="1" opacity="0.3"/>
+            <path d="M11 58 C 18 52, 24 50, 34 52 C 26 54, 20 57, 16 62" fill="none" stroke="url(#hcGoldMetal)" stroke-width="1.6" stroke-linecap="round" opacity="0.9"/>
+            <circle cx="35" cy="52" r="1.6" fill="#E7C878"/>
+          </svg>
+        </div><div class="hc-title">إعراب الجمل</div><div class="hc-sub">101 جملة وجملة</div>
         <div class="hc-lock-badge" id="irabHomeLockBadge" style="display:none">🔒 مغلق</div>
       </div>
       <div class="home-card c2" data-nav="exams">
-        <div class="hc-icon-wrap">🗂️</div><div class="hc-title">الفروض والاختبارات</div><div class="hc-sub">الفصل الأول، الثاني، الثالث</div>
+        <div class="hc-icon-wrap">
+          <svg class="hc-svg-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 22 L28 22 L32 26 L50 26 L50 46 L14 46 Z" fill="url(#hcInk)" stroke="#16241C" stroke-width="1"/>
+            <path d="M17 20 L46 20 L46 44 L17 44 Z" fill="url(#hcCream)" stroke="#D8AE52" stroke-width="1"/>
+            <path d="M21 26 L42 26 M21 31 L42 31 M21 36 L36 36" stroke="#8A6A2A" stroke-width="1.3" opacity="0.55"/>
+            <circle cx="41" cy="41" r="8.5" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="1"/>
+            <path d="M37.2 41 L39.8 43.8 L45 38" fill="none" stroke="#5C3D0F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div><div class="hc-title">الفروض والاختبارات</div><div class="hc-sub">الفصل الأول، الثاني، الثالث</div>
       </div>
     </div>
 
