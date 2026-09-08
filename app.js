@@ -1283,6 +1283,24 @@ function openLessonDetail(id){
    بلا أي خروج لتطبيق خارجي وبلا أي تعديل على الكود عند إضافة دروس جديدة مستقبلاً.
    ========================================================================================= */
 
+/* يحوّل رابط تيليجرام عادي (https://t.me/...) إلى صيغة tg:// الخاصة بالتطبيق، حتى يفتحه
+   المتصفح مباشرة في تطبيق تيليجرام المثبّت (سطح المكتب أو الهاتف) بدل صفحة الويب web.telegram.org.
+   يغطي: قناة/مجموعة خاصة (t.me/c/CHANNEL_ID/MSG_ID)، رابط دعوة (t.me/joinchat/HASH أو t.me/+HASH)،
+   ومنشور/قناة عامة (t.me/username أو t.me/username/MSG_ID). إن لم يتعرّف على الصيغة يُعيد الرابط
+   الأصلي كما هو (المتصفح سيفتحه في نسخة الويب كما كان سابقًا، دون أي ضرر). */
+function toTelegramAppLink(url){
+  const clean = (url||'').trim();
+  let m = clean.match(/t(?:elegram)?\.me\/c\/(\d+)\/(\d+)/i);
+  if(m) return `tg://privatepost?channel=${m[1]}&post=${m[2]}`;
+  m = clean.match(/t(?:elegram)?\.me\/(?:joinchat\/|\+)([\w-]+)/i);
+  if(m) return `tg://join?invite=${m[1]}`;
+  m = clean.match(/t(?:elegram)?\.me\/([\w]+)\/(\d+)/i);
+  if(m) return `tg://resolve?domain=${m[1]}&post=${m[2]}`;
+  m = clean.match(/t(?:elegram)?\.me\/([\w]+)/i);
+  if(m) return `tg://resolve?domain=${m[1]}`;
+  return clean;
+}
+
 /* يبني HTML مشغّل الفيديو المناسب حسب نوع الرابط (يوتيوب، درايف، تيليجرام، ملف مباشر، أو أي رابط آخر) */
 function buildZoomEmbedHTML(url){
   const clean = (url||'').trim();
@@ -1302,11 +1320,16 @@ function buildZoomEmbedHTML(url){
 
   /* تيليجرام (t.me / telegram.me) — روابط القنوات الخاصة بصيغة t.me/c/CHANNEL_ID/MSG_ID لا يمكن
      تضمينها داخل iframe إطلاقًا (تيليجرام يمنع ذلك، ويشترط أن يكون المشاهد نفسه عضوًا مسجّلاً
-     دخوله في تيليجرام أصلاً). لذلك نعرض بطاقة أنيقة بزر فتح مباشر بدل إطار سيبقى فارغًا/معطوبًا. */
+     دخوله في تيليجرام أصلاً). لذلك نعرض بطاقة أنيقة بزر فتح مباشر بدل إطار سيبقى فارغًا/معطوبًا.
+     الزر الرئيسي يستعمل رابط tg:// (بروتوكول التطبيق نفسه) بدل https:// حتى يتوجّه المتصفح
+     مباشرة لتطبيق تيليجرام المثبّت على الحاسوب (نفس سلوك الهاتف)، مع رابط احتياطي صغير
+     بصيغة https:// لمن ليس لديه التطبيق مثبّتًا أو رفض المتصفح فتحه. */
   if(/(?:^|\/\/)(?:www\.)?(?:t|telegram)\.me\//i.test(clean)){
+    const appLink = toTelegramAppLink(clean);
     return `<div class="zoom-telegram-box">
       <div class="zoom-telegram-icon"><span class="icon-glyph">📨</span></div>
-      <a class="zoom-telegram-btn" href="${escZoomText(clean)}" target="_blank" rel="noopener">▶️ فتح الحصة على تيليجرام</a>
+      <a class="zoom-telegram-btn" href="${escZoomText(appLink)}">▶️ فتح الحصة في تطبيق تيليجرام</a>
+      <a class="zoom-fallback-link" href="${escZoomText(clean)}" target="_blank" rel="noopener">لا يعمل الزر؟ افتح عبر المتصفح ⬈</a>
     </div>`;
   }
 
