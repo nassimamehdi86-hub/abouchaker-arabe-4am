@@ -1041,9 +1041,15 @@
 
 .hub{ text-align:center; margin:10px auto 8px; }
 .hub .badge{
-  display:inline-block; background:var(--paper); border:3px solid var(--gold-3); border-radius:50%;
+  display:inline-block; position:relative; overflow:hidden; background:var(--paper); border:3px solid var(--gold-3); border-radius:50%;
   width:170px; height:170px; padding-top:38px; box-shadow:6px 6px 0 rgba(169,127,42,0.12); transform:rotate(-2deg);
 }
+.hub .badge::before{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='%23A97F2A' stroke-width='1'%3E%3Cpath d='M42 2 L54 14 L66 2 L82 18 L70 30 L82 42 L66 54 L54 42 L42 54 L30 42 L18 54 L2 42 L14 30 L2 18 L18 2 L30 14 Z'/%3E%3Ccircle cx='42' cy='28' r='9'/%3E%3C/g%3E%3C/svg%3E");
+  background-size:46px 46px; opacity:.16;
+}
+.hub .badge b, .hub .badge span{ position:relative; z-index:1; }
 .hub .badge b{
   display:block; font-family:'Aref Ruqaa', serif; font-weight:800; font-size:23px; color:var(--ink);
   letter-spacing:.2px; text-shadow:0 1px 0 rgba(255,255,255,0.55);
