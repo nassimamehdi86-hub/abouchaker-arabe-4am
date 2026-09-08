@@ -1345,6 +1345,15 @@ function buildZoomEmbedHTML(url){
 }
 
 
+/* يبني خصائص رابط زر الوثيقة (ملخّص/تمارين): إن كان الرابط تيليجرام يستعمل صيغة tg:// ليفتح
+   مباشرة في التطبيق المثبّت (بنفس منطق زر الفيديو)، وإلا يُفتح كالمعتاد في نافذة جديدة */
+function buildZoomDocLinkAttrs(url){
+  const isTg = /(?:^|\/\/)(?:www\.)?(?:t|telegram)\.me\//i.test((url||'').trim());
+  const href = isTg ? toTelegramAppLink(url) : url;
+  const targetAttrs = isTg ? '' : ' target="_blank" rel="noopener"';
+  return `href="${escZoomText(href)}"${targetAttrs}`;
+}
+
 function renderZoomGroupsBox(lesson){
   const box = document.getElementById('ldZoomBox');
   if(!box) return;
@@ -1378,7 +1387,7 @@ function renderZoomGroupsBox(lesson){
          بزر مستقل مرقّم حتى يميّز التلميذ بينها */
       const docsHtml = ZOOM_DOCS
         .map(d=> g[d.key].map((url,idx)=>
-          `<a class="zoom-doc-btn" href="${escZoomText(url)}" target="_blank" rel="noopener">${d.icon} ${d.btnLabel}${g[d.key].length>1?' '+(idx+1):''}</a>`
+          `<a class="zoom-doc-btn" ${buildZoomDocLinkAttrs(url)}>${d.icon} ${d.btnLabel}${g[d.key].length>1?' '+(idx+1):''}</a>`
         ).join(''))
         .join('');
       const docsRow = docsHtml ? `<div class="zoom-docs-row">${docsHtml}</div>` : '';
