@@ -1414,6 +1414,7 @@ function wireSolutionInline(playerBox, lesson, groupKey, groupLabel){
       feedback.textContent = '✅ تم إرسال حلّك إلى الأستاذ بنجاح.';
       feedback.style.color = 'var(--sage-deep,#3F6350)';
       fileInput.value = ''; preview.style.display = 'none'; preview.innerHTML = '';
+      ZoomSolutions.log(lesson, groupKey, groupLabel); /* تسجيل إحصائي منفصل تمامًا عن إرسال تيليجرام — لعرضه في لوحة الأستاذ */
     } else if(res.reason === 'not-configured'){
       feedback.textContent = '⚠️ إرسال الحلول غير مُفعّل بعد من طرف الأستاذ. حاول لاحقًا.';
       feedback.style.color = '#b5432a';
@@ -1423,6 +1424,104 @@ function wireSolutionInline(playerBox, lesson, groupKey, groupLabel){
     }
     sendBtn.disabled = false; sendBtn.textContent = '📨 إرسال حل التمرين';
   });
+}
+
+/* =========================================================================================
+   سجلّ إحصائي لحلول تمارين الزوم — مستقل تمامًا عن إرسال تيليجرام (الذي يبقى كما هو).
+   يُسجَّل هنا فقط: الدرس، الفوج، اسم التلميذ ومعرّفه — بلا أي ملف/صورة (تبقى في تيليجرام حصريًا).
+   الهدف: تمكين الأستاذ من رؤية "من أرسل ومن لم يرسل" مباشرة من داخل المنصة.
+   ========================================================================================= */
+const ZoomSolutions = {
+  /* وثيقة واحدة لكل (درس + تلميذ) — إعادة إرسال نفس التلميذ لنفس الدرس تُحدّث الوثيقة بدل تكرارها */
+  async log(lesson, groupKey, groupLabel){
+    if(!fbReady || !Student.id) return;
+    try{
+      await db.collection('zoomSolutions').doc(`${lesson.id}_${Student.id}`).set({
+        lessonId: lesson.id,
+        lessonTitle: lesson.title,
+        groupKey, groupLabel,
+        studentId: Student.id,
+        studentName: Student.fullName,
+        submittedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }catch(e){ console.error('تعذّر تسجيل إحصائية حل التمرين:', e); }
+  },
+
+  /* كل السجلات مجمّعة حسب الدرس ثم الفوج — لعرضها في نافذة "حلول التلاميذ لتمارين الزوم" */
+  async allGrouped(){
+    if(!fbReady) return [];
+    const snap = await db.collection('zoomSolutions').get();
+    const byLesson = new Map(); // lessonId -> { lessonTitle, byGroup: Map(groupKey -> {groupLabel, names:[]}) }
+    snap.forEach(doc=>{
+      const d = doc.data();
+      if(!byLesson.has(d.lessonId)) byLesson.set(d.lessonId, { lessonTitle:d.lessonTitle, byGroup:new Map() });
+      const entry = byLesson.get(d.lessonId);
+      if(!entry.byGroup.has(d.groupKey)) entry.byGroup.set(d.groupKey, { groupLabel:d.groupLabel, names:[] });
+      entry.byGroup.get(d.groupKey).names.push(d.studentName);
+    });
+    const order = new Map((window.LESSONS||[]).map((l,i)=>[l.id,i]));
+    return Array.from(byLesson.entries())
+      .map(([lessonId, v])=> ({ lessonId, lessonTitle:v.lessonTitle, groups: Array.from(v.byGroup.values()) }))
+      .sort((a,b)=> (order.get(a.lessonId) ?? 999) - (order.get(b.lessonId) ?? 999));
+  }
+};
+
+/* نافذة "حلول التلاميذ لتمارين الزوم" من لوحة الأستاذ — زر فتح تيليجرام أعلى النافذة،
+   وتحتها إحصائيات من أرسل حلاً (الدرس، الفوج، عدد التلاميذ وأسماؤهم) */
+function openSolutionsModal(){
+  const overlay = document.createElement('div');
+  overlay.className = 'zoom-modal-overlay';
+  const telegramBtnHtml = (TELEGRAM_CONFIG && TELEGRAM_CONFIG.botUsername)
+    ? `<a class="zoom-telegram-btn" style="display:block;text-align:center;text-decoration:none;margin-bottom:18px" href="https://t.me/${TELEGRAM_CONFIG.botUsername}" target="_blank" rel="noopener">▶️ فتح محادثة الحلول على تيليجرام</a>`
+    : `<div class="lesson-cta-note">معرّف البوت (username) غير مضبوط في telegram-config.js</div>`;
+  overlay.innerHTML = `
+    <div class="zoom-modal-popup">
+      <div class="zoom-modal-header">
+        <div class="zoom-modal-title">📨 حلول التلاميذ لتمارين الزوم</div>
+        <div class="zoom-modal-subtitle">افتح المحادثة لمشاهدة الملفات، أو تصفّح من أرسل حلاً لكل درس</div>
+        <button type="button" class="zoom-modal-close" id="solutionsModalCloseBtn">✕</button>
+      </div>
+      <div class="zoom-modal-body" id="solutionsModalBody">
+        ${telegramBtnHtml}
+        <div id="solutionsStatsMount"><div class="sf-label">جاري تحميل الإحصائيات…</div></div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e)=>{ if(e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#solutionsModalCloseBtn').addEventListener('click', ()=> overlay.remove());
+
+  renderSolutionsStats(overlay);
+}
+
+async function renderSolutionsStats(overlay){
+  const mount = overlay.querySelector('#solutionsStatsMount');
+  if(!fbReady){
+    mount.innerHTML = '<div class="lesson-cta-note">Firebase غير مفعّل — لا يمكن عرض الإحصائيات.</div>';
+    return;
+  }
+  let data;
+  try{
+    data = await ZoomSolutions.allGrouped();
+  }catch(e){
+    mount.innerHTML = '<div class="lesson-cta-note">تعذّر تحميل الإحصائيات، تحقّق من قواعد أمان Firestore لمجموعة zoomSolutions.</div>';
+    return;
+  }
+  if(!data.length){
+    mount.innerHTML = '<div class="lesson-cta-note">لم يُرسل أي تلميذ حلاً بعد.</div>';
+    return;
+  }
+  mount.innerHTML = data.map(l=>{
+    const total = l.groups.reduce((s,g)=> s+g.names.length, 0);
+    const groupsHtml = l.groups.map(g=> `
+      <div style="margin-top:8px">
+        <div class="lr-title">👥 ${escZoomText(g.groupLabel)} — ${g.names.length}</div>
+        <div class="note" style="margin:4px 0 0;text-align:right">${g.names.map(escZoomText).join('، ')}</div>
+      </div>`).join('');
+    return `<div class="lesson-row" style="flex-direction:column;align-items:stretch;text-align:right;margin-bottom:10px">
+      <div class="lr-title">📘 ${escZoomText(l.lessonTitle)} <span class="aa-badge">${total}</span></div>
+      ${groupsHtml}
+    </div>`;
+  }).join('');
 }
 
 
@@ -2594,7 +2693,7 @@ async function renderAdminPanel(){
       <div class="hc-icon-wrap" style="background:linear-gradient(150deg,#D9EAD9,#8FC98F)">📨</div>
       <div>
         <div class="hc-title">حلول التلاميذ لتمارين الزوم</div>
-        <div class="hc-sub">افتح محادثة البوت على تيليجرام لمشاهدة الحلول المُرسلة من التلاميذ</div>
+        <div class="hc-sub">إحصائيات من أرسل حلاً لكل درس/فوج، وزر لفتح ملفات الحلول على تيليجرام</div>
       </div>
     </div>`;
 
@@ -2618,11 +2717,7 @@ async function renderAdminPanel(){
 
   document.getElementById('solutionsBotBtn').addEventListener('click', ()=>{
     if(window.SoundFX) SoundFX.click();
-    if(!TELEGRAM_CONFIG || !TELEGRAM_CONFIG.botUsername){
-      alert('معرّف البوت (username) غير مضبوط في telegram-config.js');
-      return;
-    }
-    window.open(`https://t.me/${TELEGRAM_CONFIG.botUsername}`, '_blank', 'noopener');
+    openSolutionsModal();
   });
 
   const toggleBtn = document.getElementById('toggleApprovedBtn');
