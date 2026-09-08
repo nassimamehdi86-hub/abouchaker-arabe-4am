@@ -1996,6 +1996,13 @@
 .zoom-link-rows{ display:flex; flex-direction:column; gap:8px; }
 .zoom-link-row{ display:flex; align-items:center; gap:8px; }
 .zoom-link-row .zoom-form-input{ flex:1; }
+.exam-link-row{
+  flex-wrap:wrap; padding:9px 10px; border-radius:12px;
+  border:1.3px solid rgba(169,127,42,0.25); background:rgba(255,253,247,0.55);
+}
+.exam-link-row .exam-link-title{ flex:1 1 100%; }
+.exam-link-row .exam-link-url{ flex:1 1 auto; min-width:0; }
+.exam-link-row .zoom-link-remove-btn{ flex:0 0 auto; }
 .zoom-link-remove-btn{
   flex:none; width:34px; height:34px; border-radius:10px; border:1.4px solid rgba(181,67,42,0.4);
   background:rgba(181,67,42,0.08); color:#b5432a; font-weight:800; font-size:14px; cursor:pointer;

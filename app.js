@@ -354,6 +354,58 @@ const ZoomLinks = {
 };
 
 /* =========================================================================================
+   روابط الفروض والاختبارات لكل فصل — موحّدة لجميع الأفواج (بخلاف روابط حصص الزوم)
+   وثيقة واحدة: state/examLinks => { t1:[{title,link}], t2:[...], t3:[...] }
+   نفس فكرة رفع الدروس/التمارين عبر رابط (تيليجرام أو أي رابط آخر)، لكن دون تكرار لكل فوج،
+   لأن الفروض والاختبارات نفسها تخصّ كل التلاميذ بلا استثناء.
+   ========================================================================================= */
+const ExamLinks = {
+  data:{ t1:[], t2:[], t3:[] }, ready:false,
+
+  async load(){
+    if(!fbReady){ this.ready = true; return; }
+    try{
+      const snap = await db.collection('state').doc('examLinks').get();
+      if(snap.exists) this.data = Object.assign({t1:[],t2:[],t3:[]}, snap.data());
+    }catch(e){
+      console.error('تعذّرت قراءة روابط الفروض والاختبارات (state/examLinks) — تحقق من قواعد Firestore:', e);
+      if(typeof showFbPermissionNotice === 'function') showFbPermissionNotice('examLinks');
+    }
+    this.ready = true;
+  },
+
+  /* يُعيد دائمًا مصفوفة عناصر {title, link} نظيفة (بلا فراغات، وبلا عناصر بلا رابط) لفصل معيّن */
+  getItems(t){
+    const arr = Array.isArray(this.data[t]) ? this.data[t] : [];
+    return arr
+      .map(x=> ({ title:String((x && x.title) || '').trim(), link:String((x && x.link) || '').trim() }))
+      .filter(x=> x.link);
+  },
+
+  async setItems(t, items){
+    if(!fbReady) return { ok:false, reason:'no-firebase' };
+    const clean = (items||[])
+      .map(x=> ({ title:String(x.title||'').trim(), link:String(x.link||'').trim() }))
+      .filter(x=> x.link);
+    this.data[t] = clean;
+    await db.collection('state').doc('examLinks').set(this.data, {merge:true});
+    return { ok:true };
+  },
+
+  /* استماع لحظي: أي رابط يضيفه/يحذفه الأستاذ ينعكس فورًا في شاشة الفروض والاختبارات عند التلاميذ */
+  listen(onChange){
+    if(!fbReady) return;
+    db.collection('state').doc('examLinks').onSnapshot(snap=>{
+      if(snap.exists) this.data = Object.assign({t1:[],t2:[],t3:[]}, snap.data());
+      if(onChange) onChange();
+    }, error=>{
+      console.error('تعذّر الاستماع لروابط الفروض والاختبارات (state/examLinks) — تحقق من قواعد Firestore:', error);
+      if(typeof showFbPermissionNotice === 'function') showFbPermissionNotice('examLinks');
+    });
+  }
+};
+
+/* =========================================================================================
    لوحة تحكم الأستاذ/المشرف — الرقم السري + طلبات الانتظار + الإحصائيات
    ========================================================================================= */
 const Admin = {
@@ -2325,7 +2377,7 @@ function stopStoryNarration(){
 
 /* ---------- شاشة الفروض والاختبارات ---------- */
 function renderExamsScreen(){
-  Locks.load().then(()=>{
+  Promise.all([Locks.load(), ExamLinks.load()]).then(()=>{
     const trimesters = [
       {key:'t1', icon:'📘', label:'الفصل الأول'},
       {key:'t2', icon:'📗', label:'الفصل الثاني'},
@@ -2339,9 +2391,20 @@ function renderExamsScreen(){
     const panel = document.getElementById('examPanelWrap');
     function showPanel(t){
       const open = Locks.isTrimesterOpen(t);
-      panel.innerHTML = open
-        ? `<div class="exam-panel">📋 سيظهر هنا محتوى فروض واختبارات هذا الفصل عند رفعه من الأستاذ/المشرف.</div>`
-        : `<div class="exam-panel"><span class="lock-icon">🔒</span>سيُفتح هذا القسم من قبل الأستاذ أو المشرف في الوقت المناسب</div>`;
+      if(!open){
+        panel.innerHTML = `<div class="exam-panel"><span class="lock-icon">🔒</span>سيُفتح هذا القسم من قبل الأستاذ أو المشرف في الوقت المناسب</div>`;
+        return;
+      }
+      const items = ExamLinks.getItems(t);
+      if(!items.length){
+        panel.innerHTML = `<div class="exam-panel">📋 سيظهر هنا محتوى فروض واختبارات هذا الفصل عند رفعه من الأستاذ/المشرف.</div>`;
+        return;
+      }
+      panel.innerHTML = `<div class="zoom-docs-row" style="flex-direction:column;align-items:stretch;gap:10px">${
+        items.map(it=>
+          `<a class="zoom-doc-btn" href="${escZoomText(it.link)}" target="_blank" rel="noopener">📝 ${escZoomText(it.title || 'فتح الفرض/الاختبار')}</a>`
+        ).join('')
+      }</div>`;
     }
     tabsWrap.querySelectorAll('.exam-tab').forEach(tab=>{
       tab.addEventListener('click', ()=>{
@@ -2684,7 +2747,18 @@ async function renderAdminPanel(){
     trimestersBody += `<div class="lesson-row"><div class="lr-text"><div class="lr-title">${t.l}</div></div>
       <button class="al-key" style="width:auto;padding:6px 14px" data-toggle-trimester="${t.k}">${open?'🔓 مفتوح — اضغط للإغلاق':'🔒 مغلق — اضغط للفتح'}</button></div>`;
   });
-  trimestersBody += `</div>`;
+  trimestersBody += `</div>
+    <div class="note" style="margin-top:12px">
+      <b>📢 إشعار فرض/اختبار جديد</b><br>
+      عند فتح فصل مغلق حديثًا يُرسَل إشعار تلقائيًا لكل التلاميذ. أما إن كان الفصل مفتوحًا أصلًا
+      ورفعتَ فرضًا أو اختبارًا جديدًا داخل مجلده على GitHub، استخدم الزر أدناه لإعلام التلاميذ به فورًا
+      دون الحاجة لإغلاق الفصل وإعادة فتحه.
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <input type="text" id="newExamNotifyName" placeholder="مثال: فرض المحروسة الأول — الفصل الثاني"
+               style="flex:1;min-width:160px;padding:8px 10px;border-radius:10px;border:1.3px solid var(--gold-3);font-family:inherit">
+        <button type="button" class="al-key" style="width:auto;padding:8px 16px" id="sendExamNotifyBtn">📢 إرسال إشعار</button>
+      </div>
+    </div>`;
 
   let situationsBody = `<div class="lesson-list">`;
   (window.SITU_PRACTICE || []).forEach(seg=>{
@@ -2720,6 +2794,16 @@ async function renderAdminPanel(){
       </div>
     </div>`;
 
+  /* زر بارز لإدارة روابط الفروض والاختبارات — موحّدة لكل الأفواج، بنفس أسلوب رفع روابط الزوم */
+  const examLinksManageCard = `
+    <div class="home-card-wide zoom-manage-card" id="examLinksManageBtn" style="margin-bottom:16px;cursor:pointer">
+      <div class="hc-icon-wrap" style="background:linear-gradient(150deg,#F0E6D6,#D8AE52)">📝</div>
+      <div>
+        <div class="hc-title">إدارة روابط الفروض والاختبارات</div>
+        <div class="hc-sub">أضف/حدّث روابط الفصول الثلاثة — رابط واحد موحّد لكل التلاميذ</div>
+      </div>
+    </div>`;
+
   /* زر لفتح محادثة بوت تيليجرام مباشرة — هناك تصل حلول التمارين التي يرسلها التلاميذ */
   const solutionsCard = `
     <div class="home-card-wide zoom-manage-card" id="solutionsBotBtn" style="margin-bottom:16px;cursor:pointer">
@@ -2732,6 +2816,7 @@ async function renderAdminPanel(){
 
   wrap.innerHTML =
     zoomManageCard +
+    examLinksManageCard +
     solutionsCard +
     adminAccordionHTML('pending', `⏳ طلبات الانتظار <span class="aa-badge">${pending.length}</span>`, pendingBody) +
     adminAccordionHTML('approved', `👥 التلاميذ المقبولون <span class="aa-badge">${totalStudents}</span>`, approvedBody) +
@@ -2747,6 +2832,11 @@ async function renderAdminPanel(){
   document.getElementById('zoomManageBtn').addEventListener('click', ()=>{
     if(window.SoundFX) SoundFX.click();
     openZoomManagerModal();
+  });
+
+  document.getElementById('examLinksManageBtn').addEventListener('click', ()=>{
+    if(window.SoundFX) SoundFX.click();
+    openExamLinksManagerModal();
   });
 
   document.getElementById('solutionsBotBtn').addEventListener('click', ()=>{
@@ -2825,9 +2915,40 @@ async function renderAdminPanel(){
   wrap.querySelectorAll('[data-toggle-trimester]').forEach(b=> b.addEventListener('click', async ()=>{
     const k = b.getAttribute('data-toggle-trimester');
     const open = Locks.isTrimesterOpen(k);
-    await Locks.setTrimester(k, !open);
+    const labels = {t1:'الفصل الأول', t2:'الفصل الثاني', t3:'الفصل الثالث'};
+    const label = labels[k] || 'فروض واختبارات';
+
+    /* فتح الفصل مع إرسال إشعار فوري للتلاميذ بوجود فروض/اختبارات جديدة متاحة */
+    if(!open && typeof LocksEnhanced !== 'undefined' && LocksEnhanced.setTrimesterWithNotification){
+      await LocksEnhanced.setTrimesterWithNotification(k, true, label);
+    } else {
+      try{
+        await Locks.setTrimester(k, !open);
+      }catch(error){
+        console.error('فشل تحديث حالة الفصل (تحقق من قواعد Firestore لمجموعة state):', error);
+        if(typeof showFbPermissionNotice === 'function') showFbPermissionNotice('locks');
+        alert('تعذّر حفظ حالة الفصل في قاعدة البيانات. راجع التنبيه الظاهر أعلى الصفحة.');
+      }
+    }
     renderAdminPanel();
   }));
+  const sendExamNotifyBtn = document.getElementById('sendExamNotifyBtn');
+  if(sendExamNotifyBtn){
+    sendExamNotifyBtn.addEventListener('click', async ()=>{
+      const input = document.getElementById('newExamNotifyName');
+      const name = (input.value || '').trim();
+      if(!name){ alert('يرجى كتابة اسم الفرض أو الاختبار أولًا.'); return; }
+      sendExamNotifyBtn.disabled = true;
+      sendExamNotifyBtn.textContent = '⏳ جارٍ الإرسال...';
+      const sent = typeof NotificationsSystem !== 'undefined'
+        ? await NotificationsSystem.addNewContentAlert('exam', name, 'متاح الآن للتلاميذ')
+        : false;
+      sendExamNotifyBtn.disabled = false;
+      sendExamNotifyBtn.textContent = '📢 إرسال إشعار';
+      if(sent){ input.value = ''; alert('تم إرسال الإشعار بنجاح لجميع التلاميذ.'); }
+      else { alert('تعذّر إرسال الإشعار. تحقق من اتصال Firebase وقواعد Firestore.'); }
+    });
+  }
   document.getElementById('toggleIrabBtn').addEventListener('click', async ()=>{
     const open = Locks.isIrabOpen();
     try{
@@ -3052,6 +3173,158 @@ function renderZoomManagerForm(overlay, lesson){
 }
 
 /* =========================================================================================
+   نافذة "إدارة روابط الفروض والاختبارات" — منبثقة مستقلة من لوحة تحكم الأستاذ
+   بخلاف نافذة حصص الزوم، لا يوجد هنا اختيار درس ولا تكرار لكل فوج: ثلاثة أقسام فقط
+   (الفصل الأول/الثاني/الثالث)، وكل فصل يحوي قائمة قابلة للتكرار من عناصر {عنوان + رابط}،
+   لأن الفرض/الاختبار يخصّ كل التلاميذ معًا بغضّ النظر عن فوجهم.
+   ========================================================================================= */
+const EXAM_LINK_TRIMESTERS = [
+  { key:'t1', label:'📘 الفصل الأول' },
+  { key:'t2', label:'📗 الفصل الثاني' },
+  { key:'t3', label:'📙 الفصل الثالث' }
+];
+
+/* يضيف صفًّا جديدًا (عنوان + رابط + زر حذف) داخل حاوية عناصر فصل معيّن */
+function addExamLinkRow(container, title, link){
+  const row = document.createElement('div');
+  row.className = 'zoom-link-row exam-link-row';
+  row.innerHTML = `
+    <input type="text" class="zoom-form-input exam-link-title" placeholder="عنوان الفرض/الاختبار (مثال: الفرض الأول)" value="${escZoomText(title||'')}">
+    <input type="text" class="zoom-form-input exam-link-url" placeholder="https://…" value="${escZoomText(link||'')}">
+    <button type="button" class="zoom-link-remove-btn" title="حذف هذا العنصر">✕</button>`;
+  row.querySelector('.zoom-link-remove-btn').addEventListener('click', ()=>{
+    if(window.SoundFX) SoundFX.click();
+    row.remove();
+  });
+  container.appendChild(row);
+}
+
+function openExamLinksManagerModal(){
+  if(!fbReady){
+    alert('Firebase غير مفعّل. لا يمكن حفظ روابط الفروض والاختبارات بدونه.');
+    return;
+  }
+  const overlay = document.createElement('div');
+  overlay.className = 'zoom-modal-overlay';
+  overlay.innerHTML = `
+    <div class="zoom-modal-popup">
+      <div class="zoom-modal-header">
+        <div class="zoom-modal-title">📝 إدارة روابط الفروض والاختبارات</div>
+        <div class="zoom-modal-subtitle">موحّدة لجميع الأفواج — نفس الرابط يظهر لكل التلاميذ</div>
+        <button type="button" class="zoom-modal-close" id="examLinksModalCloseBtn">✕</button>
+      </div>
+      <div class="zoom-modal-body" id="examLinksModalBody"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e)=>{ if(e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#examLinksModalCloseBtn').addEventListener('click', ()=> overlay.remove());
+
+  renderExamLinksManagerForm(overlay);
+}
+
+async function renderExamLinksManagerForm(overlay){
+  const body = overlay.querySelector('#examLinksModalBody');
+  body.innerHTML = '<div class="sf-label">جاري التحميل…</div>';
+
+  await ExamLinks.load();
+  await Locks.load();
+
+  const sectionsHtml = EXAM_LINK_TRIMESTERS.map(t=> `
+    <div class="zoom-form-divider"><span>${t.label}</span></div>
+    <div class="zoom-form-group">
+      <div class="zoom-link-rows" id="examRows-${t.key}"></div>
+      <button type="button" class="zoom-add-link-btn" data-exam-add="${t.key}">+ إضافة فرض/اختبار آخر</button>
+    </div>`).join('');
+
+  body.innerHTML = `
+    <div class="zoom-form-note">أضف عنوانًا ورابطًا لكل فرض أو اختبار جديد (رابط تيليجرام، PDF، أو أي رابط آخر) — بلا تكرار لكل فوج، فالرابط نفسه يظهر لكل التلاميذ فور فتح الفصل.
+      <br>📨 روابط تيليجرام (مثل <bdi style="direction:ltr;display:inline-block">t.me/c/…</bdi>) تفتح للتلميذ في تطبيق تيليجرام مباشرة.
+      <br>🔔 عند الضغط على "حفظ الروابط"، يصل إشعار فوري تلقائيًا لكل التلاميذ بكل فرض/اختبار جديد أضفته — دون أي خطوة إضافية.
+      <br>💡 لا تنسَ فتح الفصل من قسم "فتح/إغلاق الفروض والاختبارات" حتى تصبح الروابط قابلة للفتح فعليًا عند التلميذ.</div>
+    ${sectionsHtml}
+    <button type="button" class="zoom-save-btn" id="examLinksSaveBtn">💾 حفظ الروابط</button>
+    <div class="zoom-save-feedback" id="examLinksSaveFeedback"></div>`;
+
+  /* تعبئة كل قسم بعناصره الحالية (عنصر واحد فارغ افتراضيًا إن لم يكن هناك شيء محفوظ بعد) */
+  const originalItemsByTrimester = {};
+  EXAM_LINK_TRIMESTERS.forEach(t=>{
+    const container = body.querySelector(`#examRows-${t.key}`);
+    const items = ExamLinks.getItems(t.key);
+    originalItemsByTrimester[t.key] = items; /* نسخة أصلية قبل أي تعديل، لمقارنتها لاحقًا واكتشاف العناصر الجديدة فقط */
+    if(items.length){
+      items.forEach(it=> addExamLinkRow(container, it.title, it.link));
+    } else {
+      addExamLinkRow(container, '', '');
+    }
+  });
+
+  body.querySelectorAll('[data-exam-add]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(window.SoundFX) SoundFX.click();
+      const containerId = 'examRows-' + btn.getAttribute('data-exam-add');
+      addExamLinkRow(body.querySelector('#'+containerId), '', '');
+    });
+  });
+
+  body.querySelector('#examLinksSaveBtn').addEventListener('click', async ()=>{
+    const saveBtn = body.querySelector('#examLinksSaveBtn');
+    const feedback = body.querySelector('#examLinksSaveFeedback');
+
+    saveBtn.disabled = true; saveBtn.textContent = '⏳ جاري الحفظ…';
+    /* عناصر جديدة فعلاً (لم تكن موجودة قبل هذا الحفظ) لكل فصل — لإرسال إشعار فوري بكل واحد منها،
+       نقارن حسب الرابط لأنه المعرّف الفعلي للعنصر (قد يتغيّر العنوان لعنصر قديم دون أن يكون "جديدًا") */
+    const newlyAddedItems = []; // { title, trimesterLabel }
+    try{
+      for(const t of EXAM_LINK_TRIMESTERS){
+        const container = body.querySelector(`#examRows-${t.key}`);
+        const rows = Array.from(container.querySelectorAll('.exam-link-row'));
+        const items = rows.map(row=> ({
+          title: row.querySelector('.exam-link-title').value.trim(),
+          link:  row.querySelector('.exam-link-url').value.trim()
+        })).filter(it=> it.link);
+
+        const before = originalItemsByTrimester[t.key] || [];
+        items.forEach(it=>{
+          if(!before.some(b=> b.link === it.link)){
+            newlyAddedItems.push({ title: it.title || 'فرض/اختبار جديد', trimesterKey: t.key, trimesterLabel: t.label.replace(/^\S+\s/, '') });
+          }
+        });
+
+        const res = await ExamLinks.setItems(t.key, items);
+        if(!res || !res.ok) throw new Error((res && res.reason) || 'unknown');
+      }
+
+      /* إرسال إشعار فوري ومباشر لكل تلميذ عن كل فرض/اختبار جديد أُضيف الآن — دون أي خطوة يدوية إضافية.
+         الصياغة تعكس فعليًا ما إذا كان فصله مفتوحًا للتلاميذ أم لا، حتى لا يظنّ التلميذ أنه متاح
+         بينما الفصل ما زال مغلقًا. */
+      let notifiedCount = 0;
+      if(newlyAddedItems.length && typeof NotificationsSystem !== 'undefined'){
+        for(const item of newlyAddedItems){
+          const isOpen = Locks.isTrimesterOpen(item.trimesterKey);
+          const details = isOpen
+            ? `${item.trimesterLabel} — متاح الآن للتلاميذ`
+            : `${item.trimesterLabel} — سيصبح متاحًا فور فتح الفصل من الأستاذ`;
+          const sent = await NotificationsSystem.addNewContentAlert('exam', item.title, details);
+          if(sent) notifiedCount++;
+        }
+      }
+
+      if(window.SoundFX) SoundFX.correct();
+      feedback.textContent = newlyAddedItems.length
+        ? `✅ تم حفظ الروابط، وأُرسل إشعار فوري بـ${notifiedCount} فرض/اختبار جديد لكل التلاميذ.`
+        : '✅ تم حفظ الروابط بنجاح — أصبحت متاحة فورًا للتلاميذ.';
+      feedback.style.color = 'var(--sage-deep,#3F6350)';
+    }catch(error){
+      console.error('فشل حفظ روابط الفروض والاختبارات (تحقق من قواعد Firestore لمجموعة state):', error);
+      if(typeof showFbPermissionNotice === 'function') showFbPermissionNotice('examLinks');
+      feedback.textContent = '⚠️ تعذّر حفظ الروابط. راجع التنبيه الظاهر أعلى الصفحة.';
+      feedback.style.color = '#b5432a';
+    }
+    saveBtn.disabled = false; saveBtn.textContent = '💾 حفظ الروابط';
+  });
+}
+
+/* =========================================================================================
    نافذة تسجيل دخول التلميذ (شاشة ترحيب + نموذج برقم الهاتف مع استرجاع المعلومات المحفوظة)
    ========================================================================================= */
 function setupLoginModal(){
@@ -3197,6 +3470,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     if(document.getElementById('screen-lessons').style.display !== 'none') renderLessonsScreen();
     if(document.getElementById('screen-situation').style.display !== 'none') renderSituationPracticeTabs();
     if(document.getElementById('screen-irab').style.display !== 'none') renderIrabScreen();
+    if(document.getElementById('screen-exams').style.display !== 'none') renderExamsScreen();
     updateIrabHomeCardLock();
   });
   Locks.load().then(updateIrabHomeCardLock);
@@ -3214,6 +3488,15 @@ document.addEventListener('DOMContentLoaded', async ()=>{
       const lesson = window.LESSONS.find(l=>l.id===window.currentOpenLessonId);
       if(lesson) renderZoomGroupsBox(lesson);
     }
+  });
+
+  /* روابط الفروض والاختبارات: تحميل أولي، ثم استماع لحظي — أي رابط جديد يضيفه الأستاذ
+     ينعكس فورًا في شاشة الفروض والاختبارات المفتوحة حاليًا عند التلميذ */
+  ExamLinks.load().then(()=>{
+    if(document.getElementById('screen-exams').style.display !== 'none') renderExamsScreen();
+  });
+  ExamLinks.listen(()=>{
+    if(document.getElementById('screen-exams').style.display !== 'none') renderExamsScreen();
   });
 
   const resumed = await Student.resume();

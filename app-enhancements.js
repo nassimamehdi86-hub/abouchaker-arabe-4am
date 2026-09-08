@@ -19,7 +19,8 @@ function showFbPermissionNotice(context){
   const labels = {
     notifications: 'الإشعارات وجرس التنبيهات',
     locks: 'حالة فتح/إغلاق الدروس',
-    zoomLinks: 'روابط حصص الزوم للأفواج'
+    zoomLinks: 'روابط حصص الزوم للأفواج',
+    examLinks: 'روابط الفروض والاختبارات'
   };
   el.innerHTML += `<div class="note" style="margin:10px 0;border-color:#c0392b">
     <b>⚠️ تعذّر الاتصال بقاعدة البيانات لتحديث: ${labels[context] || context}.</b><br>
@@ -59,6 +60,38 @@ const LocksEnhanced = {
       const sent = await NotificationsSystem.addNewContentAlert('lesson', lessonTitle, 'متاح الآن للتلاميذ');
       if (!sent) {
         alert('تم فتح الدرس بنجاح، لكن تعذّر إرسال إشعار به للتلاميذ. راجع التنبيه أعلى الصفحة.');
+      }
+    }
+    return true;
+  },
+
+  /* تحديث setTrimester لإضافة إشعار عند فتح فصل الفروض والاختبارات */
+  async setTrimesterWithNotification(t, open, trimesterLabel) {
+    if (!fbReady) return;
+
+    const previousValue = Locks.data.trimesters ? Locks.data.trimesters[t] : undefined;
+    Locks.data.trimesters = Locks.data.trimesters || {};
+    Locks.data.trimesters[t] = !!open;
+    try {
+      await db.collection('state').doc('locks').set(Locks.data, { merge: true });
+    } catch (error) {
+      /* تراجع عن التحديث المحلي لأن الكتابة الحقيقية فشلت */
+      Locks.data.trimesters[t] = previousValue;
+      console.error('فشل فتح/إغلاق فصل الفروض والاختبارات (تحقق من قواعد Firestore لمجموعة state):', error);
+      if (typeof showFbPermissionNotice === 'function') showFbPermissionNotice('locks');
+      alert('تعذّر حفظ حالة الفصل في قاعدة البيانات. راجع التنبيه الظاهر أعلى الصفحة لمعرفة السبب.');
+      return false;
+    }
+
+    /* إذا تم الفتح، أرسل إشعارًا فوريًا بأن فروضًا/اختبارات جديدة صارت متاحة */
+    if (open && NotificationsSystem) {
+      const sent = await NotificationsSystem.addNewContentAlert(
+        'exam',
+        trimesterLabel,
+        'الفروض والاختبارات صارت متاحة الآن'
+      );
+      if (!sent) {
+        alert('تم فتح الفصل بنجاح، لكن تعذّر إرسال إشعار به للتلاميذ. راجع التنبيه أعلى الصفحة.');
       }
     }
     return true;
