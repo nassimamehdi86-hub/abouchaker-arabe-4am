@@ -301,7 +301,7 @@
     background:linear-gradient(160deg, #FFFDF7, #F3ECD5);
     border:1.6px solid var(--gold-3); box-shadow:0 12px 26px rgba(169,127,42,0.16);
   }
-  .admin-login-mock .al-icon{ font-size:30px; margin-bottom:6px; }
+  
   .admin-login-mock .al-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:16px; color:var(--ink); margin-bottom:4px; }
   .admin-login-mock .al-sub{ font-size:11px; color:var(--ink-soft); margin-bottom:14px; }
   .al-pin-dots{ display:flex; justify-content:center; gap:10px; margin-bottom:16px; }
@@ -513,17 +513,92 @@
     box-shadow:0 6px 14px rgba(169,127,42,0.08), inset 0 1px 0 rgba(255,255,255,0.7);
   }
   .lesson-row .lr-num{
-    flex-shrink:0; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    background:linear-gradient(135deg, var(--gold-1), var(--gold-2)); color:#33260A; font-weight:800; font-size:13px;
-    border:1px solid var(--gold-3); position:relative; z-index:2;
+    position:relative; overflow:hidden;
+    flex-shrink:0; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(150deg,#FBEDC3,#E7C878); color:#33260A; font-weight:800; font-size:13px;
+    border:1.3px solid rgba(122,82,22,0.55); z-index:2;
+    box-shadow:
+      0 4px 8px rgba(122,82,22,0.28),
+      0 1px 2px rgba(80,52,10,0.22),
+      inset 0 1.5px 1.5px rgba(255,255,255,0.8),
+      inset 0 -3px 4px rgba(90,58,12,0.35);
   }
+  .lesson-row .lr-num::before{
+    content:""; position:absolute; inset:0; opacity:0.5; mix-blend-mode:multiply; pointer-events:none; border-radius:50%;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cg fill='none' stroke='%23A9772A' stroke-width='0.7' opacity='0.65'%3E%3Cpath d='M11 1 L21 11 L11 21 L1 11 Z'/%3E%3Cpath d='M11 1 L11 21 M1 11 L21 11'/%3E%3Ccircle cx='11' cy='11' r='3.4'/%3E%3Cpath d='M4.5 4.5 L7.5 7.5 M17.5 4.5 L14.5 7.5 M4.5 17.5 L7.5 14.5 M17.5 17.5 L14.5 14.5'/%3E%3C/g%3E%3C/svg%3E");
+    background-size:12px 12px;
+  }
+  .lesson-row .lr-num::after{
+    content:""; position:absolute; top:0; left:0; right:0; height:46%; border-radius:50%;
+    background:linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0)); pointer-events:none;
+  }
+  .lesson-row .lr-num .lr-num-text{ position:relative; z-index:1; }
+
+  /* =========================================================================================
+     أيقونات ميدالية ذهبية موحّدة (إطار مجسّم + نسيج أرابيسك) لبقية صفحات التطبيق:
+     نوافذ الدخول، بطاقات إعراب الجمل، صندوق تيليجرام، عناوين لوحة الترتيب، قارئ القصص، إلخ.
+     ========================================================================================= */
+  .al-icon, .il-icon, .zoom-telegram-icon, .story-reader-icon,
+  .lb-section-icon, .story-list-icon, .situ-panel-icon,
+  .lb-card-icon, .lb-card-num{
+    position:relative; overflow:hidden; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    border:1.3px solid rgba(122,82,22,0.55); background:linear-gradient(150deg,#FBEDC3,#E7C878);
+    box-shadow:
+      0 5px 10px rgba(122,82,22,0.28),
+      0 1.5px 2.5px rgba(80,52,10,0.24),
+      inset 0 1.5px 2px rgba(255,255,255,0.8),
+      inset 0 -3px 5px rgba(90,58,12,0.35);
+  }
+  .al-icon::before, .il-icon::before, .zoom-telegram-icon::before, .story-reader-icon::before,
+  .lb-section-icon::before, .story-list-icon::before, .situ-panel-icon::before,
+  .lb-card-icon::before, .lb-card-num::before{
+    content:""; position:absolute; inset:0; opacity:0.5; mix-blend-mode:multiply; pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cg fill='none' stroke='%23A9772A' stroke-width='0.7' opacity='0.65'%3E%3Cpath d='M11 1 L21 11 L11 21 L1 11 Z'/%3E%3Cpath d='M11 1 L11 21 M1 11 L21 11'/%3E%3Ccircle cx='11' cy='11' r='3.4'/%3E%3Cpath d='M4.5 4.5 L7.5 7.5 M17.5 4.5 L14.5 7.5 M4.5 17.5 L7.5 14.5 M17.5 17.5 L14.5 14.5'/%3E%3C/g%3E%3C/svg%3E");
+  }
+  .al-icon::after, .il-icon::after, .zoom-telegram-icon::after, .story-reader-icon::after,
+  .lb-section-icon::after, .story-list-icon::after, .situ-panel-icon::after,
+  .lb-card-icon::after, .lb-card-num::after{
+    content:""; position:absolute; top:0; left:0; right:0; height:46%;
+    background:linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0)); pointer-events:none;
+  }
+  .al-icon .icon-glyph, .il-icon .icon-glyph, .zoom-telegram-icon .icon-glyph, .story-reader-icon .icon-glyph,
+  .lb-section-icon .icon-glyph, .story-list-icon .icon-glyph, .situ-panel-icon .icon-glyph,
+  .lb-card-icon .icon-glyph, .lb-card-num .icon-glyph{
+    position:relative; z-index:1; filter:drop-shadow(0 2px 2px rgba(60,38,8,0.35));
+  }
+
+  /* أحجام وتموضع كل أيقونة بحسب مكانها الخاص */
+  .al-icon{ width:66px; height:66px; border-radius:20px; font-size:32px; margin:0 auto 12px; }
+  .al-icon::before{ background-size:16px 16px; }
+  .il-icon{ width:54px; height:54px; border-radius:15px; font-size:26px; margin-left:2px; }
+  .il-icon::before{ background-size:13px 13px; }
+  .zoom-telegram-icon{ width:64px; height:64px; border-radius:50%; font-size:30px; margin:0 auto 14px; }
+  .zoom-telegram-icon::before{ background-size:16px 16px; }
+  .story-reader-icon{ width:56px; height:56px; border-radius:50%; font-size:26px; }
+  .story-reader-icon::before{ background-size:14px 14px; }
+  .lb-section-icon{ width:32px; height:32px; border-radius:10px; font-size:16px; }
+  .lb-section-icon::before{ background-size:10px 10px; }
+  .story-list-icon{ width:32px; height:32px; border-radius:50%; font-size:15px; }
+  .story-list-icon::before{ background-size:10px 10px; }
+  .situ-panel-icon{ width:32px; height:32px; border-radius:10px; font-size:16px; }
+  .situ-panel-icon::before{ background-size:10px 10px; }
+  .lb-lesson-card .lb-card-icon{ width:38px; height:38px; border-radius:50%; font-size:18px; margin:0 auto; }
+  .lb-lesson-card .lb-card-icon::before{ background-size:10px 10px; }
+  .lb-lesson-card .lb-card-num{
+    position:absolute; top:8px; right:8px; width:22px; height:22px; border-radius:50%; font-size:10px;
+    color:#33260A; font-weight:800; border-width:1px;
+  }
+  .lb-lesson-card .lb-card-num::before{ background-size:8px 8px; opacity:0.4; }
+
   .lesson-row .lr-text{ flex:1; position:relative; z-index:2; }
   .lesson-row .lr-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:17px; color:var(--ink); }
   .lesson-row .lr-sub{ font-size:10.5px; color:var(--ink-soft); margin-top:3px; font-weight:600; }
   .lesson-row .lr-status{ flex-shrink:0; font-size:18px; position:relative; z-index:2; }
   .lesson-row.locked{ background:linear-gradient(150deg, #EFEADA, #E7E1CC); filter:saturate(.75); }
   .lesson-row.locked .lr-title, .lesson-row.locked .lr-sub{ color:rgba(34,53,43,0.55); }
-  .lesson-row.locked .lr-num{ background:var(--locked); color:rgba(34,53,43,0.55); border-color:rgba(169,127,42,0.3); }
+  .lesson-row.locked .lr-num{ background:var(--locked); color:rgba(34,53,43,0.55); border-color:rgba(169,127,42,0.3); box-shadow:none; }
+  .lesson-row.locked .lr-num::before, .lesson-row.locked .lr-num::after{ opacity:0.15; }
   .lesson-row.placeholder{ border-style:dashed; background:rgba(255,255,255,0.4); }
 
   /* ============ تبويبات فرعية داخل شاشة الدروس (حسب تصنيف الفهرس) ============ */
@@ -625,7 +700,7 @@
   .admin-accordion-header[aria-expanded="true"] .aa-chevron{ transform:rotate(180deg); }
 
   /* أيقونة صغيرة مجسّمة بنفس طراز بطاقات الشاشة الرئيسية، لعناوين أقسام لوحة تحكم الأستاذ */
-  .admin-accordion-header .aa-icon-wrap{
+  .aa-icon-wrap{
     position:relative; overflow:hidden; flex-shrink:0;
     width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center;
     border:1.2px solid rgba(122,82,22,0.5); background:linear-gradient(150deg,#FBEDC3,#E7C878);
@@ -635,16 +710,16 @@
       inset 0 1.5px 1.5px rgba(255,255,255,0.8),
       inset 0 -3px 4px rgba(90,58,12,0.35);
   }
-  .admin-accordion-header .aa-icon-wrap::before{
+  .aa-icon-wrap::before{
     content:""; position:absolute; inset:0; opacity:0.55; mix-blend-mode:multiply; pointer-events:none;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cg fill='none' stroke='%23A9772A' stroke-width='0.7' opacity='0.65'%3E%3Cpath d='M11 1 L21 11 L11 21 L1 11 Z'/%3E%3Cpath d='M11 1 L11 21 M1 11 L21 11'/%3E%3Ccircle cx='11' cy='11' r='3.4'/%3E%3Cpath d='M4.5 4.5 L7.5 7.5 M17.5 4.5 L14.5 7.5 M4.5 17.5 L7.5 14.5 M17.5 17.5 L14.5 14.5'/%3E%3C/g%3E%3C/svg%3E");
     background-size:12px 12px;
   }
-  .admin-accordion-header .aa-icon-wrap::after{
+  .aa-icon-wrap::after{
     content:""; position:absolute; top:0; left:0; right:0; height:46%;
     background:linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0)); pointer-events:none;
   }
-  .admin-accordion-header .aa-svg-icon{ position:relative; z-index:1; width:72%; height:72%; filter:drop-shadow(0 2px 2px rgba(60,38,8,0.4)); }
+  .aa-svg-icon{ position:relative; z-index:1; width:72%; height:72%; filter:drop-shadow(0 2px 2px rgba(60,38,8,0.4)); }
   .admin-accordion-body-wrap{
     display:grid; grid-template-rows:0fr; transition:grid-template-rows .32s ease;
   }
@@ -659,7 +734,7 @@
     font-weight:700; font-size:17px; color:var(--ink); margin-bottom:6px;
     border-bottom:2px solid var(--gold-3); padding-bottom:8px;
   }
-  .lb-section-icon{ font-size:19px; }
+  
 
   /* ============ لوحة الشرف العامة وترتيب الفروض والاختبارات (صفوف مجمّعة) ============ */
   .lb-hall-list{ display:flex; flex-direction:column; gap:10px; margin-top:14px; }
@@ -700,13 +775,6 @@
     gap:6px; transition:transform .15s ease;
   }
   .lb-lesson-card:active{ transform:translateY(3px); }
-  .lb-lesson-card .lb-card-num{
-    position:absolute; top:8px; right:8px; width:22px; height:22px; border-radius:50%;
-    background:linear-gradient(135deg, var(--gold-1), var(--gold-2)); color:#33260A;
-    font-weight:800; font-size:10px; display:flex; align-items:center; justify-content:center;
-    border:1px solid var(--gold-3);
-  }
-  .lb-lesson-card .lb-card-icon{ font-size:22px; }
   .lb-lesson-card .lb-card-title{
     font-family:'Aref Ruqaa', serif; font-weight:700; font-size:12.5px; color:var(--ink);
     line-height:1.35;
@@ -827,7 +895,7 @@
     display:flex; align-items:center; gap:9px; margin-bottom:14px; padding-bottom:10px;
     border-bottom:2px solid rgba(169,127,42,0.3);
   }
-  .situ-panel-icon{ font-size:21px; }
+  
   .situ-panel-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:16.5px; color:var(--ink); }
 
   .situ-card{
@@ -858,7 +926,7 @@
     box-shadow:0 6px 14px rgba(169,127,42,0.08); transition:.18s; -webkit-tap-highlight-color:transparent;
   }
   .story-list-item:active{ transform:scale(0.98); }
-  .story-list-icon{ font-size:24px; flex-shrink:0; }
+  
   .story-list-title{ flex:1; font-family:'Aref Ruqaa', serif; font-weight:700; font-size:15.5px; color:var(--ink); }
   .story-list-arrow{ font-size:18px; color:var(--gold-3); font-weight:800; }
 
@@ -873,7 +941,7 @@
     padding:20px 18px 24px; box-shadow:0 10px 24px rgba(169,127,42,0.14), inset 0 1px 0 rgba(255,255,255,0.8);
   }
   .story-reader-head{ display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; margin-bottom:14px; }
-  .story-reader-icon{ font-size:40px; }
+  
   .story-reader-title{ margin:0; font-family:'Aref Ruqaa', serif; font-weight:700; font-size:22px; color:var(--ink); }
 
   .story-listen-btn{
@@ -941,7 +1009,7 @@
     border:1.6px solid var(--gold-3); box-shadow:0 12px 26px rgba(169,127,42,0.25), inset 0 1px 0 rgba(255,255,255,0.5);
     cursor:pointer; margin-bottom:14px;
   }
-  .irab-launch .il-icon{ font-size:32px; flex-shrink:0; }
+  
   .irab-launch .il-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:18px; color:#3A2A0A; }
   .irab-launch .il-sub{ font-size:11.5px; color:#4E3A10; margin-top:4px; font-weight:600; line-height:1.7; }
   .irab-note{
@@ -2088,7 +2156,7 @@
   text-align:center; padding:26px 18px; border-radius:16px;
   background:linear-gradient(150deg, #FFFDF7, #F3ECD5); border:1.6px solid var(--gold-3);
 }
-.zoom-telegram-icon{ font-size:34px; margin-bottom:14px; }
+
 .zoom-telegram-btn{
   display:inline-flex; align-items:center; gap:8px; font-family:'Aref Ruqaa', serif; font-weight:700; font-size:15px;
   color:#33260A; background:linear-gradient(135deg, var(--gold-1), var(--gold-2)); border:1.6px solid var(--gold-3);

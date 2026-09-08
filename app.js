@@ -1151,7 +1151,7 @@ function renderLessonsScreen(){
         const pending = l.locked === 'pending';
         const locked = pending || Locks.isLessonLocked(l.id);
         html += `<div class="lesson-row ${locked?'locked':''} ${pending?'placeholder':''}" data-lesson="${l.id}">
-          <div class="lr-num">${String(l.order).padStart(2,'0')}</div>
+          <div class="lr-num"><span class="lr-num-text">${String(l.order).padStart(2,'0')}</span></div>
           <div class="lr-text">
             <div class="lr-title">${l.title}</div>
             <div class="lr-sub">${pending ? 'قريبًا — بانتظار المحتوى' : (l.subtitle||'')}</div>
@@ -1301,7 +1301,7 @@ function buildZoomEmbedHTML(url){
      دخوله في تيليجرام أصلاً). لذلك نعرض بطاقة أنيقة بزر فتح مباشر بدل إطار سيبقى فارغًا/معطوبًا. */
   if(/(?:^|\/\/)(?:www\.)?(?:t|telegram)\.me\//i.test(clean)){
     return `<div class="zoom-telegram-box">
-      <div class="zoom-telegram-icon">📨</div>
+      <div class="zoom-telegram-icon"><span class="icon-glyph">📨</span></div>
       <a class="zoom-telegram-btn" href="${escZoomText(clean)}" target="_blank" rel="noopener">▶️ فتح الحصة على تيليجرام</a>
     </div>`;
   }
@@ -2237,7 +2237,7 @@ function renderSituationPracticePanel(){
   panel.innerHTML = `
     <div class="situ-panel c-${seg.color || 'blue'}">
       <div class="situ-panel-head">
-        <span class="situ-panel-icon">${seg.icon}</span>
+        <span class="situ-panel-icon"><span class="icon-glyph">${seg.icon}</span></span>
         <span class="situ-panel-title">المقطع ${seg.num}: ${seg.title}</span>
       </div>
       ${(seg.situations||[]).map(sit => `
@@ -2266,14 +2266,14 @@ function renderStoryTitlesList(seg){
   panel.innerHTML = `
     <div class="situ-panel c-${seg.color || 'blue'}">
       <div class="situ-panel-head">
-        <span class="situ-panel-icon">${seg.icon}</span>
+        <span class="situ-panel-icon"><span class="icon-glyph">${seg.icon}</span></span>
         <span class="situ-panel-title">المقطع ${seg.num}: ${seg.title}</span>
       </div>
       <div class="story-hint">📖 اضغط على عنوان الوضعية لقراءتها كاملة</div>
       <div class="story-list">
         ${seg.stories.map(st => `
           <div class="story-list-item" data-story="${st.id}">
-            <span class="story-list-icon">${st.icon}</span>
+            <span class="story-list-icon"><span class="icon-glyph">${st.icon}</span></span>
             <span class="story-list-title">${st.title}</span>
             <span class="story-list-arrow">‹</span>
           </div>`).join('')}
@@ -2302,7 +2302,7 @@ function renderStoryReader(seg, story){
       <button type="button" class="story-back-btn" id="storyBackBtn">‹ رجوع إلى عناوين المقطع</button>
       <div class="story-reader">
         <div class="story-reader-head">
-          <span class="story-reader-icon">${story.icon}</span>
+          <span class="story-reader-icon"><span class="icon-glyph">${story.icon}</span></span>
           <h3 class="story-reader-title">${story.title}</h3>
         </div>
         <button type="button" class="story-listen-btn" id="storyListenBtn">🔊 استمع إلى الوضعية</button>
@@ -2437,10 +2437,10 @@ function renderIrabScreen(){
       return;
     }
     wrap.innerHTML = `
-      <div class="irab-launch" id="irabLaunch1"><div class="il-icon">📗</div><div>
+      <div class="irab-launch" id="irabLaunch1"><div class="il-icon"><span class="icon-glyph">📗</span></div><div>
         <div class="il-title">إعراب 101 جملة وجملة</div>
         <div class="il-sub">أجب شفهيًا عن كل جملة، وسأتحقق تلقائيًا من إعرابك</div></div></div>
-      <div class="irab-launch" id="irabLaunch2"><div class="il-icon">📙</div><div>
+      <div class="irab-launch" id="irabLaunch2"><div class="il-icon"><span class="icon-glyph">📙</span></div><div>
         <div class="il-title">الاختبار الشامل الثاني</div>
         <div class="il-sub">تدريبات إضافية على الجمل التي لها محلّ من الإعراب</div></div></div>
       <div id="irabEngineMount"></div>`;
@@ -2463,7 +2463,7 @@ function renderLeaderboardScreen(){
   wrap.innerHTML = `
     <div class="lb-section">
       <div class="lb-section-title-clickable" onclick="showOverallLeaderboardPopup()" style="cursor:pointer;">
-        <span class="lb-section-icon">🏅</span>
+        <span class="lb-section-icon"><span class="icon-glyph">🏅</span></span>
         <span>لوحة الشرف العامة</span>
         <span class="lb-popup-indicator">→</span>
       </div>
@@ -2472,7 +2472,7 @@ function renderLeaderboardScreen(){
 
     <div class="lb-section">
       <div class="lb-section-title-clickable" onclick="showExamsLeaderboardPopup()" style="cursor:pointer;">
-        <span class="lb-section-icon">📝</span>
+        <span class="lb-section-icon"><span class="icon-glyph">📝</span></span>
         <span>ترتيب الفروض والاختبارات</span>
         <span class="lb-popup-indicator">→</span>
       </div>
@@ -2480,7 +2480,7 @@ function renderLeaderboardScreen(){
     </div>
 
     <div class="lb-section">
-      <div class="lb-section-title"><span class="lb-section-icon">📚</span>ترتيب تمارين كل درس</div>
+      <div class="lb-section-title"><span class="lb-section-icon"><span class="icon-glyph">📚</span></span>ترتيب تمارين كل درس</div>
       <div class="sf-label">اختر درسًا لعرض ترتيب تمارينه الخاصة به فقط في نافذة منبثقة مستقلة (تظهر البطاقات فور توفر تمارين الدرس)</div>
       <div id="lbLessonGrid" class="lb-lesson-grid"></div>
     </div>`;
@@ -2492,7 +2492,7 @@ function renderLeaderboardScreen(){
     card.className = 'lb-lesson-card';
     card.innerHTML = `
       <div class="lb-card-num">${String(l.order).padStart(2,'0')}</div>
-      <div class="lb-card-icon">🏆</div>
+      <div class="lb-card-icon"><span class="icon-glyph">🏆</span></div>
       <div class="lb-card-title">${l.title}</div>`;
     card.addEventListener('click', ()=> showLeaderboardPopup(l));
     grid.appendChild(card);
@@ -2710,7 +2710,11 @@ const AA_ICONS = {
     <rect x="10" y="34" width="10" height="22" rx="2" fill="url(#hcGoldMetal)" stroke="#7A5216" stroke-width="1"/>
     <rect x="27" y="22" width="10" height="34" rx="2" fill="url(#hcSageGem)" stroke="#2E4A34" stroke-width="1"/>
     <rect x="44" y="10" width="10" height="46" rx="2" fill="url(#hcGoldDark)" stroke="#5C3D0F" stroke-width="1"/>
-    <circle cx="49" cy="10" r="4.4" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="0.8"/>`)
+    <circle cx="49" cy="10" r="4.4" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="0.8"/>`),
+  /* 🧑 تلميذ واحد — لصورة رمزية في بطاقات طلبات الانتظار وقوائم التلاميذ المقبولين */
+  singleStudent: aaIcon(`
+    <circle cx="32" cy="24" r="12" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="1.3"/>
+    <path d="M12 56 C12 40 20 33 32 33 C44 33 52 40 52 56 Z" fill="url(#hcGoldMetal)" stroke="#7A5216" stroke-width="1.3"/>`)
 };
 
 function adminAccordionHTML(id, titleHtml, bodyHtml){
@@ -2769,7 +2773,10 @@ async function renderAdminPanel(){
   } else {
     pendingBody = pending.map(p=>`
       <div class="stat-card" style="text-align:center">
-        <div class="sc-title" style="margin-bottom:10px">${p.fullName}</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px">
+          ${AA_ICONS.singleStudent}
+          <div class="sc-title">${p.fullName}</div>
+        </div>
         ${p.receiptImage
           ? `<img src="${p.receiptImage}" alt="وصل الدفع" style="max-width:100%;max-height:260px;border-radius:12px;border:1.4px solid var(--gold-3);margin-bottom:10px">`
           : `<div class="exam-panel" style="margin-bottom:10px">⚠️ لا توجد صورة وصل مرفَقة</div>`}
@@ -2789,7 +2796,7 @@ async function renderAdminPanel(){
     const pendingLesson = l.locked === 'pending';
     const open = !pendingLesson && !Locks.isLessonLocked(l.id);
     lessonsBody += `<div class="lesson-row ${pendingLesson?'placeholder':''}">
-      <div class="lr-num">${String(l.order).padStart(2,'0')}</div>
+      <div class="lr-num"><span class="lr-num-text">${String(l.order).padStart(2,'0')}</span></div>
       <div class="lr-text"><div class="lr-title">${l.title}</div></div>
       ${pendingLesson
         ? `<div class="lr-status">⏳ بلا محتوى بعد</div>`
@@ -2821,7 +2828,7 @@ async function renderAdminPanel(){
   (window.SITU_PRACTICE || []).forEach(seg=>{
     const open = !Locks.isSituationLocked(seg.key);
     situationsBody += `<div class="lesson-row">
-      <div class="lr-num">${String(seg.num).padStart(2,'0')}</div>
+      <div class="lr-num"><span class="lr-num-text">${String(seg.num).padStart(2,'0')}</span></div>
       <div class="lr-text"><div class="lr-title">${seg.icon} ${seg.title}</div></div>
       <button class="al-key" style="width:auto;padding:6px 14px" data-toggle-situation="${seg.key}">${open?'🔓 مفتوح — اضغط للإغلاق':'🔒 مغلق — اضغط للفتح'}</button>
     </div>`;
@@ -2945,7 +2952,7 @@ async function renderAdminPanel(){
     if(!students.length){ rowsWrap.innerHTML = `<div class="exam-panel">لا يوجد بعد أي تلميذ مقبول.</div>`; return; }
     rowsWrap.innerHTML = students.map((s,i)=>`
       <div class="lesson-row" data-student-name="${s.fullName}">
-        <div class="lr-num">${i+1}</div>
+        ${AA_ICONS.singleStudent}
         <div class="lr-text"><div class="lr-title">${s.fullName}</div></div>
         <div class="lr-status" id="perf-${s.id}" style="font-size:11px;font-weight:800;color:#5B6E62">…</div>
       </div>`).join('');
@@ -3133,7 +3140,7 @@ async function renderZoomManagerList(overlay){
   const rows = window.LESSONS.map(l=>{
     const has = ZoomLinks.hasAnyLink(l.id);
     return `<div class="lesson-row zoom-lesson-row" data-zoom-lesson="${l.id}">
-      <div class="lr-num">${String(l.order).padStart(2,'0')}</div>
+      <div class="lr-num"><span class="lr-num-text">${String(l.order).padStart(2,'0')}</span></div>
       <div class="lr-text"><div class="lr-title">${escZoomText(l.title)}</div></div>
       <div class="lr-status" title="${has?'توجد روابط محفوظة':'لا توجد روابط بعد'}">${has?'🎬':'➕'}</div>
     </div>`;
