@@ -37,9 +37,7 @@ window.SoundFX = (function () {
     return ctx;
   }
 
-  /* نغمة واحدة ناعمة مع صعود/هبوط سلس للصوت (envelope) لتفادي أي "طقطقة" عند البداية/النهاية.
-     دعم اختياري لفلتر تمرير منخفض (lowpass) لتنعيم حدة الأصوات وإعطائها طابعًا "مكتومًا" عصريًا
-     بدل الطنين الحاد الناتج عن موجة جيبية خام. */
+  /* نغمة واحدة ناعمة مع صعود/هبوط سلس للصوت (envelope) لتفادي أي "طقطقة" عند البداية/النهاية */
   function scheduleTone(startTime, note) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -53,17 +51,7 @@ window.SoundFX = (function () {
     gain.gain.setValueAtTime(0.0001, startTime);
     gain.gain.exponentialRampToValueAtTime(peak, startTime + Math.min(0.015, dur / 3));
     gain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
-
-    let lastNode = osc;
-    if (note.filterFreq) {
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.value = note.filterFreq;
-      filter.Q.value = note.filterQ != null ? note.filterQ : 0.7;
-      osc.connect(filter);
-      lastNode = filter;
-    }
-    lastNode.connect(gain);
+    osc.connect(gain);
     gain.connect(masterGain);
     osc.start(startTime);
     osc.stop(startTime + dur + 0.03);
@@ -78,10 +66,8 @@ window.SoundFX = (function () {
   }
 
   return {
-    /* نقرة خفيفة جدًا لأزرار الواجهة والتبويبات العامة — صوت "تِك" ناعم ومكتوم بفلتر
-       تمرير منخفض بدل الطنين الجيبي الحاد، مع تردد أخفض ومستوى أهدأ ومدة أقصر لإحساس عصري
-       غير مزعج حتى عند تكراره كثيرًا */
-    click() { playNotes([{ freq: 520, dur: 0.03, peak: 0.09, type: 'triangle', filterFreq: 1800 }]); },
+    /* نقرة خفيفة جدًا لأزرار الواجهة والتبويبات العامة */
+    click() { playNotes([{ freq: 880, dur: 0.05, peak: 0.18 }]); },
 
     /* تنقّل بين شاشات التطبيق: نغمة قصيرة صاعدة خفيفة أشبه بـ"سواش" ناعم */
     navigate() { playNotes([{ freq: 480, dur: 0.09, peak: 0.16, glideTo: 720 }]); },
@@ -144,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (t.closest('[data-nav]')) return;
 
     // عناصر لها صوت مخصص خاص بها مُدرج مباشرة في منطقها (نجاح/خطأ/دخول/خروج)
-    if (t.closest('.mcq-btn, #unitCheckBtn, #extractRows .extract-row-remove, #loginSubmitBtn, #studentLogoutBtn, #adminLogoutBtn, #soundToggleBtn')) return;
+    if (t.closest('.mcq-btn, #unitCheckBtn, #extractRows .extract-row-remove, #loginSubmitBtn, #studentLogoutBtn, #adminLogoutBtn')) return;
 
     // قائمة العناصر التفاعلية المعروفة صراحةً في المنصة
     const known = t.closest(
@@ -158,19 +144,4 @@ document.addEventListener('DOMContentLoaded', function () {
     const cs = window.getComputedStyle(t);
     if (cs.cursor === 'pointer') SoundFX.click();
   }, true);
-
-  /* زر تفعيل/كتم الصوت (إن وُجد في الصفحة) */
-  const toggleBtn = document.getElementById('soundToggleBtn');
-  if (toggleBtn) {
-    const refreshIcon = () => {
-      toggleBtn.textContent = SoundFX.isEnabled() ? '🔊' : '🔇';
-      toggleBtn.classList.toggle('muted', !SoundFX.isEnabled());
-    };
-    refreshIcon();
-    toggleBtn.addEventListener('click', function () {
-      SoundFX.toggle();
-      refreshIcon();
-      if (SoundFX.isEnabled()) SoundFX.click();
-    });
-  }
 });

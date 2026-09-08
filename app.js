@@ -207,13 +207,13 @@ const Student = {
    وثيقة واحدة: state/locks  =>  { lessons: {lessonId: true/false}, trimesters: {t1:bool, t2:bool, t3:bool} }
    ========================================================================================= */
 const Locks = {
-  data:{ lessons:{}, trimesters:{t1:false, t2:false, t3:false}, situations:{} }, ready:false,
+  data:{ lessons:{}, trimesters:{t1:false, t2:false, t3:false}, situations:{}, features:{irab:true} }, ready:false,
 
   async load(){
     if(!fbReady) { this.ready = true; return; }
     try{
       const snap = await db.collection('state').doc('locks').get();
-      if(snap.exists) this.data = Object.assign({lessons:{}, trimesters:{t1:false,t2:false,t3:false}, situations:{}}, snap.data());
+      if(snap.exists) this.data = Object.assign({lessons:{}, trimesters:{t1:false,t2:false,t3:false}, situations:{}, features:{irab:true}}, snap.data());
     }catch(e){
       /* هذا الخطأ يخفي المشكلة الحقيقية غالبًا: عدم سماح قواعد Firestore بقراءة state/locks
          بدون Firebase Auth. لو فشلت هذه القراءة، تبقى كل الدروس تظهر "مقفلة" حتى لو فتحها
@@ -226,6 +226,9 @@ const Locks = {
   isLessonLocked(id){ return !this.data.lessons || this.data.lessons[id] !== true; }, // افتراضيًا مقفل حتى يُفتح صراحة
   isTrimesterOpen(t){ return !!(this.data.trimesters && this.data.trimesters[t]); },
   isSituationLocked(key){ return !this.data.situations || this.data.situations[key] !== true; }, // افتراضيًا مقفل حتى يُفتح صراحة
+  /* قسم "إعراب الجمل": يبقى مفتوحًا افتراضيًا (كما كان الحال قبل إضافة هذا القفل)
+     ولا يُغلق إلا إذا أوقفه الأستاذ صراحة من لوحة التحكم */
+  isIrabOpen(){ return !this.data.features || this.data.features.irab !== false; },
 
   async setLesson(id, open){
     if(!fbReady) return;
@@ -245,12 +248,18 @@ const Locks = {
     this.data.situations[key] = !!open;
     await db.collection('state').doc('locks').set(this.data, {merge:true});
   },
+  async setIrabOpen(open){
+    if(!fbReady) return;
+    this.data.features = this.data.features || {};
+    this.data.features.irab = !!open;
+    await db.collection('state').doc('locks').set(this.data, {merge:true});
+  },
 
   /* استماع لحظي للتغييرات حتى تنعكس فورًا عند كل التلاميذ */
   listen(onChange){
     if(!fbReady) return;
     db.collection('state').doc('locks').onSnapshot(snap=>{
-      if(snap.exists) this.data = Object.assign({lessons:{}, trimesters:{t1:false,t2:false,t3:false}, situations:{}}, snap.data());
+      if(snap.exists) this.data = Object.assign({lessons:{}, trimesters:{t1:false,t2:false,t3:false}, situations:{}, features:{irab:true}}, snap.data());
       if(onChange) onChange();
     }, error=>{
       console.error('تعذّر الاستماع لحالة القفل (state/locks) — تحقق من قواعد Firestore:', error);
@@ -2344,22 +2353,40 @@ function renderExamsScreen(){
   });
 }
 
+/* ---------- تحديث بادج القفل على بطاقة "إعراب الجمل" في الصفحة الرئيسية ---------- */
+function updateIrabHomeCardLock(){
+  const badge = document.getElementById('irabHomeLockBadge');
+  if(!badge) return;
+  badge.style.display = Locks.isIrabOpen() ? 'none' : 'block';
+}
+
 /* ---------- شاشة إعراب الجمل ---------- */
 function renderIrabScreen(){
   const wrap = document.getElementById('irabContentWrap');
-  wrap.innerHTML = `
-    <div class="irab-launch" id="irabLaunch1"><div class="il-icon">📗</div><div>
-      <div class="il-title">إعراب 101 جملة وجملة</div>
-      <div class="il-sub">أجب شفهيًا عن كل جملة، وسأتحقق تلقائيًا من إعرابك</div></div></div>
-    <div class="irab-launch" id="irabLaunch2"><div class="il-icon">📙</div><div>
-      <div class="il-title">الاختبار الشامل الثاني</div>
-      <div class="il-sub">تدريبات إضافية على الجمل التي لها محلّ من الإعراب</div></div></div>
-    <div id="irabEngineMount"></div>`;
-  document.getElementById('irabLaunch1').addEventListener('click', ()=>{
-    createIrabEngine(window.EXAM_FULL2, document.getElementById('irabEngineMount'), 'إعراب 101 جملة');
-  });
-  document.getElementById('irabLaunch2').addEventListener('click', ()=>{
-    createIrabEngine(window.EXAM_FULL, document.getElementById('irabEngineMount'), 'الاختبار الشامل');
+  wrap.innerHTML = '<div class="sf-label">جاري التحميل…</div>';
+  Locks.load().then(()=>{
+    if(!Locks.isIrabOpen()){
+      wrap.innerHTML = `
+        <div class="exam-panel" style="text-align:center">
+          🔒 <b>قسم إعراب الجمل مغلق حاليًا</b>
+          <div class="sf-label" style="margin-top:8px">سيقوم الأستاذ بفتحه لاحقًا — تابع الإشعارات.</div>
+        </div>`;
+      return;
+    }
+    wrap.innerHTML = `
+      <div class="irab-launch" id="irabLaunch1"><div class="il-icon">📗</div><div>
+        <div class="il-title">إعراب 101 جملة وجملة</div>
+        <div class="il-sub">أجب شفهيًا عن كل جملة، وسأتحقق تلقائيًا من إعرابك</div></div></div>
+      <div class="irab-launch" id="irabLaunch2"><div class="il-icon">📙</div><div>
+        <div class="il-title">الاختبار الشامل الثاني</div>
+        <div class="il-sub">تدريبات إضافية على الجمل التي لها محلّ من الإعراب</div></div></div>
+      <div id="irabEngineMount"></div>`;
+    document.getElementById('irabLaunch1').addEventListener('click', ()=>{
+      createIrabEngine(window.EXAM_FULL2, document.getElementById('irabEngineMount'), 'إعراب 101 جملة');
+    });
+    document.getElementById('irabLaunch2').addEventListener('click', ()=>{
+      createIrabEngine(window.EXAM_FULL, document.getElementById('irabEngineMount'), 'الاختبار الشامل');
+    });
   });
 }
 
@@ -2670,6 +2697,12 @@ async function renderAdminPanel(){
   });
   situationsBody += `</div>`;
 
+  const irabOpen = Locks.isIrabOpen();
+  const irabBody = `<div class="lesson-list">
+    <div class="lesson-row"><div class="lr-text"><div class="lr-title">✍️ إعراب الجمل (101 جملة وجملة)</div></div>
+      <button class="al-key" style="width:auto;padding:6px 14px" id="toggleIrabBtn">${irabOpen?'🔓 مفتوح — اضغط للإغلاق':'🔒 مغلق — اضغط للفتح'}</button></div>
+  </div>`;
+
   const statsBody = `<div id="adminStatsMount"></div>`;
   const aiTeacherBody = `
     <div class="note" style="margin-bottom:12px">🧠 وحدة منفصلة تتيح إنشاء اختبار (نص/جدول/رسوم)، طباعته، ورفع تلميذ صورة إجابته لتصحّح تلقائيًا بالذكاء الاصطناعي مع علامة وتقرير فوري.
@@ -2705,6 +2738,7 @@ async function renderAdminPanel(){
     adminAccordionHTML('lessons', `📖 فتح/إغلاق الدروس`, lessonsBody) +
     adminAccordionHTML('trimesters', `📝 فتح/إغلاق الفروض والاختبارات`, trimestersBody) +
     adminAccordionHTML('situations', `📝 فتح/إغلاق وضعيات الاستئناس (المقاطع)`, situationsBody) +
+    adminAccordionHTML('irab', `✍️ فتح/إغلاق إعراب الجمل`, irabBody) +
     adminAccordionHTML('aiTeacher', `🧠 المعلّم الذكي — اختبارات وتصحيح آلي`, aiTeacherBody) +
     adminAccordionHTML('stats', `📊 إحصائيات كل درس`, statsBody);
 
@@ -2794,6 +2828,18 @@ async function renderAdminPanel(){
     await Locks.setTrimester(k, !open);
     renderAdminPanel();
   }));
+  document.getElementById('toggleIrabBtn').addEventListener('click', async ()=>{
+    const open = Locks.isIrabOpen();
+    try{
+      await Locks.setIrabOpen(!open);
+    }catch(error){
+      console.error('فشل تحديث حالة قفل إعراب الجمل (تحقق من قواعد Firestore لمجموعة state):', error);
+      if(typeof showFbPermissionNotice === 'function') showFbPermissionNotice('locks');
+      alert('تعذّر حفظ حالة إعراب الجمل في قاعدة البيانات. راجع التنبيه الظاهر أعلى الصفحة.');
+    }
+    updateIrabHomeCardLock();
+    renderAdminPanel();
+  });
   wrap.querySelectorAll('[data-toggle-situation]').forEach(b=> b.addEventListener('click', async ()=>{
     const k = b.getAttribute('data-toggle-situation');
     const open = !Locks.isSituationLocked(k);
@@ -3150,7 +3196,10 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   Locks.listen(()=>{
     if(document.getElementById('screen-lessons').style.display !== 'none') renderLessonsScreen();
     if(document.getElementById('screen-situation').style.display !== 'none') renderSituationPracticeTabs();
+    if(document.getElementById('screen-irab').style.display !== 'none') renderIrabScreen();
+    updateIrabHomeCardLock();
   });
+  Locks.load().then(updateIrabHomeCardLock);
 
   /* روابط حصص الزوم: تحميل أولي، ثم استماع لحظي — أي تحديث من الأستاذ ينعكس فورًا في صفحة
      الدرس المفتوحة حاليًا عند التلميذ دون الحاجة لإعادة تحميل الصفحة */

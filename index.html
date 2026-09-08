@@ -78,15 +78,14 @@
 <!-- ============ خلفية شفافة: صورة الأستاذ (Watermark) ============ -->
 <div class="teacher-watermark"><img src="teacher-watermark.jpg" alt=""></div>
 
-<!-- ============ أيقونة الإشعارات والجرس + زر دخول الأستاذ ثابت أعلى الصفحة ============ -->
-<div style="position:fixed;top:16px;left:20px;display:flex;gap:12px;z-index:1000">
-  <div class="notification-bell" id="notificationBell" title="الإشعارات والتنبيهات">
-    🔔
-    <span class="notification-badge" style="display:none"></span>
-  </div>
-  <div class="admin-entry" id="soundToggleBtn" title="تشغيل/كتم المؤثرات الصوتية">🔊</div>
-  <div class="admin-entry" id="adminEntryBtn" title="دخول الأستاذ / المشرف">🔑</div>
+<!-- ============ جرس الإشعارات: ثابت أقصى يسار الشريط العلوي ============ -->
+<div class="notification-bell" id="notificationBell" title="الإشعارات والتنبيهات" style="position:fixed;top:14px;left:14px;z-index:1000">
+  🔔
+  <span class="notification-badge" style="display:none"></span>
 </div>
+
+<!-- ============ زر دخول الأستاذ: ثابت أقصى يمين الشريط العلوي ============ -->
+<div class="admin-entry" id="adminEntryBtn" title="دخول الأستاذ / المشرف" style="position:fixed;top:14px;right:14px;z-index:1000">🔑</div>
 
 <!-- ===== لوحة الإشعارات (مخفية افتراضياً) ===== -->
 <div class="notifications-panel" id="notificationsPanel" style="display:none">
@@ -135,8 +134,9 @@
       <div class="home-card c4" data-nav="situation">
         <div class="hc-icon-wrap">🧩</div><div class="hc-title">الوضعية الإدماجية</div><div class="hc-sub">تدريبات الإدماج</div>
       </div>
-      <div class="home-card c3" data-nav="irab">
+      <div class="home-card c3" data-nav="irab" id="irabHomeCard">
         <div class="hc-icon-wrap">✍️</div><div class="hc-title">إعراب الجمل</div><div class="hc-sub">101 جملة وجملة</div>
+        <div class="hc-lock-badge" id="irabHomeLockBadge" style="display:none">🔒 مغلق</div>
       </div>
       <div class="home-card c2" data-nav="exams">
         <div class="hc-icon-wrap">🗂️</div><div class="hc-title">الفروض والاختبارات</div><div class="hc-sub">الفصل الأول، الثاني، الثالث</div>
