@@ -1186,12 +1186,12 @@ function renderLessonsScreen(){
       const isOpen = false; /* كل التصنيفات مغلقة افتراضيًا عند فتح صفحة الدروس، بما فيها التقويم التشخيصي */
       
       html += `
-        <div class="lesson-accordion cat-${cat}" data-cat="${cat}">
+        <div class="lesson-accordion">
           <div class="group-header accordion-toggle" data-category="${categoryId}">
             <span class="gh-icon">${meta.icon}</span>
             <span class="gh-title">${meta.title}</span>
             <span class="gh-count">${lessons.length} دروس</span>
-            <span class="accordion-arrow" style="transition: transform 0.3s ease;">
+            <span class="accordion-arrow" style="margin-right: auto; transition: transform 0.3s ease;">
               ${isOpen ? '▼' : '▶'}
             </span>
           </div>
@@ -1225,7 +1225,6 @@ function renderLessonsScreen(){
         const categoryId = this.getAttribute('data-category');
         const content = document.getElementById(categoryId);
         const arrow = this.querySelector('.accordion-arrow');
-        const accordionWrap = this.closest('.lesson-accordion');
         
         if(content.style.display === 'none'){
           /* فتح الـ Accordion */
@@ -1234,7 +1233,6 @@ function renderLessonsScreen(){
           setTimeout(() => content.style.opacity = '1', 10);
           arrow.style.transform = 'rotate(0deg)';
           arrow.textContent = '▼';
-          if(accordionWrap) accordionWrap.classList.add('open');
         } else {
           /* إغلاق الـ Accordion */
           content.style.opacity = '0';
@@ -1244,7 +1242,6 @@ function renderLessonsScreen(){
           }, 300);
           arrow.style.transform = 'rotate(0deg)';
           arrow.textContent = '▶';
-          if(accordionWrap) accordionWrap.classList.remove('open');
         }
       });
     });

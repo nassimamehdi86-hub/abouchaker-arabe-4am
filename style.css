@@ -14,15 +14,6 @@
     --gold-3:      #A97F2A;   /* ذهبي داكن للحدود */
     --locked:      #DCD4BE;
     --card-cream:  var(--ink); /* توافقًا مع الأنماط القديمة أدناه */
-
-    /* ===== ألوان مميزة لكل تصنيف من تصنيفات الدروس ===== */
-    --cat-taqweem-1:#EDEAF3; --cat-taqweem-2:#8E85B8; --cat-taqweem-3:#5C4F8C;
-    --cat-tawabi-1: #E1F0DE; --cat-tawabi-2: #6FA972; --cat-tawabi-3: #3F6350;
-    --cat-qawaid-1: #DCEAF5; --cat-qawaid-2: #5B93C4; --cat-qawaid-3: #2F567D;
-    --cat-jumal-1:  #FBE7D2; --cat-jumal-2:  #E08A3C; --cat-jumal-3:  #A85F1E;
-    --cat-balagha-1:#FADCE0; --cat-balagha-2:#D1607A; --cat-balagha-3:#96324A;
-    --cat-anmat-1:  #E4E6EA; --cat-anmat-2:  #5F6773; --cat-anmat-3:  #33383F;
-    --cat-itisaq-1: #F6ECC9; --cat-itisaq-2: #C79A3D; --cat-itisaq-3: #8C6A1F;
   }
   
   /* =========================================================================================
@@ -626,63 +617,38 @@
   }
   .cat-tab.active{ background:linear-gradient(135deg, var(--gold-1), var(--gold-2)); color:#33260A; border-color:var(--gold-3); }
 
-  /* ============ شبكة بطاقات تصنيفات الدروس ============ */
-  #lessonsListWrap{
-    display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start;
-  }
-  .lesson-accordion{ margin-bottom:0; }
-  .lesson-accordion.open{ grid-column:1 / -1; }
-
-  /* ============ بطاقة تصنيف الدروس (مصغّرة، بلون خاص بكل تصنيف) ============ */
+  /* ============ عنوان تصنيف الدروس (مستوحى من الفهرس، بالذهبي بدل الوردي) ============ */
   .group-header{
-    display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
-    gap:8px; border-radius:18px; padding:18px 12px 14px; position:relative; min-height:132px;
-    border:1.4px solid var(--cat-3, var(--gold-3));
+    display:flex; align-items:center; gap:8px; border-radius:12px; padding:9px 16px; margin:18px 0 11px;
+    border:1.2px solid var(--gold-3);
     background:
-      linear-gradient(150deg, var(--cat-1, #F3ECD5), var(--cat-2, #E7C878)),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Cg fill='none' stroke='%23000' stroke-width='0.8' opacity='0.12'%3E%3Cpath d='M15 1 L29 15 L15 29 L1 15 Z'/%3E%3Ccircle cx='15' cy='15' r='4'/%3E%3C/g%3E%3C/svg%3E");
+      linear-gradient(120deg, #F3ECD5, #E7C878),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Cg fill='none' stroke='%23A97F2A' stroke-width='0.8' opacity='0.7'%3E%3Cpath d='M15 1 L29 15 L15 29 L1 15 Z'/%3E%3Ccircle cx='15' cy='15' r='4'/%3E%3C/g%3E%3C/svg%3E");
     background-blend-mode:normal, multiply;
     background-size:auto, 30px 30px;
-    box-shadow:0 4px 10px rgba(0,0,0,0.08);
-    transition:transform .15s ease, box-shadow .15s ease;
   }
-  .group-header:active{ transform:scale(0.97); }
-  .lesson-accordion.open .group-header{ box-shadow:0 6px 16px rgba(0,0,0,0.14); }
-
-  /* ألوان كل تصنيف */
-  .cat-taqweem .group-header{ --cat-1:var(--cat-taqweem-1); --cat-2:var(--cat-taqweem-2); --cat-3:var(--cat-taqweem-3); }
-  .cat-tawabi  .group-header{ --cat-1:var(--cat-tawabi-1);  --cat-2:var(--cat-tawabi-2);  --cat-3:var(--cat-tawabi-3); }
-  .cat-qawaid  .group-header{ --cat-1:var(--cat-qawaid-1);  --cat-2:var(--cat-qawaid-2);  --cat-3:var(--cat-qawaid-3); }
-  .cat-jumal   .group-header{ --cat-1:var(--cat-jumal-1);   --cat-2:var(--cat-jumal-2);   --cat-3:var(--cat-jumal-3); }
-  .cat-balagha .group-header{ --cat-1:var(--cat-balagha-1); --cat-2:var(--cat-balagha-2); --cat-3:var(--cat-balagha-3); }
-  .cat-anmat   .group-header{ --cat-1:var(--cat-anmat-1);   --cat-2:var(--cat-anmat-2);   --cat-3:var(--cat-anmat-3); }
-  .cat-itisaq  .group-header{ --cat-1:var(--cat-itisaq-1);  --cat-2:var(--cat-itisaq-2);  --cat-3:var(--cat-itisaq-3); }
-
+  .group-header:first-child{ margin-top:0; }
   .group-header .gh-icon{
-    font-size:26px; line-height:1;
+    font-size:15px;
     display:inline-flex; align-items:center; justify-content:center;
-    width:52px; height:52px; flex-shrink:0; border-radius:50%; position:relative;
-    background:radial-gradient(circle at 50% 45%, #FFFDF7 40%, var(--cat-1, #F3ECD5) 100%);
-    border:1.6px solid var(--cat-3, var(--gold-3));
-    box-shadow:0 0 0 3px rgba(255,255,255,0.65), 0 3px 6px rgba(0,0,0,0.18);
+    width:32px; height:32px; flex-shrink:0; border-radius:50%; position:relative;
+    background:radial-gradient(circle at 50% 45%, #FFFBF0 35%, #F3ECD5 70%, var(--gold-1) 100%);
+    border:1.3px solid var(--gold-3);
+    box-shadow:0 0 0 2px #FFF8E7, 0 2px 4px rgba(169,127,42,0.25);
+  }
+  .group-header .gh-icon::before{
+    content:'';
+    position:absolute; inset:-6px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g fill='none' stroke='%23A97F2A' stroke-width='2.4' opacity='0.6'><path d='M50 2 L61 33 L94 33 L67 53 L78 84 L50 64 L22 84 L33 53 L6 33 L39 33 Z'/></g></svg>");
+    background-size:contain; background-repeat:no-repeat; background-position:center;
+    pointer-events:none;
   }
   .group-header .gh-icon::after{
-    content:''; position:absolute; inset:-3px; border-radius:50%;
-    border:1px dashed rgba(255,255,255,0.7);
+    content:''; position:absolute; inset:-2px; border-radius:50%;
+    border:1px dashed rgba(169,127,42,0.55);
   }
-  .group-header .gh-title{
-    font-family:'Aref Ruqaa', serif; font-weight:700; font-size:18px; line-height:1.25;
-    color:#20160A; text-shadow:0 1px 0 rgba(255,255,255,0.35);
-  }
-  .group-header .gh-count{
-    font-size:12px; font-weight:800; color:#FFFDF7;
-    background:rgba(0,0,0,0.28); border-radius:999px; padding:3px 14px;
-  }
-  .group-header .accordion-arrow{
-    position:absolute; top:10px; inset-inline-end:12px; font-size:12px; color:#FFFDF7;
-    background:rgba(0,0,0,0.22); border-radius:50%; width:22px; height:22px;
-    display:flex; align-items:center; justify-content:center; margin-right:0 !important;
-  }
+  .group-header .gh-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:15px; color:#3A2A0A; }
+  .group-header .gh-count{ margin-inline-start:auto; font-size:10px; font-weight:800; color:#5C4413; background:rgba(255,255,255,0.5); border-radius:999px; padding:2px 10px; }
 
   /* ============ قوائم منسدلة (Accordions) للوحدات الرئيسية في قائمة الدروس ============ */
   .lesson-accordion{ margin-bottom:8px; }
