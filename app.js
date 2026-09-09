@@ -1934,8 +1934,10 @@ function createOpenExerciseEngine(lesson, pages, mountEl){
     const num = sec.number ? `التمرين ${sec.number}` : (sec.title || '');
     return `
       <div class="quiz-progress">تمرين ${idx+1} من ${total}</div>
-      <div class="book-exercise-title">${sec.title || num}</div>
-      ${sec.instructions ? `<div class="book-exercise-instr">${sec.instructions}</div>` : ''}`;
+      <div class="book-header-card">
+        <div class="book-exercise-title">${sec.title || num}</div>
+        ${sec.instructions ? `<div class="book-exercise-instr">${sec.instructions}</div>` : ''}
+      </div>`;
   }
 
   function goNext(){

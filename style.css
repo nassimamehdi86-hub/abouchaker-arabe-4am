@@ -1253,8 +1253,9 @@
 .quiz-answer-row .quiz-text-input, .quiz-answer-row .quiz-textarea{ flex:1; }
 
 /* تمارين الكتاب — تمرين كامل في صفحة واحدة (كما في ورقة التمرين الأصلية) */
+.book-header-card{ background:var(--paper); border:1.6px solid var(--gold-3); border-radius:16px; padding:16px 16px 12px; margin-bottom:14px; }
 .book-exercise-title{ font-family:'Aref Ruqaa', serif; font-size:18px; font-weight:800; color:var(--gold-3); text-align:center; margin-bottom:4px; }
-.book-exercise-instr{ font-size:12.5px; font-weight:700; color:var(--ink-soft); text-align:center; margin-bottom:14px; }
+.book-exercise-instr{ font-size:12.5px; font-weight:700; color:var(--ink-soft); text-align:center; margin-bottom:0; }
 .book-sub-instr{ font-size:12.5px; font-weight:800; color:var(--ink-soft); margin:14px 0 8px; border-top:1.4px dashed rgba(169,127,42,0.3); padding-top:10px; }
 .passage-block{
   font-weight:700; font-size:15px; color:var(--ink); line-height:2.6; margin-bottom:14px; text-align:justify;
