@@ -2829,8 +2829,13 @@ const AdminAccordionState = { open: new Set() };
 
 /* أيقونات مصغّرة مجسّمة (نفس طراز بطاقات الشاشة الرئيسية) لعناوين أقسام لوحة تحكم الأستاذ.
    كل دالة تُعيد <span> يحوي إطارًا ذهبيًا بخلفية أرابيسك + أيقونة SVG واقعية بالداخل. */
-function aaIcon(svgInner){
-  return `<span class="aa-icon-wrap"><svg class="aa-svg-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">${svgInner}</svg></span>`;
+/* ثلاث تدرّجات ألوان تُستعمل بالتناوب لإطارات الأيقونات — بنفس أسلوب البطاقات العريضة
+   (إدارة حصص الزوم/الفروض/الحلول) حتى تتّسق جميع أقسام لوحة الأستاذ بصريًا */
+const AA_BG_GOLD  = 'linear-gradient(150deg,#FBEDC3,#E7C878)';
+const AA_BG_TAN   = 'linear-gradient(150deg,#F0E6D6,#D8AE52)';
+const AA_BG_GREEN = 'linear-gradient(150deg,#D9EAD9,#8FC98F)';
+function aaIcon(svgInner, bg){
+  return `<span class="aa-icon-wrap" style="background:${bg || AA_BG_GOLD}"><svg class="aa-svg-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">${svgInner}</svg></span>`;
 }
 const AA_ICONS = {
   /* ⏳ طلبات الانتظار — ساعة رملية ذهبية */
@@ -2839,53 +2844,59 @@ const AA_ICONS = {
     <path d="M20 12 H44 C44 19 38 23 32 26 C26 23 20 19 20 12 Z" fill="url(#hcCream)" opacity="0.9"/>
     <path d="M20 52 H44 C44 45 38 41 32 38 C26 41 20 45 20 52 Z" fill="url(#hcSageGem)" opacity="0.9"/>
     <rect x="13" y="5" width="38" height="5" rx="2.5" fill="url(#hcGoldDark)" stroke="#5C3D0F" stroke-width="0.8"/>
-    <rect x="13" y="54" width="38" height="5" rx="2.5" fill="url(#hcGoldDark)" stroke="#5C3D0F" stroke-width="0.8"/>`),
+    <rect x="13" y="54" width="38" height="5" rx="2.5" fill="url(#hcGoldDark)" stroke="#5C3D0F" stroke-width="0.8"/>`, AA_BG_GOLD),
   /* 👥 التلاميذ المقبولون — شخصان متداخلان */
   approved: aaIcon(`
     <circle cx="23" cy="21" r="9.5" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="1.2"/>
     <path d="M8 51 C8 38 14.5 32 23 32 C31.5 32 38 38 38 51 Z" fill="url(#hcGoldMetal)" stroke="#7A5216" stroke-width="1.2"/>
     <circle cx="43" cy="26" r="7.8" fill="url(#hcSageGem)" stroke="#2E4A34" stroke-width="1.1"/>
-    <path d="M29 53 C29 43 34.5 38.5 43 38.5 C51.5 38.5 57 43 57 53 Z" fill="url(#hcSageGem)" stroke="#2E4A34" stroke-width="1.1" opacity="0.96"/>`),
+    <path d="M29 53 C29 43 34.5 38.5 43 38.5 C51.5 38.5 57 43 57 53 Z" fill="url(#hcSageGem)" stroke="#2E4A34" stroke-width="1.1" opacity="0.96"/>`, AA_BG_GREEN),
   /* 📖 فتح/إغلاق الدروس — نفس كتاب الشاشة الرئيسية */
   lessons: aaIcon(`
     <path d="M14 16 L50 12 L52 50 L16 54 Z" fill="url(#hcCream)" stroke="#D8AE52" stroke-width="1"/>
     <path d="M10 14 L46 9 L48 47 L12 51 Z" fill="url(#hcMaroonCover)" stroke="#2B0D08" stroke-width="1"/>
     <path d="M10 14 L15 14.6 L17 49 L12 51 Z" fill="#A0472C" opacity="0.55"/>
     <circle cx="29" cy="31" r="8" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="1"/>
-    <path d="M29 24.5 L31 29 L36 29.3 L32.3 32.3 L33.6 37 L29 34.2 L24.4 37 L25.7 32.3 L22 29.3 L27 29 Z" fill="#7A5216" opacity="0.85"/>`),
+    <path d="M29 24.5 L31 29 L36 29.3 L32.3 32.3 L33.6 37 L29 34.2 L24.4 37 L25.7 32.3 L22 29.3 L27 29 Z" fill="#7A5216" opacity="0.85"/>`, AA_BG_TAN),
   /* 📝 فتح/إغلاق الفروض والاختبارات — نفس ورقة+قلم إدارة الروابط */
   exams: aaIcon(`
     <rect x="13" y="9" width="30" height="40" rx="3" fill="url(#hcCream)" stroke="#D8AE52" stroke-width="1"/>
     <rect x="23" y="5" width="10" height="8" rx="2" fill="url(#hcGoldMetal)" stroke="#7A5216" stroke-width="1"/>
     <path d="M18 21 L38 21 M18 27 L38 27 M18 33 L31 33" stroke="#8A6A2A" stroke-width="1.4" opacity="0.6"/>
     <path d="M19 47 C29 40 39 32 49 20 L54 25 C44 37 34 45 24 52 Z" fill="url(#hcWood)" stroke="#241708" stroke-width="1"/>
-    <path d="M49 20 L54 25 L57 22 C58.5 20.5 58.5 18.5 57 17 C55.5 15.5 53.5 15.5 52 17 Z" fill="url(#hcGoldMetal)" stroke="#7A5216" stroke-width="1"/>`),
+    <path d="M49 20 L54 25 L57 22 C58.5 20.5 58.5 18.5 57 17 C55.5 15.5 53.5 15.5 52 17 Z" fill="url(#hcGoldMetal)" stroke="#7A5216" stroke-width="1"/>`, AA_BG_GOLD),
   /* 📝 فتح/إغلاق وضعيات الاستئناس — نفس قطعتي الأحجية */
   situations: aaIcon(`
     <path d="M12 12 h16 c0,-3.5 2.8,-6 6,-6 c3.2,0 6,2.5 6,6 h4 v16 c3.5,0 6,2.8 6,6 c0,3.2 -2.5,6 -6,6 v14 h-16 c0,3.5 -2.8,6 -6,6 c-3.2,0 -6,-2.5 -6,-6 h-10 v-16 c-3.5,0 -6,-2.8 -6,-6 c0,-3.2 2.5,-6 6,-6 v-14 Z" fill="url(#hcGoldMetal)" stroke="#7A5216" stroke-width="1.2" stroke-linejoin="round" transform="translate(-4,2) scale(0.86)"/>
     <path d="M30 30 h16 c0,-3.5 2.8,-6 6,-6 c3.2,0 6,2.5 6,6 h4 v16 c3.5,0 6,2.8 6,6 c0,3.2 -2.5,6 -6,6 v14 h-16 c0,3.5 -2.8,6 -6,6 c-3.2,0 -6,-2.5 -6,-6 h-10 v-16 c-3.5,0 -6,-2.8 -6,-6 c0,-3.2 2.5,-6 6,-6 v-14 Z" fill="url(#hcSageGem)" stroke="#2E4A34" stroke-width="1.2" stroke-linejoin="round" transform="translate(-16,-16) scale(0.56)"/>
-    <circle cx="34" cy="34" r="5.5" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="1"/>`),
+    <circle cx="34" cy="34" r="5.5" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="1"/>`, AA_BG_GREEN),
   /* ✍️ فتح/إغلاق إعراب الجمل — نفس قلم الشاشة الرئيسية */
   irab: aaIcon(`
     <path d="M12 50 C22 40 34 28 46 15 L51 20 C39 32 27 44 17 54 Z" fill="url(#hcWood)" stroke="#241708" stroke-width="1"/>
     <path d="M46 15 L51 20 L54 17 C55.5 15.5 55.5 13.5 54 12 C52.5 10.5 50.5 10.5 49 12 Z" fill="url(#hcGoldMetal)" stroke="#7A5216" stroke-width="1"/>
     <path d="M12 50 L17 54 L14 58 C13 59 11 58.6 11 57 Z" fill="#1D1408"/>
-    <path d="M11 58 C 18 52, 24 50, 34 52 C 26 54, 20 57, 16 62" fill="none" stroke="url(#hcGoldMetal)" stroke-width="1.6" stroke-linecap="round" opacity="0.9"/>`),
+    <path d="M11 58 C 18 52, 24 50, 34 52 C 26 54, 20 57, 16 62" fill="none" stroke="url(#hcGoldMetal)" stroke-width="1.6" stroke-linecap="round" opacity="0.9"/>`, AA_BG_TAN),
   /* 🧠 المعلّم الذكي — جوهرة متألقة ترمز للذكاء الاصطناعي */
   aiTeacher: aaIcon(`
     <path d="M32 6 L50 22 L42 54 L22 54 L14 22 Z" fill="url(#hcSageGem)" stroke="#2E4A34" stroke-width="1.2" stroke-linejoin="round"/>
     <path d="M32 6 L50 22 L32 30 L14 22 Z" fill="url(#hcGoldMetal)" opacity="0.88"/>
-    <path d="M32 30 L35 38 L44 38 L37 43 L39 51 L32 46 L25 51 L27 43 L20 38 L29 38 Z" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="0.8" opacity="0.95"/>`),
+    <path d="M32 30 L35 38 L44 38 L37 43 L39 51 L32 46 L25 51 L27 43 L20 38 L29 38 Z" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="0.8" opacity="0.95"/>`, AA_BG_GOLD),
   /* 📊 إحصائيات كل درس — أعمدة بيانية متدرجة الطول */
   stats: aaIcon(`
     <rect x="10" y="34" width="10" height="22" rx="2" fill="url(#hcGoldMetal)" stroke="#7A5216" stroke-width="1"/>
     <rect x="27" y="22" width="10" height="34" rx="2" fill="url(#hcSageGem)" stroke="#2E4A34" stroke-width="1"/>
     <rect x="44" y="10" width="10" height="46" rx="2" fill="url(#hcGoldDark)" stroke="#5C3D0F" stroke-width="1"/>
-    <circle cx="49" cy="10" r="4.4" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="0.8"/>`),
+    <circle cx="49" cy="10" r="4.4" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="0.8"/>`, AA_BG_GREEN),
   /* 🧑 تلميذ واحد — لصورة رمزية في بطاقات طلبات الانتظار وقوائم التلاميذ المقبولين */
   singleStudent: aaIcon(`
     <circle cx="32" cy="24" r="12" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="1.3"/>
-    <path d="M12 56 C12 40 20 33 32 33 C44 33 52 40 52 56 Z" fill="url(#hcGoldMetal)" stroke="#7A5216" stroke-width="1.3"/>`)
+    <path d="M12 56 C12 40 20 33 32 33 C44 33 52 40 52 56 Z" fill="url(#hcGoldMetal)" stroke="#7A5216" stroke-width="1.3"/>`, AA_BG_TAN),
+  /* ❓ أسئلة التلاميذ (الدردشة) — فقاعة حوار */
+  chat: aaIcon(`
+    <path d="M8 14 C8 10 11 8 15 8 H49 C53 8 56 10 56 14 V38 C56 42 53 44 49 44 H26 L14 54 V44 H15 C11 44 8 42 8 38 Z" fill="url(#hcCream)" stroke="#D8AE52" stroke-width="1.2"/>
+    <circle cx="21" cy="26" r="3.4" fill="#7A5216"/>
+    <circle cx="32" cy="26" r="3.4" fill="#7A5216"/>
+    <circle cx="43" cy="26" r="3.4" fill="#7A5216"/>`, AA_BG_GOLD)
 };
 
 function adminAccordionHTML(id, titleHtml, bodyHtml){
@@ -3383,6 +3394,7 @@ async function renderAdminPanel(){
     </div>`;
 
   wrap.innerHTML =
+    adminAccordionHTML('chatQuestions', `${AA_ICONS.chat} أسئلة التلاميذ (الدردشة) <span class="aa-badge" id="chatQuestionsBadge">0</span>`, `<div id="chatQuestionsBody"><div class="exam-panel">جارٍ التحميل…</div></div>`) +
     adminAccordionHTML('pending', `${AA_ICONS.pending} طلبات الانتظار <span class="aa-badge">${pending.length}</span>`, pendingBody) +
     adminAccordionHTML('approved', `${AA_ICONS.approved} التلاميذ المقبولون <span class="aa-badge">${totalStudents}</span>`, approvedBody) +
     zoomManageCard +
@@ -3393,7 +3405,6 @@ async function renderAdminPanel(){
     adminAccordionHTML('situations', `${AA_ICONS.situations} فتح/إغلاق وضعيات الاستئناس (المقاطع)`, situationsBody) +
     adminAccordionHTML('irab', `${AA_ICONS.irab} فتح/إغلاق إعراب الجمل`, irabBody) +
     adminAccordionHTML('aiTeacher', `${AA_ICONS.aiTeacher} المعلّم الذكي — اختبارات وتصحيح آلي`, aiTeacherBody) +
-    adminAccordionHTML('chatQuestions', `❓ أسئلة التلاميذ (الدردشة) <span class="aa-badge" id="chatQuestionsBadge">0</span>`, `<div id="chatQuestionsBody"><div class="exam-panel">جارٍ التحميل…</div></div>`) +
     adminAccordionHTML('stats', `${AA_ICONS.stats} إحصائيات كل درس`, statsBody);
 
   wireAdminAccordions(wrap);

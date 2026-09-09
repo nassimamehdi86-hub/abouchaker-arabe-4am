@@ -720,57 +720,63 @@
     font-family:'Aref Ruqaa', serif; font-weight:700; font-size:14.5px; color:var(--ink);
   }
 
-  /* ============ لوحة تحكم الأستاذ — أقسام قابلة للطي (Accordion) ============ */
+  /* ============ لوحة تحكم الأستاذ — أقسام قابلة للطي (Accordion) ============
+     بنفس طراز البطاقات العريضة الكريمية (إدارة حصص الزوم/الفروض/الحلول) لتوحيد
+     شكل كل أقسام اللوحة: خلفية كريمية دافئة + إطار ذهبي رفيع + أيقونة مجسّمة كبيرة. */
   .admin-accordion{
-    border:1.3px solid var(--gold-3); border-radius:16px; overflow:hidden;
-    margin-bottom:14px; background:rgba(255,253,247,0.55);
-    box-shadow:0 6px 14px rgba(169,127,42,0.08);
+    border-radius:20px; overflow:hidden; margin-bottom:14px;
+    background:linear-gradient(160deg, #FFFDF7, #F3ECD5);
+    border:1.6px solid rgba(169,127,42,0.35);
+    box-shadow:0 10px 22px rgba(169,127,42,0.10), inset 0 1px 0 rgba(255,255,255,0.7);
   }
   .admin-accordion-header{
     width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px;
-    padding:13px 16px; background:linear-gradient(135deg, var(--gold-1), var(--gold-2));
+    padding:14px 18px; background:transparent;
     border:none; cursor:pointer; text-align:right; font-family:'Cairo',sans-serif;
-    -webkit-tap-highlight-color:transparent;
+    -webkit-tap-highlight-color:transparent; transition:background .15s ease;
   }
+  .admin-accordion-header:active{ background:rgba(169,127,42,0.08); }
   .admin-accordion-header .aa-title{
-    display:flex; align-items:center; gap:8px; font-family:'Aref Ruqaa', serif; font-weight:700;
-    font-size:16px; color:#33260A;
+    display:flex; align-items:center; gap:10px; font-family:'Aref Ruqaa', serif; font-weight:700;
+    font-size:17px; color:var(--ink);
   }
   .admin-accordion-header .aa-badge{
     background:#33260A; color:#F3ECD5; border-radius:999px; font-size:11px; font-weight:800;
     padding:2px 9px; font-family:'Cairo',sans-serif;
   }
   .admin-accordion-header .aa-chevron{
-    font-size:14px; color:#33260A; transition:transform .3s ease; flex-shrink:0;
+    font-size:14px; color:var(--gold-3); transition:transform .3s ease; flex-shrink:0;
   }
   .admin-accordion-header[aria-expanded="true"] .aa-chevron{ transform:rotate(180deg); }
+  /* فاصل رفيع بين العنوان والمحتوى عند الفتح، بنفس روح البطاقات */
+  .admin-accordion-body-wrap.open{ border-top:1px solid rgba(169,127,42,0.22); }
 
-  /* أيقونة صغيرة مجسّمة بنفس طراز بطاقات الشاشة الرئيسية، لعناوين أقسام لوحة تحكم الأستاذ */
+  /* أيقونة مجسّمة كبيرة بنفس طراز أيقونات البطاقات العريضة (إدارة حصص الزوم وغيرها) */
   .aa-icon-wrap{
     position:relative; overflow:hidden; flex-shrink:0;
-    width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center;
-    border:1.2px solid rgba(122,82,22,0.5); background:linear-gradient(150deg,#FBEDC3,#E7C878);
+    width:54px; height:54px; border-radius:15px; display:flex; align-items:center; justify-content:center;
+    border:1.4px solid rgba(122,82,22,0.55);
     box-shadow:
-      0 4px 8px rgba(122,82,22,0.28),
-      0 1px 2px rgba(80,52,10,0.22),
-      inset 0 1.5px 1.5px rgba(255,255,255,0.8),
-      inset 0 -3px 4px rgba(90,58,12,0.35);
+      0 7px 14px rgba(122,82,22,0.32),
+      0 2px 3px rgba(80,52,10,0.28),
+      inset 0 2px 2px rgba(255,255,255,0.85),
+      inset 0 -4px 6px rgba(90,58,12,0.38);
   }
   .aa-icon-wrap::before{
     content:""; position:absolute; inset:0; opacity:0.55; mix-blend-mode:multiply; pointer-events:none;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cg fill='none' stroke='%23A9772A' stroke-width='0.7' opacity='0.65'%3E%3Cpath d='M11 1 L21 11 L11 21 L1 11 Z'/%3E%3Cpath d='M11 1 L11 21 M1 11 L21 11'/%3E%3Ccircle cx='11' cy='11' r='3.4'/%3E%3Cpath d='M4.5 4.5 L7.5 7.5 M17.5 4.5 L14.5 7.5 M4.5 17.5 L7.5 14.5 M17.5 17.5 L14.5 14.5'/%3E%3C/g%3E%3C/svg%3E");
-    background-size:12px 12px;
+    background-size:15px 15px;
   }
   .aa-icon-wrap::after{
     content:""; position:absolute; top:0; left:0; right:0; height:46%;
     background:linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0)); pointer-events:none;
   }
-  .aa-svg-icon{ position:relative; z-index:1; width:72%; height:72%; filter:drop-shadow(0 2px 2px rgba(60,38,8,0.4)); }
+  .aa-svg-icon{ position:relative; z-index:1; width:74%; height:74%; filter:drop-shadow(0 3px 3px rgba(60,38,8,0.45)) drop-shadow(0 1px 0 rgba(255,255,255,0.5)); }
   .admin-accordion-body-wrap{
     display:grid; grid-template-rows:0fr; transition:grid-template-rows .32s ease;
   }
   .admin-accordion-body-wrap.open{ grid-template-rows:1fr; }
-  .admin-accordion-body-inner{ overflow:hidden; min-height:0; padding:0 16px 16px; }
+  .admin-accordion-body-inner{ overflow:hidden; min-height:0; padding:4px 18px 18px; }
 
   /* ============ أقسام شاشة "الترتيب والنقاط" (لوحة الشرف / الفروض والاختبارات / الدروس) ============ */
   .lb-section{ margin-bottom:30px; }
