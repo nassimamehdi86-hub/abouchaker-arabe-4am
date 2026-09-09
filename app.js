@@ -2525,6 +2525,26 @@ function renderIrabScreen(){
 function renderLeaderboardScreen(){
   const wrap = document.getElementById('leaderboardWrap');
   wrap.innerHTML = `
+    <div class="lb-mystats-section" id="lbMyStatsSection" style="display:none">
+      <div class="lb-section-title" style="border-bottom:none;padding-bottom:0;margin-bottom:10px">
+        <span class="lb-section-icon"><span class="icon-glyph">📊</span></span>نتائجك الإجمالية
+      </div>
+      <div class="lb-mystats-row">
+        <div class="lb-mystat-card">
+          <div class="lb-mystat-value" id="lbMyPoints">—</div>
+          <div class="lb-mystat-label">مجموع نقاطك</div>
+        </div>
+        <div class="lb-mystat-card">
+          <div class="lb-mystat-value" id="lbMyRank">—</div>
+          <div class="lb-mystat-label">ترتيبك العام</div>
+        </div>
+        <div class="lb-mystat-card">
+          <div class="lb-mystat-value" id="lbMyTotalStudents">—</div>
+          <div class="lb-mystat-label">مجموع التلاميذ</div>
+        </div>
+      </div>
+    </div>
+
     <div class="lb-main-grid">
       <div class="lb-main-card" id="lbOpenHall">
         <div class="lb-main-icon"><span class="icon-glyph">🏅</span></div>
@@ -2562,6 +2582,8 @@ function renderLeaderboardScreen(){
     document.getElementById('lbLessonGrid').scrollIntoView({ behavior:'smooth', block:'start' });
   });
 
+  loadMyOverallStats(); /* بطاقة نقاطك/ترتيبك/عدد التلاميذ — مجموع كل الدروس، لا درس بعينه */
+
   /* 3) شبكة الدروس — لا تغيير في المنطق: كل بطاقة تفتح ترتيب تمارين درسها فقط */
   const grid = document.getElementById('lbLessonGrid');
   window.LESSONS.filter(l=>l.locked!=='pending').forEach(l=>{
@@ -2574,6 +2596,29 @@ function renderLeaderboardScreen(){
     card.addEventListener('click', ()=> showLeaderboardPopup(l));
     grid.appendChild(card);
   });
+}
+
+/* ---------- بطاقة "نتائجك الإجمالية" أعلى شاشة الترتيب: نقاط التلميذ ومرتبته العامة (مجموع كل
+   الدروس، وليس درسًا بعينه) وعدد كل تلاميذ المنصة. تُخفى كليًا إن لم يكن هناك تلميذ مسجَّل دخوله
+   أو إن تعذّر الوصول لقاعدة البيانات ---------- */
+async function loadMyOverallStats(){
+  const section = document.getElementById('lbMyStatsSection');
+  if(!section || !fbReady || !Student.id) return;
+  try{
+    const [results, totalStudents] = await Promise.all([
+      Leaderboard.overallLessons(),
+      Admin.allStudentsCount()
+    ]);
+    const myIdx = results.findIndex(r=> r.studentId === Student.id);
+    const pointsEl = document.getElementById('lbMyPoints');
+    const rankEl = document.getElementById('lbMyRank');
+    const totalEl = document.getElementById('lbMyTotalStudents');
+    if(!pointsEl || !rankEl || !totalEl) return; /* المستخدم غادر الشاشة قبل انتهاء التحميل */
+    pointsEl.textContent = myIdx !== -1 ? Math.round(results[myIdx].totalScore) : '0';
+    rankEl.textContent = myIdx !== -1 ? `#${myIdx+1}` : '—';
+    totalEl.textContent = totalStudents || '—';
+    section.style.display = '';
+  }catch(e){ console.error('تعذّر تحميل بطاقة نتائجك الإجمالية:', e); }
 }
 
 function renderHallRow(idx, rankLabel, nameHtml, metaHtml, badgeHtml){

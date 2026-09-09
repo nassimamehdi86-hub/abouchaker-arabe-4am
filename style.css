@@ -764,6 +764,21 @@
     border-bottom:2px solid var(--gold-3); padding-bottom:8px;
   }
 
+  /* ============ بطاقة "نتائجك الإجمالية" (نقاطك/ترتيبك/عدد التلاميذ) — أعلى شاشة الترتيب ============ */
+  .lb-mystats-section{ margin-bottom:24px; }
+  .lb-mystats-row{ display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+  .lb-mystat-card{
+    text-align:center; padding:16px 6px 14px; border-radius:15px;
+    background:linear-gradient(150deg, #FFFDF7, #F7F1DF 55%, #F0E8D2);
+    border:1.3px solid var(--gold-3);
+    box-shadow:0 5px 12px rgba(169,127,42,0.10), inset 0 1px 0 rgba(255,255,255,0.7);
+  }
+  .lb-mystat-value{
+    font-family:'Aref Ruqaa', serif; font-weight:800; font-size:26px; color:var(--sage-deep);
+    margin-bottom:4px; line-height:1;
+  }
+  .lb-mystat-label{ font-size:11px; font-weight:700; color:var(--ink-soft); }
+
   /* ============ ثلاث بطاقات كبيرة بأيقونة عربية موشّاة لأقسام الترتيب الرئيسية ============ */
   .lb-main-grid{ display:flex; flex-direction:column; gap:12px; margin-bottom:26px; }
   .lb-main-card{
