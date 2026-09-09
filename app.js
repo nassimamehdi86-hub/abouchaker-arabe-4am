@@ -1207,7 +1207,7 @@ function renderLessonsScreen(){
       html += `
         <div class="lesson-accordion">
           <div class="group-header accordion-toggle" data-category="${categoryId}">
-            <span class="gh-icon">${meta.icon}</span>
+            <span class="gh-icon"><span>${meta.icon}</span></span>
             <span class="gh-title">${meta.title}</span>
             <span class="gh-count">${lessons.length} دروس</span>
             <span class="accordion-arrow" style="margin-right: auto; transition: transform 0.3s ease;">

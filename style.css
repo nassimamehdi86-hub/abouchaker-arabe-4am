@@ -617,60 +617,71 @@
   }
   .cat-tab.active{ background:linear-gradient(135deg, var(--gold-1), var(--gold-2)); color:#33260A; border-color:var(--gold-3); }
 
-  /* ============ عنوان تصنيف الدروس (مستوحى من الفهرس، بالذهبي بدل الوردي) ============ */
-  .group-header{
-    display:flex; align-items:center; gap:8px; border-radius:12px; padding:9px 16px; margin:18px 0 11px;
-    border:1.2px solid var(--gold-3);
-    background:
-      linear-gradient(120deg, #F3ECD5, #E7C878),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Cg fill='none' stroke='%23A97F2A' stroke-width='0.8' opacity='0.7'%3E%3Cpath d='M15 1 L29 15 L15 29 L1 15 Z'/%3E%3Ccircle cx='15' cy='15' r='4'/%3E%3C/g%3E%3C/svg%3E");
-    background-blend-mode:normal, multiply;
-    background-size:auto, 30px 30px;
+  /* ============ قوائم منسدلة (Accordions) للوحدات الرئيسية في قائمة الدروس ============
+     بنفس طراز بطاقات لوحة الأستاذ/المشرف (admin-accordion): بطاقة كريمية دافئة كاملة
+     بإطار ذهبي وظل عميق، وأيقونة مجسّمة مربعة، وشارة عدّاد دائرية داكنة. */
+  .lesson-accordion{
+    border-radius:20px; overflow:hidden; margin-bottom:14px;
+    background:linear-gradient(160deg, #FFFDF7, #F3ECD5);
+    border:1.6px solid rgba(169,127,42,0.35);
+    box-shadow:0 10px 22px rgba(169,127,42,0.10), inset 0 1px 0 rgba(255,255,255,0.7);
   }
-  .group-header:first-child{ margin-top:0; }
+  .lesson-accordion:first-child{ margin-top:0; }
+
+  .group-header{
+    display:flex; align-items:center; gap:12px; padding:14px 18px; margin:0;
+    border:none; background:transparent; border-radius:0;
+  }
+  .accordion-toggle{
+    cursor:pointer; user-select:none; transition:background .15s ease;
+  }
+  .accordion-toggle:active{ background:rgba(169,127,42,0.08) !important; }
+  .accordion-toggle:hover{ background:rgba(169,127,42,0.05); }
+
+  /* أيقونة مجسّمة مربعة بنفس طراز أيقونات لوحة الأستاذ (aa-icon-wrap) */
   .group-header .gh-icon{
-    font-size:15px;
-    display:inline-flex; align-items:center; justify-content:center;
-    width:32px; height:32px; flex-shrink:0; border-radius:50%; position:relative;
-    background:radial-gradient(circle at 50% 45%, #FFFBF0 35%, #F3ECD5 70%, var(--gold-1) 100%);
-    border:1.3px solid var(--gold-3);
-    box-shadow:0 0 0 2px #FFF8E7, 0 2px 4px rgba(169,127,42,0.25);
+    font-size:24px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    width:54px; height:54px; flex-shrink:0; border-radius:15px; position:relative; overflow:hidden;
+    background:linear-gradient(160deg, #FBEDC3, #E7C878 60%, #D8AE52);
+    border:1.4px solid rgba(122,82,22,0.55);
+    box-shadow:
+      0 7px 14px rgba(122,82,22,0.32),
+      0 2px 3px rgba(80,52,10,0.28),
+      inset 0 2px 2px rgba(255,255,255,0.85),
+      inset 0 -4px 6px rgba(90,58,12,0.38);
   }
   .group-header .gh-icon::before{
-    content:'';
-    position:absolute; inset:-6px;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g fill='none' stroke='%23A97F2A' stroke-width='2.4' opacity='0.6'><path d='M50 2 L61 33 L94 33 L67 53 L78 84 L50 64 L22 84 L33 53 L6 33 L39 33 Z'/></g></svg>");
-    background-size:contain; background-repeat:no-repeat; background-position:center;
-    pointer-events:none;
+    content:""; position:absolute; inset:0; opacity:0.55; mix-blend-mode:multiply; pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cg fill='none' stroke='%23A9772A' stroke-width='0.7' opacity='0.65'%3E%3Cpath d='M11 1 L21 11 L11 21 L1 11 Z'/%3E%3Cpath d='M11 1 L11 21 M1 11 L21 11'/%3E%3Ccircle cx='11' cy='11' r='3.4'/%3E%3Cpath d='M4.5 4.5 L7.5 7.5 M17.5 4.5 L14.5 7.5 M4.5 17.5 L7.5 14.5 M17.5 17.5 L14.5 14.5'/%3E%3C/g%3E%3C/svg%3E");
+    background-size:15px 15px;
   }
   .group-header .gh-icon::after{
-    content:''; position:absolute; inset:-2px; border-radius:50%;
-    border:1px dashed rgba(169,127,42,0.55);
+    content:""; position:absolute; top:0; left:0; right:0; height:46%;
+    background:linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0)); pointer-events:none;
   }
-  .group-header .gh-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:15px; color:#3A2A0A; }
-  .group-header .gh-count{ margin-inline-start:auto; font-size:10px; font-weight:800; color:#5C4413; background:rgba(255,255,255,0.5); border-radius:999px; padding:2px 10px; }
+  .group-header .gh-icon span{ position:relative; z-index:1; filter:drop-shadow(0 2px 2px rgba(60,38,8,0.35)); }
 
-  /* ============ قوائم منسدلة (Accordions) للوحدات الرئيسية في قائمة الدروس ============ */
-  .lesson-accordion{ margin-bottom:8px; }
-  
-  .accordion-toggle{
-    cursor:pointer; user-select:none; transition:all 0.2s ease;
+  .group-header .gh-title{
+    font-family:'Aref Ruqaa', serif; font-weight:700; font-size:17px; color:var(--ink);
   }
-  
-  .accordion-toggle:hover{
-    background:linear-gradient(120deg, #F8EFDA, #EDDA8A) !important; 
-    box-shadow:0 6px 18px rgba(169,127,42,0.15) !important;
+  /* شارة عدّاد دائرية داكنة، بنفس طراز شارات لوحة الأستاذ (aa-badge) */
+  .group-header .gh-count{
+    margin-inline-start:auto; flex-shrink:0;
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:26px; height:26px; padding:0 8px; border-radius:999px;
+    background:#33260A; color:#F3ECD5; font-size:12px; font-weight:800; font-family:'Cairo',sans-serif;
   }
-  
   .accordion-arrow{
-    display:inline-flex; align-items:center; justify-content:center; 
-    font-size:12px; transition:transform 0.3s ease; color:var(--gold-3);
+    display:inline-flex; align-items:center; justify-content:center;
+    font-size:14px; color:var(--gold-3); transition:transform .3s ease; flex-shrink:0;
   }
-  
+
   .accordion-content{
     overflow:hidden; transition:max-height 0.3s ease, opacity 0.3s ease;
+    padding:0 18px 18px;
   }
-  
+
   .accordion-content.active{
     display:block !important;
   }
