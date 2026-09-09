@@ -480,11 +480,22 @@ const Admin = {
    الترتيب (Leaderboard) لتمارين الدرس — بالنسبة المئوية، وليس بمجموع نقاط
    ========================================================================================= */
 const Leaderboard = {
+  /* الترتيب حسب النسبة المئوية تنازليًا، وعند التعادل يُفصل بينهم بأقل وقت استغرقه إنجاز التمرين
+     (timeSeconds) — من لم تُسجَّل مدته (نتائج قديمة قبل هذه الميزة) يُوضع في آخر مجموعة التعادل. */
+  _rank(a, b){
+    if((b.percent||0) !== (a.percent||0)) return (b.percent||0) - (a.percent||0);
+    const ta = (typeof a.timeSeconds === 'number') ? a.timeSeconds : Infinity;
+    const tb = (typeof b.timeSeconds === 'number') ? b.timeSeconds : Infinity;
+    return ta - tb;
+  },
   async forLesson(lessonId){
     if(!fbReady) return [];
-    const snap = await db.collection('submissions').doc(lessonId).collection('students')
-      .orderBy('percent','desc').limit(50).get();
-    return snap.docs.map(d=>({ name:d.data().studentName, percent:d.data().percent }));
+    /* الجلب بلا ترتيب من الخادم (تفاديًا لفهرس مركّب في Firestore)، ثم الترتيب محليًا حسب
+       النسبة المئوية فأقل وقت عند التعادل */
+    const snap = await db.collection('submissions').doc(lessonId).collection('students').limit(200).get();
+    const rows = snap.docs.map(d=>({ name:d.data().studentName, percent:d.data().percent, timeSeconds:d.data().timeSeconds }));
+    rows.sort(Leaderboard._rank);
+    return rows.slice(0, 50);
   },
   /* نتيجة التلميذ الحالي في تمرين درس معيّن، إن وُجدت (لمنع إعادة المحاولة وعرض نتيجته السابقة) */
   async mine(lessonId){
@@ -494,14 +505,17 @@ const Leaderboard = {
       return doc.exists ? doc.data() : null;
     }catch(e){ return null; }
   },
-  /* تسجيل نتيجة تمرين درس — محاولة واحدة فقط */
-  async submit(lessonId, percent){
+  /* تسجيل نتيجة تمرين درس — محاولة واحدة فقط. timeSeconds: المدة بالثواني من بدء التمرين إلى
+     إرساله، تُستخدم فقط للفصل بين المتعادلين في النسبة المئوية داخل الترتيب */
+  async submit(lessonId, percent, timeSeconds){
     if(!fbReady || !Student.id) return { ok:false, reason:'offline' };
     const ref = db.collection('submissions').doc(lessonId).collection('students').doc(Student.id);
     try{
       const existing = await ref.get();
       if(existing.exists) return { ok:false, reason:'already-submitted' }; // محاولة واحدة فقط
-      await ref.set({ studentName: Student.fullName, percent, submittedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      const payload = { studentName: Student.fullName, percent, submittedAt: firebase.firestore.FieldValue.serverTimestamp() };
+      if(typeof timeSeconds === 'number' && isFinite(timeSeconds) && timeSeconds >= 0) payload.timeSeconds = timeSeconds;
+      await ref.set(payload);
       return { ok:true };
     }catch(e){ return { ok:false, reason:'error' }; }
   },
@@ -570,6 +584,13 @@ const Leaderboard = {
   }
 };
 
+/* تنسيق مدة إنجاز التمرين (بالثواني) بصيغة عربية مختصرة، مثل: "3 د 24 ث" أو "48 ث" */
+function formatDurationAr(totalSeconds){
+  const s = Math.max(0, Math.round(totalSeconds));
+  const m = Math.floor(s/60), r = s%60;
+  return m>0 ? `${m} د ${r} ث` : `${r} ث`;
+}
+
 /* =========================================================================================
    نافذة ترتيب الدرس (Leaderboard Popup)
    ========================================================================================= */
@@ -627,8 +648,8 @@ async function showLeaderboardPopup(lesson){
       results.push({ ...doc.data(), studentId:doc.id });
     });
     
-    /* ترتيب حسب النسبة المئوية تنازليًا */
-    results.sort((a,b)=>(b.percent||0)-(a.percent||0));
+    /* ترتيب حسب النسبة المئوية تنازليًا، وعند التعادل يُفصل بينهم بأقل وقت استغرقه إنجاز التمرين */
+    results.sort(Leaderboard._rank);
     
     listDiv.innerHTML = '';
     results.forEach((res, idx)=>{
@@ -656,7 +677,8 @@ async function showLeaderboardPopup(lesson){
         const d = (typeof res.submittedAt.toDate === 'function') ? res.submittedAt.toDate() : new Date(res.submittedAt);
         if(d && !isNaN(d.getTime())) dateLabel = d.toLocaleDateString('ar-EG');
       }
-      score.textContent = `تاريخ: ${dateLabel}`;
+      const timeLabel = (typeof res.timeSeconds === 'number') ? ` — ⏱ ${formatDurationAr(res.timeSeconds)}` : '';
+      score.textContent = `تاريخ: ${dateLabel}${timeLabel}`;
       
       info.appendChild(name);
       info.appendChild(score);
@@ -1681,6 +1703,7 @@ function createExerciseEngine(lesson, questions, mountEl){
   const total = questions.length;
   const order = shuffleArr(questions.map((_,i)=>i));
   let idx = 0, correctCount = 0;
+  const startTs = Date.now(); /* لحساب مدة إنجاز التمرين — تُستخدم للفصل عند تعادل النسبة المئوية في الترتيب */
 
   function renderQuestion(){
     const qIndex = order[idx];
@@ -1713,7 +1736,7 @@ function createExerciseEngine(lesson, questions, mountEl){
     });
     mountEl.querySelector('.quiz-next-btn').addEventListener('click', ()=>{
       idx++;
-      if(idx >= total) finishExercise(lesson, mountEl, Math.round((correctCount/total)*100));
+      if(idx >= total) finishExercise(lesson, mountEl, Math.round((correctCount/total)*100), Math.round((Date.now()-startTs)/1000));
       else renderQuestion();
     });
   }
@@ -1786,6 +1809,7 @@ function buildExerciseUnits(data){
 function createOpenExerciseEngine(lesson, units, mountEl){
   const total = units.length;
   let idx = 0, scoreSum = 0;
+  const startTs = Date.now(); /* لحساب مدة إنجاز التمرين — تُستخدم للفصل عند تعادل النسبة المئوية في الترتيب */
 
   function header(sectionTitle){
     return `<div class="quiz-progress">${sectionTitle ? sectionTitle+' — ' : ''}سؤال ${idx+1} من ${total}</div>`;
@@ -1929,16 +1953,16 @@ function createOpenExerciseEngine(lesson, units, mountEl){
 
   function finish(){
     const pct = Math.round((scoreSum/total)*100);
-    finishExercise(lesson, mountEl, pct);
+    finishExercise(lesson, mountEl, pct, Math.round((Date.now()-startTs)/1000));
   }
 
   renderUnit();
 }
 
 /* ---------- إنهاء أي تمرين (اختيار من متعدد أو مفتوح): حفظ النتيجة النهائية في الترتيب ---------- */
-async function finishExercise(lesson, mountEl, pct){
+async function finishExercise(lesson, mountEl, pct, timeSeconds){
   mountEl.innerHTML = '<div class="sf-label">جاري حفظ نتيجتك…</div>';
-  const res = await Leaderboard.submit(lesson.id, pct);
+  const res = await Leaderboard.submit(lesson.id, pct, timeSeconds);
   let tier='retry', emoji='🌱', title='لا بأس، البداية دائمًا هكذا!',
       msg='راجع الدرس جيدًا. النتيجة سُجّلت في ترتيب هذا الدرس.';
   if(pct>=90){ tier='excellent'; emoji='🏆'; title='أداء استثنائي يا نجم! 🌟'; msg='لقد أتقنت هذا الدرس بامتياز!'; }
