@@ -341,6 +341,9 @@
     <div class="chat-window">
       <div id="chatMessagesWrap" class="chat-messages-scroll"><div class="chat-pending">جارٍ تحميل الرسائل…</div></div>
     </div>
+    <!-- بطاقة ثابتة أسفل الدردشة: تُظهر آخر جواب على سؤال هذا التلميذ فقط، وتبقى ظاهرة
+         له دون تمرير حتى لا تضيع وسط كثرة الأسئلة الأخرى -->
+    <div id="chatMyAnswerBanner" class="chat-my-answer-banner" style="display:none"></div>
     <div class="chat-input-row">
       <button type="button" class="al-key" id="chatAskTeacherBtn" style="width:auto;padding:10px 14px" title="سؤال مباشر للأستاذ">❓ للأستاذ</button>
       <input type="text" id="chatInput" placeholder="اكتب رسالتك..." maxlength="500">

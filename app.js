@@ -2964,6 +2964,7 @@ const Chat = {
         const msgs = snap.docs.map(d=>({ id:d.id, ...d.data() }));
         this._lastCount = msgs.length;
         this.renderMessages(msgs);
+        this.updateMyAnswerBanner(msgs);
       }, err=>{
         console.error('خطأ في تحميل رسائل الدردشة (تحقق من قواعد Firestore لمجموعة chatMessages):', err);
         if(typeof showFbPermissionNotice === 'function') showFbPermissionNotice('chatMessages');
@@ -3008,6 +3009,55 @@ const Chat = {
       </div>`;
     }).join('');
     wrap.scrollTop = wrap.scrollHeight;
+  },
+
+  /* بطاقة ثابتة أسفل نافذة الدردشة (فوق خانة الكتابة) تُظهر آخر جواب على سؤال التلميذ
+     الحالي فقط — بلا حاجة للتمرير بين كل الرسائل، حتى لا يضيع جوابه وسط كثرة الأسئلة.
+     تختفي عند الضغط على ✕ (يُحفظ معرّف آخر جواب أُخفي في localStorage)، وتظهر تلقائيًا
+     من جديد إن وصل جواب أحدث. */
+  updateMyAnswerBanner(msgs){
+    const banner = document.getElementById('chatMyAnswerBanner');
+    if(!banner) return;
+    if(!Student.id){ banner.style.display = 'none'; banner.innerHTML = ''; return; }
+
+    const myAnswered = msgs.filter(m => m.isQuestion && m.answered && m.studentId === Student.id);
+    if(!myAnswered.length){
+      banner.style.display = 'none';
+      banner.innerHTML = '';
+      return;
+    }
+
+    const last = myAnswered[myAnswered.length - 1]; /* الأحدث، لأن msgs مرتّبة تصاعديًا */
+    let dismissedId = null;
+    try{ dismissedId = localStorage.getItem('chatDismissedAnswerId'); }catch(e){ /* تجاهل */ }
+    if(dismissedId === last.id){
+      banner.style.display = 'none';
+      banner.innerHTML = '';
+      return;
+    }
+
+    const answerBody = last.answerAudioUrl
+      ? `<audio controls src="${escZoomText(last.answerAudioUrl)}"></audio>`
+      : `<div class="chat-msg-text">${escZoomText(last.answerText || '')}</div>`;
+
+    banner.innerHTML = `
+      <div class="chat-my-answer-head">
+        <span>🎓 جواب الأستاذ على سؤالك</span>
+        <button type="button" class="chat-my-answer-close" id="chatMyAnswerClose" title="إخفاء">✕</button>
+      </div>
+      <div class="chat-my-answer-question">❓ ${escZoomText(last.text || '')}</div>
+      ${answerBody}
+    `;
+    banner.style.display = 'block';
+
+    const closeBtn = document.getElementById('chatMyAnswerClose');
+    if(closeBtn){
+      closeBtn.addEventListener('click', ()=>{
+        try{ localStorage.setItem('chatDismissedAnswerId', last.id); }catch(e){ /* تجاهل */ }
+        banner.style.display = 'none';
+        banner.innerHTML = '';
+      });
+    }
   },
 
   async send(rawText){

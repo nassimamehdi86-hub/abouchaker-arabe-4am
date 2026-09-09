@@ -35,6 +35,57 @@ const StudentManagement = {
     }
   },
 
+  /* حذف كل نقاط/نتائج تلميذ واحد من جميع الإحصائيات والترتيبات، قبل حذف حسابه نهائيًا:
+     1) نتائج تمارين كل الدروس  → submissions/{lessonId}/students/{studentId}
+     2) نتائج الفروض والاختبارات → exams/{examId}/submissions/{studentId}
+     3) سجلات حلول تمارين الزوم  → zoomSolutions (حيث studentId == التلميذ)
+     بهذا تختفي نقاطه تلقائيًا من: الترتيب الشامل (لوحة الشرف)، ترتيب الفروض والاختبارات،
+     وترتيب كل درس على حدة، دون ترك أي أثر لحسابه المحذوف. */
+  async deleteStudentPointsEverywhere(studentId) {
+    if (!fbReady || !db) return;
+
+    const refsToDelete = [];
+
+    /* 1) نتائج تمارين الدروس — معرف كل مستند فرعي هو نفسه معرف التلميذ */
+    (window.LESSONS || []).forEach(lesson => {
+      refsToDelete.push(
+        db.collection('submissions').doc(lesson.id).collection('students').doc(studentId)
+      );
+    });
+
+    /* 2) نتائج الفروض والاختبارات */
+    try {
+      const examsSnap = await db.collection('exams').get();
+      examsSnap.forEach(examDoc => {
+        refsToDelete.push(
+          db.collection('exams').doc(examDoc.id).collection('submissions').doc(studentId)
+        );
+      });
+    } catch (error) {
+      console.warn('تعذّر جلب قائمة الفروض والاختبارات أثناء حذف نقاط التلميذ:', error);
+    }
+
+    /* 3) سجلات حلول تمارين الزوم */
+    try {
+      const zoomSnap = await db.collection('zoomSolutions').where('studentId', '==', studentId).get();
+      zoomSnap.forEach(doc => refsToDelete.push(doc.ref));
+    } catch (error) {
+      console.warn('تعذّر جلب سجلات حلول الزوم أثناء حذف نقاط التلميذ:', error);
+    }
+
+    /* الحذف على دفعات (حد أقصى 450 عملية لكل دفعة احتياطًا لحد Firestore البالغ 500) */
+    const chunkSize = 450;
+    for (let i = 0; i < refsToDelete.length; i += chunkSize) {
+      const batch = db.batch();
+      refsToDelete.slice(i, i + chunkSize).forEach(ref => batch.delete(ref));
+      try {
+        await batch.commit();
+      } catch (error) {
+        console.error('خطأ أثناء حذف نقاط التلميذ من الإحصائيات والترتيبات:', error);
+      }
+    }
+  },
+
   /* حذف تلميذ واحد */
   lastError: null,
   async deleteStudent(studentId) {
@@ -45,6 +96,8 @@ const StudentManagement = {
     }
 
     try {
+      /* حذف كل نقاطه من الإحصائيات والترتيبات أولاً، ثم حذف حسابه نهائيًا */
+      await this.deleteStudentPointsEverywhere(studentId);
       await db.collection('students').doc(studentId).delete();
       this.allStudents = this.allStudents.filter(s => s.id !== studentId);
       return true;
@@ -63,8 +116,13 @@ const StudentManagement = {
       return false;
     }
 
-    const batch = db.batch();
     try {
+      /* حذف نقاط كل تلميذ من الإحصائيات والترتيبات قبل حذف الحسابات */
+      for (const id of studentIds) {
+        await this.deleteStudentPointsEverywhere(id);
+      }
+
+      const batch = db.batch();
       studentIds.forEach(id => {
         const docRef = db.collection('students').doc(id);
         batch.delete(docRef);

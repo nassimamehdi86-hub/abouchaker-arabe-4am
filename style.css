@@ -2360,6 +2360,27 @@
 .chat-answer audio{ width:100%; margin-top:4px; }
 .chat-pending-note{ font-size:11px; color:var(--ink-soft); margin:-3px 0 12px 4px; }
 
+/* ----- بطاقة "جواب الأستاذ على سؤالك" — ثابتة أسفل نافذة الدردشة، فوق خانة الكتابة،
+   تظهر للتلميذ السائل فقط ولا تختفي بالتمرير حتى لا يضيع جوابه وسط رسائل كثيرة ----- */
+.chat-my-answer-banner{
+  margin-bottom:10px; padding:10px 13px; border-radius:14px;
+  background:rgba(110,143,115,0.28); border:1.4px solid var(--sage-deep, #3F6350);
+  box-shadow:0 2px 8px rgba(63,99,80,0.25);
+}
+.chat-my-answer-head{
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:12.5px; font-weight:800; color:var(--sage-deep); margin-bottom:6px;
+}
+.chat-my-answer-close{
+  background:rgba(255,255,255,0.6); border:1px solid rgba(63,99,80,0.3); border-radius:8px;
+  width:24px; height:24px; line-height:1; font-size:13px; font-weight:800; color:var(--sage-deep);
+  cursor:pointer; padding:0;
+}
+.chat-my-answer-question{
+  font-size:12.5px; font-weight:700; color:var(--ink-soft); margin-bottom:6px;
+}
+.chat-my-answer-banner audio{ width:100%; margin-top:2px; }
+
 .chat-input-row{
   display:flex; gap:8px;
   background:var(--paper, #fff); padding:8px; border-radius:14px; border:1.3px solid var(--gold-3);
