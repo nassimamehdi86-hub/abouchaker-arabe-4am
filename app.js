@@ -1036,7 +1036,7 @@ const Screens = {
   el: {}, // يُملأ عند التحميل بعناصر id لكل شاشة
 
   init(){
-    ['home','lessons','lessonDetail','exams','irab','situation','leaderboard','admin'].forEach(s=>{
+    ['home','lessons','lessonDetail','exams','irab','situation','leaderboard','chat','admin'].forEach(s=>{
       this.el[s] = document.getElementById('screen-'+s);
     });
     document.querySelectorAll('[data-nav]').forEach(btn=>{
@@ -1068,6 +1068,7 @@ const Screens = {
     
     if(name === 'lessons') renderLessonsScreen();
     if(name === 'exams') renderExamsScreen();
+    if(name === 'chat') renderChatScreen();
     if(name === 'irab') renderIrabScreen();
     if(name === 'situation') renderSituationScreen();
     if(name === 'leaderboard') renderLeaderboardScreen();
@@ -2912,6 +2913,249 @@ function setupAdminLoginModal(){
   document.getElementById('adminLoginClose').addEventListener('click', ()=> modal.classList.remove('show'));
 }
 
+/* =========================================================================================
+   💬 الدردشة العامة + أسئلة موجَّهة للأستاذ (الوسم #الاستاذ)
+   - كل رسالة تُحفظ في مجموعة Firestore واحدة: chatMessages
+   - إن احتوت الرسالة على #الاستاذ تُعتبر "سؤالًا" وتظهر للتلميذ بانتظار الرد،
+     وتظهر فورًا في لوحة الأستاذ ضمن "أسئلة التلاميذ" (بث لحظي onSnapshot)
+   - جواب الأستاذ (نص أو تسجيل صوتي عبر Firebase Storage) يظهر بعدها مباشرة
+     في الدردشة العامة للجميع، مع اسم وسؤال التلميذ السائل
+   ========================================================================================= */
+const CHAT_TAG = '#الاستاذ';
+
+const Chat = {
+  _listening: false,
+  _lastCount: 0,
+
+  ensureListening(){
+    if(this._listening || !fbReady || !db) return;
+    this._listening = true;
+    db.collection('chatMessages').orderBy('createdAt','asc').limitToLast(200)
+      .onSnapshot(snap=>{
+        const msgs = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        this._lastCount = msgs.length;
+        this.renderMessages(msgs);
+      }, err=>{
+        console.error('خطأ في تحميل رسائل الدردشة (تحقق من قواعد Firestore لمجموعة chatMessages):', err);
+        if(typeof showFbPermissionNotice === 'function') showFbPermissionNotice('chatMessages');
+        const wrap = document.getElementById('chatMessagesWrap');
+        if(wrap) wrap.innerHTML = '<div class="chat-pending-note">تعذّر تحميل الدردشة حاليًا.</div>';
+      });
+  },
+
+  renderMessages(msgs){
+    const wrap = document.getElementById('chatMessagesWrap');
+    if(!wrap) return; /* الشاشة ليست في DOM (لا يحدث فعليًا لأن الشاشات تبقى مخفية فقط) */
+    if(!msgs.length){
+      wrap.innerHTML = '<div class="chat-pending-note">لا توجد رسائل بعد — كن أول من يكتب!</div>';
+      return;
+    }
+    wrap.innerHTML = msgs.map(m=>{
+      const own = Student.id && m.studentId === Student.id;
+      const name = escZoomText(m.studentName || 'تلميذ');
+      const text = escZoomText(m.text || '');
+      if(m.isQuestion){
+        let html = `<div class="chat-msg chat-question ${own?'own':''}">
+          <span class="chat-question-tag">❓ سؤال موجّه للأستاذ</span>
+          <div class="chat-msg-name">${name}</div>
+          <div class="chat-msg-text">${text}</div>
+        </div>`;
+        if(m.answered){
+          const answerBody = m.answerAudioUrl
+            ? `<audio controls src="${escZoomText(m.answerAudioUrl)}"></audio>`
+            : `<div class="chat-msg-text">${escZoomText(m.answerText || '')}</div>`;
+          html += `<div class="chat-answer">
+            <div class="chat-answer-label">🎓 جواب الأستاذ على سؤال ${name}</div>
+            ${answerBody}
+          </div>`;
+        } else {
+          html += `<div class="chat-pending-note">⏳ بانتظار رد الأستاذ…</div>`;
+        }
+        return html;
+      }
+      return `<div class="chat-msg ${own?'own':''}">
+        <div class="chat-msg-name">${name}</div>
+        <div class="chat-msg-text">${text}</div>
+      </div>`;
+    }).join('');
+    wrap.scrollTop = wrap.scrollHeight;
+  },
+
+  async send(rawText){
+    const text = (rawText || '').trim();
+    if(!text) return;
+    if(!Student.id || !Student.fullName || Student.status !== 'approved'){
+      alert('يرجى تسجيل الدخول أولًا للمشاركة في الدردشة.');
+      return;
+    }
+    if(!fbReady || !db){
+      alert('الدردشة تحتاج اتصالًا بقاعدة البيانات، تعذّر الإرسال حاليًا.');
+      return;
+    }
+    const isQuestion = text.includes(CHAT_TAG);
+    try{
+      await db.collection('chatMessages').add({
+        studentId: Student.id,
+        studentName: Student.fullName,
+        text,
+        isQuestion,
+        answered: false,
+        answerText: null,
+        answerAudioUrl: null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }catch(error){
+      console.error('فشل إرسال رسالة الدردشة (تحقق من قواعد Firestore لمجموعة chatMessages):', error);
+      if(typeof showFbPermissionNotice === 'function') showFbPermissionNotice('chatMessages');
+      alert('تعذّر إرسال الرسالة. راجع التنبيه الظاهر أعلى الصفحة.');
+    }
+  }
+};
+
+function renderChatScreen(){
+  Chat.ensureListening();
+  const input = document.getElementById('chatInput');
+  const sendBtn = document.getElementById('chatSendBtn');
+  if(sendBtn && !sendBtn._wired){
+    sendBtn._wired = true;
+    const doSend = ()=>{
+      const val = input.value;
+      input.value = '';
+      Chat.send(val);
+    };
+    sendBtn.addEventListener('click', doSend);
+    input.addEventListener('keydown', e=>{ if(e.key === 'Enter') doSend(); });
+  }
+}
+
+/* =========================================================================================
+   لوحة الأستاذ: صندوق أسئلة التلاميذ (المرسَلة بوسم #الاستاذ) — رد كتابي أو تسجيل صوتي
+   ========================================================================================= */
+const ChatAdmin = {
+  _listening: false,
+  _recorder: null,
+  _recordedChunks: [],
+  _recordingFor: null,
+
+  ensureListening(){
+    if(this._listening || !fbReady || !db) return;
+    this._listening = true;
+    db.collection('chatMessages').where('isQuestion','==',true).where('answered','==',false)
+      .orderBy('createdAt','asc')
+      .onSnapshot(snap=>{
+        const list = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        this.renderInto(list);
+      }, err=>{
+        console.error('خطأ في تحميل أسئلة التلاميذ (قد تحتاج فهرسًا مركّبًا في Firestore — الرابط لإنشائه يظهر عادة في رسالة الخطأ هذه في وحدة تحكم المتصفح):', err);
+        const el = document.getElementById('chatQuestionsBody');
+        if(el) el.innerHTML = '<div class="exam-panel">تعذّر تحميل الأسئلة. راجع الطرفية (Console) — قد يلزم إنشاء فهرس Firestore، الرابط يظهر هناك.</div>';
+      });
+  },
+
+  renderInto(list){
+    const el = document.getElementById('chatQuestionsBody');
+    const badge = document.getElementById('chatQuestionsBadge');
+    if(badge) badge.textContent = list.length;
+    if(!el) return; /* القسم مطوي/غير موجود حاليًا في الصفحة — سيُحدَّث تلقائيًا عند فتحه لاحقًا */
+    if(!list.length){
+      el.innerHTML = '<div class="exam-panel">لا توجد أسئلة بانتظار الرد حاليًا 👍</div>';
+      return;
+    }
+    el.innerHTML = list.map(q=>`
+      <div class="chat-q-card" data-qid="${q.id}">
+        <div class="chat-msg-name">${escZoomText(q.studentName||'تلميذ')}</div>
+        <div class="chat-msg-text">${escZoomText(q.text||'')}</div>
+        <textarea placeholder="اكتب جوابك هنا..." data-answer-input="${q.id}"></textarea>
+        <div class="chat-q-actions">
+          <button type="button" class="al-key" style="width:auto;padding:7px 16px" data-send-text="${q.id}">📝 إرسال جواب مكتوب</button>
+          <button type="button" class="al-key" style="width:auto;padding:7px 16px" data-record="${q.id}">🎙️ تسجيل رد صوتي</button>
+          <span class="chat-pending-note" data-rec-status="${q.id}"></span>
+        </div>
+      </div>`).join('');
+    this.wire(el);
+  },
+
+  wire(el){
+    el.querySelectorAll('[data-send-text]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.getAttribute('data-send-text');
+        const ta = el.querySelector(`[data-answer-input="${id}"]`);
+        const answerText = (ta.value || '').trim();
+        if(!answerText){ alert('يرجى كتابة الجواب أولًا.'); return; }
+        btn.disabled = true; btn.textContent = '⏳ جارٍ الإرسال...';
+        try{
+          await db.collection('chatMessages').doc(id).update({
+            answered:true, answerText, answerAudioUrl:null,
+            answeredAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }catch(error){
+          console.error('فشل إرسال الجواب المكتوب:', error);
+          alert('تعذّر إرسال الجواب. تحقق من قواعد Firestore.');
+          btn.disabled = false; btn.textContent = '📝 إرسال جواب مكتوب';
+        }
+      });
+    });
+
+    el.querySelectorAll('[data-record]').forEach(btn=>{
+      btn.addEventListener('click', ()=> this.toggleRecording(btn, btn.getAttribute('data-record')));
+    });
+  },
+
+  async toggleRecording(btn, qid){
+    const statusEl = document.querySelector(`[data-rec-status="${qid}"]`);
+    /* إن كان تسجيل آخر جاريًا لسؤال مختلف، أوقفه أولًا */
+    if(this._recorder && this._recorder.state === 'recording' && this._recordingFor !== qid){
+      this._recorder.stop();
+    }
+    if(this._recorder && this._recorder.state === 'recording' && this._recordingFor === qid){
+      this._recorder.stop();
+      btn.classList.remove('recording'); btn.textContent = '🎙️ تسجيل رد صوتي';
+      if(statusEl) statusEl.textContent = '⏳ جارٍ الرفع...';
+      return;
+    }
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      alert('المتصفح لا يدعم تسجيل الصوت هنا.');
+      return;
+    }
+    if(!fbReady || !firebase.storage){
+      alert('التسجيل الصوتي يحتاج Firebase Storage، تعذّر المتابعة.');
+      return;
+    }
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+      const recorder = new MediaRecorder(stream);
+      this._recorder = recorder; this._recordingFor = qid; this._recordedChunks = [];
+      recorder.addEventListener('dataavailable', e=>{ if(e.data.size>0) this._recordedChunks.push(e.data); });
+      recorder.addEventListener('stop', async ()=>{
+        stream.getTracks().forEach(t=>t.stop());
+        const blob = new Blob(this._recordedChunks, { type:'audio/webm' });
+        try{
+          const path = `teacherAnswers/${qid}-${Date.now()}.webm`;
+          const ref = firebase.storage().ref(path);
+          await ref.put(blob);
+          const url = await ref.getDownloadURL();
+          await db.collection('chatMessages').doc(qid).update({
+            answered:true, answerAudioUrl:url, answerText:null,
+            answeredAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          if(statusEl) statusEl.textContent = '✅ تم إرسال الرد الصوتي';
+        }catch(error){
+          console.error('فشل رفع التسجيل الصوتي (تحقق من قواعد Firebase Storage):', error);
+          if(statusEl) statusEl.textContent = '❌ تعذّر رفع التسجيل';
+          alert('تعذّر رفع التسجيل الصوتي. تحقق من قواعد Firebase Storage.');
+        }
+        this._recorder = null; this._recordingFor = null;
+      });
+      recorder.start();
+      btn.classList.add('recording'); btn.textContent = '⏹️ إيقاف التسجيل';
+      if(statusEl) statusEl.textContent = '🔴 جارٍ التسجيل...';
+    }catch(error){
+      console.error('تعذّر الوصول للميكروفون:', error);
+      alert('تعذّر الوصول للميكروفون. تحقق من إذن المتصفح.');
+    }
+  }
+};
+
 async function renderAdminPanel(){
   const wrap = document.getElementById('adminWrap');
   wrap.innerHTML = '<div class="sf-label">جاري التحميل…</div>';
@@ -3068,9 +3312,11 @@ async function renderAdminPanel(){
     adminAccordionHTML('situations', `${AA_ICONS.situations} فتح/إغلاق وضعيات الاستئناس (المقاطع)`, situationsBody) +
     adminAccordionHTML('irab', `${AA_ICONS.irab} فتح/إغلاق إعراب الجمل`, irabBody) +
     adminAccordionHTML('aiTeacher', `${AA_ICONS.aiTeacher} المعلّم الذكي — اختبارات وتصحيح آلي`, aiTeacherBody) +
+    adminAccordionHTML('chatQuestions', `❓ أسئلة التلاميذ (الدردشة) <span class="aa-badge" id="chatQuestionsBadge">0</span>`, `<div id="chatQuestionsBody"><div class="exam-panel">جارٍ التحميل…</div></div>`) +
     adminAccordionHTML('stats', `${AA_ICONS.stats} إحصائيات كل درس`, statsBody);
 
   wireAdminAccordions(wrap);
+  ChatAdmin.ensureListening();
 
   document.getElementById('zoomManageBtn').addEventListener('click', ()=>{
     if(window.SoundFX) SoundFX.click();

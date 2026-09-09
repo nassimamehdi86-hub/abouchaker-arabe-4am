@@ -226,6 +226,10 @@
       <div class="hc-icon-wrap">🏆</div><div class="hc-title">الترتيب والنقاط</div><div class="hc-sub">تُحسب بالنسبة المئوية %</div>
     </div>
 
+    <div class="home-card-wide" data-nav="chat" style="cursor:pointer;margin-bottom:14px">
+      <div class="hc-icon-wrap">💬</div><div class="hc-title">الدردشة</div><div class="hc-sub">تواصل مع زملائك، واكتب #الاستاذ ليصل سؤالك للأستاذ مباشرة</div>
+    </div>
+
     <div class="sticker-row" id="badgesRow">
       <div class="sticker" id="badge-streak"><span class="st-emoji">🔥</span><span class="st-label">سلسلة نشاط</span></div>
       <div class="sticker" id="badge-star"><span class="st-emoji">⭐</span><span class="st-label">نجم الأسبوع</span></div>
@@ -326,6 +330,18 @@
     <div class="lesson-topbar"><button class="back-btn" data-nav="home">→ رجوع للرئيسية</button></div>
     <div class="section-title"><span>الترتيب والنقاط</span><div class="line"></div></div>
     <div id="leaderboardWrap"></div>
+  </div>
+
+  <!-- ============ شاشة الدردشة ============ -->
+  <div id="screen-chat" style="display:none">
+    <div class="lesson-topbar"><button class="back-btn" data-nav="home">→ رجوع للرئيسية</button></div>
+    <div class="section-title"><span>الدردشة</span><div class="line"></div></div>
+    <div class="chat-hint">💡 اكتب <b>#الاستاذ</b> في رسالتك ليصل سؤالك مباشرة إلى الأستاذ، وستظهر إجابته هنا للجميع.</div>
+    <div id="chatMessagesWrap"><div class="chat-pending">جارٍ تحميل الرسائل…</div></div>
+    <div class="chat-input-row">
+      <input type="text" id="chatInput" placeholder="اكتب رسالتك..." maxlength="500">
+      <button class="al-key" style="width:auto;padding:10px 18px" id="chatSendBtn">إرسال</button>
+    </div>
   </div>
 
   <!-- ============ لوحة تحكم الأستاذ/المشرف ============ -->
