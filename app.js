@@ -2997,7 +2997,7 @@ async function renderAdminPanel(){
   const aiTeacherBody = `
     <div class="note" style="margin-bottom:12px">🧠 وحدة منفصلة تتيح إنشاء اختبار (نص/جدول/رسوم)، طباعته، ورفع تلميذ صورة إجابته لتصحّح تلقائيًا بالذكاء الاصطناعي مع علامة وتقرير فوري.
       <br><b>عند أول استخدام</b> ستطلب منك لوحة الأستاذ(ة) هناك رمزًا سريًا خاصًا بها (منفصل عن رمز هذه اللوحة)، ثم رابط خادم التصحيح (Worker) — راجع ملف <b>worker.js</b> وREADME المرفقين لنشره خلال دقائق.</div>
-    <a class="al-key" style="display:inline-block;width:auto;padding:9px 22px;text-decoration:none" href="smart-teacher.html" target="_blank" rel="noopener">🧠 فتح لوحة المعلّم الذكي</a>
+    <a class="al-key" style="display:inline-block;width:auto;padding:9px 22px;text-decoration:none" href="smart-teacher.html">🧠 فتح لوحة المعلّم الذكي</a>
     <div class="note" style="margin-top:12px">💡 بعد نشر اختبار هناك، انسخ رابطه وأرسله لكل التلاميذ عبر قسم "👥 التلاميذ المقبولون" أدناه أو أي وسيلة تواصل معتادة.</div>`;
 
   /* زر بارز لإدارة روابط تسجيلات حصص الزوم للأفواج الأربعة — يفتح نافذة منبثقة مستقلة */
