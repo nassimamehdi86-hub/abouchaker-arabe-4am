@@ -318,12 +318,12 @@ const ZoomLinks = {
     this.ready = true;
   },
 
-  /* يُعيد دائمًا كائنًا بالأفواج الأربعة، وكل فوج بحقوله الثلاثة كمصفوفات روابط (فارغة إن لم تُحفظ
+  /* يُعيد دائمًا كائنًا بكل الأفواج، وكل فوج بحقوله الثلاثة كمصفوفات روابط (فارغة إن لم تُحفظ
      بعد) — كل فوج يمكن أن يملك أكثر من رابط فيديو وأكثر من رابط ملخّص وأكثر من رابط تمارين */
   getLinks(lessonId){
     const l = (this.data.lessons && this.data.lessons[lessonId]) || {};
     const out = {};
-    ['g1','g2','g3','g4'].forEach(k=>{
+    ['g1','g2','g3','g4','g5'].forEach(k=>{
       const g = l[k] || {};
       out[k] = {
         video: normalizeZoomLinkList(g.video),
@@ -338,14 +338,14 @@ const ZoomLinks = {
      (تُستعمل لعرض مؤشر في قائمة الأستاذ) */
   hasAnyLink(lessonId){
     const l = this.getLinks(lessonId);
-    return ['g1','g2','g3','g4'].some(k=> l[k].video.length || l[k].summary.length || l[k].exercises.length);
+    return ['g1','g2','g3','g4','g5'].some(k=> l[k].video.length || l[k].summary.length || l[k].exercises.length);
   },
 
   async setLinks(lessonId, groups){
     if(!fbReady) return { ok:false, reason:'no-firebase' };
     this.data.lessons = this.data.lessons || {};
     const clean = {};
-    ['g1','g2','g3','g4'].forEach(k=>{
+    ['g1','g2','g3','g4','g5'].forEach(k=>{
       const g = groups[k] || {};
       clean[k] = {
         video: normalizeZoomLinkList(g.video),
@@ -3576,14 +3576,15 @@ async function renderAdminPanel(){
 
 /* =========================================================================================
    نافذة "إدارة حصص الزوم" — منبثقة مستقلة من لوحة تحكم الأستاذ
-   خطوتان داخل نفس النافذة: 1) قائمة كل الدروس  2) نموذج 4 حقول (الأفواج) للدرس المختار
+   خطوتان داخل نفس النافذة: 1) قائمة كل الدروس  2) نموذج حقول الأفواج للدرس المختار
    كل درس جديد يُضاف مستقبلاً إلى LESSONS يظهر هنا تلقائيًا دون أي تعديل على هذا الكود.
    ========================================================================================= */
 const ZOOM_GROUPS = [
   { key:'g1', label:'فوج الإثنين' },
   { key:'g2', label:'فوج التلاثاء' },
   { key:'g3', label:'فوج الأربعاء' },
-  { key:'g4', label:'فوج الخميس' }
+  { key:'g4', label:'فوج الخميس' },
+  { key:'g5', label:'فوج المخزن' }
 ];
 
 /* وثيقتا "ملخّص الدرس" و"تمارينه" — رابط مستقل لكل فوج (كل فوج له وثائقه ورابط فيديو خاص به) */

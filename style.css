@@ -2241,6 +2241,8 @@
   border-radius:13px; padding:12px 8px; cursor:pointer; transition:.15s ease;
 }
 .zoom-tab-btn:active{ transform:translateY(1px); }
+/* عند وجود عدد فردي من الأفواج، يمتد الزر الأخير على السطر كاملاً بدل ترك فراغ بجانبه */
+.zoom-tab-btn:last-child:nth-child(odd){ grid-column:1 / -1; }
 .zoom-tab-btn.active{
   background:linear-gradient(135deg, var(--gold-1), var(--gold-2)); border-color:var(--gold-3);
   color:#33260A; box-shadow:0 8px 18px rgba(169,127,42,0.28);
