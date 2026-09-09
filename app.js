@@ -749,91 +749,9 @@ async function showLeaderboardPopup(lesson){
    تحميل تمارين الدروس — البيانات مضمّنة مباشرة في الكود (لا توجد ملفات خارجية)
    ========================================================================================= */
 const LESSON_EXERCISES = {
-  'atf-nasaq': {
-    "lessonId": "atf-nasaq",
-    "sections": [
-      {
-        "title": "١) أكمل الفراغات",
-        "instructions": "أكمل الفراغات بما يناسبها.",
-        "type": "fill",
-        "items": [
-          { "before": "العطف علاقة بين مفردتين، يفصل بينهما حرف من حروف", "after": ".", "answer": "العطف" },
-          { "before": "يُسمى الأول", "after": ".", "answer": "المعطوف عليه" },
-          { "before": "ويسمى الثاني", "after": ".", "answer": "المعطوف" },
-          { "before": "العطف يكون بين", "after": ".", "answer": "اسم واسم، أو فعل وفعل، أو جملة وجملة" },
-          { "before": "أهم حروف العطف هي:", "after": ".", "answer": "الواو، الفاء، ثمّ، أو، أم، بل، لا، حتى، لكن" }
-        ]
-      },
-      {
-        "title": "٢) استخرج من الفقرة",
-        "instructions": "استخرج المعطوف والمعطوف عليه وحرف العطف ممّا يلي. اضغط «أضف حالة» كل ما لقيت حالة جديدة.",
-        "type": "extract",
-        "sourceText": "إنَّ الوعيَ بالذَّاتِ يستوجِبُ سَلامةَ القَلبِ مِنَ الأحقادِ والمشاعرِ الهدَّامةِ تُجاهَ الكائناتِ والكونِ بما فيهِ، وأنْ يكونَ ظاهرُكَ كباطِنِكَ، فلا تتظاهرْ بما ليسَ فيكَ فتُكشفَ، وتُقبُحَ صورتُكَ، ولا تتكلَّفْ بما لا تستطيعُ فتشعرَ بالقهرِ والضِّيقِ، وانبِذِ التَّعصُّبَ، وكُنْ منطقيًّا وعَقلانيًّا في إصدارِ أَحكامِكَ، واتِّخاذِ قراراتِكَ. عَليكَ أنْ تَعرِفَ أنَّه لا يُوجدُ شَخصٌ سيّئٌ مُطلقًا، أَو خَيرٌ مُطلقًا، ولكنَّنا جميعًا مَزيجٌ بينَ هذا وذاكَ. أطلِقِ العَنانَ لأفكارِكَ وآمالِكَ، ولا تَيأَسْ، ولا تَستَسلِمْ، ولا تَستَمِعْ إلى كلامِ المُثبِّطينَ. اعتَنِ بنفسِكَ، وكافِئْ ذاتَكَ، وآمِنْ أنَّكَ تَستَحِقُّ الكَثيرَ. لا تُضخِّمِ الأُمورَ، وضَعْها في مَكانِها المُناسِبِ. فأَنتَ بحاجةٍ حَتمًا إلى العِبادةِ والتَّأمُّلِ، وأَدرِكْ أنَّ مِفتاحَ الانسِجامِ الدَّاخليِّ هوَ في البَساطةِ وعَدمِ التَّكَلُّفِ.",
-        "pairs": [
-          { "before": "الأحقاد", "conj": "الواو", "after": "المشاعر" },
-          { "before": "الكائنات", "conj": "الواو", "after": "الكون" },
-          { "before": "تُكشَف", "conj": "الواو", "after": "تُقبَح" },
-          { "before": "القهر", "conj": "الواو", "after": "الضيق" },
-          { "before": "منطقيًا", "conj": "الواو", "after": "عقلانيًا" },
-          { "before": "إصدار", "conj": "الواو", "after": "اتخاذ" },
-          { "before": "سيئ", "conj": "أو", "after": "خير" },
-          { "before": "هذا", "conj": "الواو", "after": "ذاك" },
-          { "before": "تستسلم", "conj": "الواو", "after": "تيأس" },
-          { "before": "تيأس", "conj": "الواو", "after": "تستمع" },
-          { "before": "أفكارك", "conj": "الواو", "after": "آمالك" },
-          { "before": "اعتن", "conj": "الواو", "after": "كافئ" },
-          { "before": "كافئ", "conj": "الواو", "after": "آمن" },
-          { "before": "تضخم", "conj": "الواو", "after": "ضعها" },
-          { "before": "العبادة", "conj": "الواو", "after": "التأمل" },
-          { "before": "البساطة", "conj": "الواو", "after": "التكلف" }
-        ],
-        "passRatio": 0.6
-      },
-      {
-        "title": "٣) أعرب ما تحته خط",
-        "instructions": "أعرب الكلمات التالية من الفقرة السابقة.",
-        "type": "irab",
-        "items": [
-          { "word": "الأحقاد", "answer": "اسم مجرور بـ«من» وعلامة جره الكسرة الظاهرة على آخره." },
-          { "word": "الواو", "answer": "حرف عطف مبني على الفتح لا محل له من الإعراب." },
-          { "word": "المشاعر", "answer": "اسم معطوف مجرور وعلامة جره الكسرة الظاهرة على آخره." },
-          { "word": "سيّئ", "answer": "نعت مرفوع وعلامة رفعه الضمة الظاهرة على آخره." }
-        ]
-      },
-      {
-        "title": "٤) حروف العطف ومعانيها",
-        "instructions": "اكتب المعنى الذي يفيده كل حرف من حروف العطف.",
-        "type": "term",
-        "items": [
-          { "term": "الواو", "answer": "تفيد الجمع والاشتراك المطلق بلا ترتيب" },
-          { "term": "الفاء", "answer": "تفيد الترتيب مع التعقيب (بدون مهلة)" },
-          { "term": "ثمّ", "answer": "تفيد الترتيب مع التراخي (مع مهلة)" },
-          { "term": "أو", "answer": "تفيد التخيير أو الإباحة أو الشك" },
-          { "term": "أم", "answer": "تفيد التعيين وتسبقها همزة الاستفهام غالبًا" },
-          { "term": "بل", "answer": "تفيد الإضراب، أي العدول عن الأول إلى الثاني" },
-          { "term": "لا", "answer": "تفيد نفي الحكم عن الثاني وإثباته للأول" },
-          { "term": "لكن", "answer": "تفيد الاستدراك" },
-          { "term": "حتى", "answer": "تفيد الغاية، أي انتهاء الحكم عندها" }
-        ]
-      },
-      {
-        "title": "٥) وظّف كل حرف في جملة",
-        "instructions": "وظّف كل حرف من حروف العطف في جملة من إنشائك (لا يوجد جواب وحيد صحيح — يكفي أن تستعمل الحرف بشكل سليم ضمن جملة كاملة).",
-        "type": "sentence",
-        "items": [
-          { "term": "الواو" },
-          { "term": "الفاء" },
-          { "term": "ثمّ" },
-          { "term": "أو" },
-          { "term": "أم" },
-          { "term": "بل" },
-          { "term": "لا" },
-          { "term": "لكن" },
-          { "term": "حتى" }
-        ]
-      }
-    ]
-  },
+  /* 'atf-nasaq' لم تعد مُضمَّنة هنا: تُجلب الآن مباشرة من content/exercises/atf-nasaq.json
+     — وهذا هو النمط المعتمد من الآن فصاعدًا لأي درس جديد: يكفي إضافة ملف JSON
+     في content/exercises/<lessonId>.json دون لمس app.js إطلاقًا (انظر loadLessonExercise). */
   'badal': {
     "lessonId": "badal",
     "sections": [
@@ -1867,13 +1785,15 @@ async function renderLessonExercisesBox(lesson){
 
   /* صيغتان مدعومتان لملف التمارين:
      1) { questions:[...] }  → اختيار من متعدد (المحرك القديم createExerciseEngine)
-     2) { sections:[...] }   → أسئلة مفتوحة مختلطة (أكمل الفراغ/الإعراب/المعنى/الجملة/الاستخراج) */
-  const units = Array.isArray(data.questions) ? null : buildExerciseUnits(data);
+     2) { sections:[...] }   → تمارين الكتاب كما هي، كل تمرين (قسم) يُعرض دفعة واحدة في صفحة واحدة
+                                 تمامًا كما يظهر في ورقة التمرين الأصلية (أكمل الفراغ/الإعراب/المعنى/الجملة/الاستخراج) */
+  const units = Array.isArray(data.questions) ? null : buildExercisePages(data);
   const count = units ? units.length : data.questions.length;
+  const countLabel = units ? 'عدد التمارين' : 'عدد الأسئلة';
 
   box.innerHTML = `
     <button class="lesson-cta-btn" id="ldExerciseStartBtn">▶️ ابدأ التمرين</button>
-    <div class="lesson-cta-note">⚠️ محاولة واحدة فقط — عدد الأسئلة: ${count}. لا يمكنك إعادة هذا التمرين بعد إرساله، وتُحسب نتيجتك بالنسبة المئوية وتدخل ترتيب هذا الدرس.</div>
+    <div class="lesson-cta-note">⚠️ محاولة واحدة فقط — ${countLabel}: ${count}. لا يمكنك إعادة هذا التمرين بعد إرساله، وتُحسب نتيجتك بالنسبة المئوية وتدخل ترتيب هذا الدرس.</div>
     <div id="ldExerciseMount" style="margin-top:14px"></div>`;
 
   document.getElementById('ldExerciseStartBtn').addEventListener('click', ()=>{
@@ -1973,116 +1893,164 @@ function containsWordAr(user, word){
   return nu.split(' ').includes(nw);
 }
 
-/* ---------- تحويل أقسام ملف التمارين (sections) إلى قائمة أسئلة مسطّحة ---------- */
-function buildExerciseUnits(data){
-  const units = [];
-  (data.sections||[]).forEach(sec=>{
-    if(sec.type === 'extract'){
-      units.push({
-        type:'extract', sectionTitle:sec.title, instruction:sec.instructions,
-        sourceText:sec.sourceText, pairs:sec.pairs||[], passRatio: sec.passRatio || 0.6
-      });
-    } else {
-      (sec.items||[]).forEach(it=>{
-        units.push(Object.assign({ type:sec.type, sectionTitle:sec.title, instruction:sec.instructions }, it));
-      });
-    }
-  });
-  return units;
+/* ---------- أقسام ملف التمارين (sections) ---------- */
+/* كل قسم (section) = تمرين كامل كما يظهر في ورقة الكتاب، ويُعرض دفعة واحدة في صفحة واحدة
+   بكل فقراته/أسئلته الفرعية معًا — لا تفتيت لتمرين واحد إلى شاشات متتالية منفصلة. */
+function buildExercisePages(data){
+  return data.sections || [];
 }
 
-/* ---------- محرك «تمارين الدرس» — أسئلة مفتوحة مختلطة (أكمل الفراغ/الإعراب/المعنى/الجملة/الاستخراج) ---------- */
-function createOpenExerciseEngine(lesson, units, mountEl){
-  const total = units.length;
+/* ---------- محرك «تمارين الدرس» — كل تمرين (قسم) في صفحة واحدة كاملة، كما في ورقة الكتاب ---------- */
+function createOpenExerciseEngine(lesson, pages, mountEl){
+  const total = pages.length;
   let idx = 0, scoreSum = 0;
   const startTs = Date.now(); /* لحساب مدة إنجاز التمرين — تُستخدم للفصل عند تعادل النسبة المئوية في الترتيب */
 
-  function header(sectionTitle){
-    return `<div class="quiz-progress">${sectionTitle ? sectionTitle+' — ' : ''}سؤال ${idx+1} من ${total}</div>`;
+  function pageHeader(sec){
+    const num = sec.number ? `التمرين ${sec.number}` : (sec.title || '');
+    return `
+      <div class="quiz-progress">تمرين ${idx+1} من ${total}</div>
+      <div class="book-exercise-title">${sec.title || num}</div>
+      ${sec.instructions ? `<div class="book-exercise-instr">${sec.instructions}</div>` : ''}`;
   }
 
-  function renderUnit(){
-    const u = units[idx];
-    if(u.type === 'extract') return renderExtractUnit(u);
-    return renderSimpleUnit(u);
+  function goNext(){
+    idx++;
+    if(idx >= total) finish(); else renderPage();
   }
 
-  function renderSimpleUnit(u){
-    let label = '', inputTag = '', checkLabel = 'تحقق';
-    if(u.type === 'fill'){
-      label = `<div class="quiz-fill-sentence">${u.before||''}<span class="blank"></span>${u.after||''}</div>`;
-      inputTag = `<input type="text" class="quiz-text-input" placeholder="اكتب إجابتك هنا">`;
-    } else if(u.type === 'irab'){
-      label = `<div class="quiz-term-label">${u.word||''}</div><div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:8px">أعرب هذه الكلمة</div>`;
-      inputTag = `<textarea class="quiz-textarea" placeholder="اكتب الإعراب هنا"></textarea>`;
-    } else if(u.type === 'term'){
-      label = `<div class="quiz-term-label">${u.term||''}</div><div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:8px">ما المعنى الذي يفيده هذا الحرف؟</div>`;
-      inputTag = `<input type="text" class="quiz-text-input" placeholder="اكتب المعنى هنا">`;
-    } else if(u.type === 'sentence'){
-      label = `<div class="quiz-term-label">${u.term||''}</div><div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:8px">وظّف هذا الحرف في جملة من إنشائك</div>`;
-      inputTag = `<input type="text" class="quiz-text-input" placeholder="اكتب جملتك هنا">`;
-    }
+  function nextBtnHtml(){
+    return `<button class="quiz-next-btn" style="display:none">${idx+1<total ? 'التمرين التالي ←' : 'إنهاء وإرسال ✅'}</button>`;
+  }
+
+  function renderPage(){
+    const sec = pages[idx];
+    if(sec.type === 'extract') return renderExtractPage(sec);
+    if(sec.type === 'fill' && Array.isArray(sec.passage)) return renderFillPassagePage(sec);
+    if(sec.type === 'fill') return renderFillListPage(sec);
+    if(sec.type === 'irab') return renderWordListPage(sec, 'irab');
+    if(sec.type === 'term') return renderWordListPage(sec, 'term');
+    if(sec.type === 'sentence') return renderWordListPage(sec, 'sentence');
+    /* نوع غير معروف — تخطٍّ آمن */
+    scoreSum += 1; goNext();
+  }
+
+  /* ===== ١) تمرين «أكمل الفراغات» بصياغة فقرة متواصلة مع فراغات داخلية (passage) ===== */
+  function renderFillPassagePage(sec){
+    const html = (sec.passage||[]).map((tok,i)=>{
+      if(tok.blank){
+        const w = Math.max(60, Math.min(220, 18*((tok.answer||'').length)+30));
+        return `<input type="text" class="inline-blank-input" data-bid="${i}" style="width:${w}px" autocomplete="off">`;
+      }
+      return epTextSpan(tok.text||'');
+    }).join('');
+
     mountEl.innerHTML = `
-      ${header(u.sectionTitle)}
+      ${pageHeader(sec)}
       <div class="quiz-card">
-        ${u.instruction ? `<div class="quiz-q" style="font-size:12.5px;font-weight:700;color:var(--ink-soft);margin-bottom:14px">${u.instruction}</div>` : ''}
-        ${label}
-        <div class="quiz-answer-row">
-          ${inputTag}
-          <button type="button" class="quiz-mic-btn" id="unitMicBtn" title="سجّل صوتيًا">🎤</button>
-        </div>
+        <div class="passage-block">${html}</div>
         <div style="text-align:center">
-          <button class="quiz-check-btn" id="unitCheckBtn">${checkLabel}</button>
+          <button class="quiz-check-btn" id="unitCheckBtn" type="button">تحقق</button>
         </div>
         <div class="quiz-explain" style="display:none"></div>
-        <button class="quiz-next-btn" style="display:none">${idx+1<total ? 'التالي ←' : 'إنهاء وإرسال ✅'}</button>
+        ${nextBtnHtml()}
       </div>`;
 
-    attachQuizMic(document.getElementById('unitMicBtn'), mountEl.querySelector('.quiz-text-input, .quiz-textarea'));
-
     document.getElementById('unitCheckBtn').addEventListener('click', ()=>{
-      const inputEl = mountEl.querySelector('.quiz-text-input, .quiz-textarea');
-      const val = inputEl.value;
-      let ok = false, note = '';
-      if(u.type === 'sentence'){
-        ok = containsWordAr(val, u.term) && normalizeArabic(val).split(' ').filter(Boolean).length >= 4;
-        note = ok ? '✓ وظّفتَ الحرف في جملة مقبولة' : '✗ تأكد أن جملتك تحتوي الحرف وتكون جملة كاملة';
-      } else {
-        ok = isMatchAr(val, u.answer, true);
-        note = ok ? '✓ إجابة صحيحة' : '✗ إجابة غير مطابقة';
-      }
-      if(window.SoundFX) (ok ? SoundFX.correct() : SoundFX.wrong());
-      scoreSum += ok ? 1 : 0;
-      inputEl.disabled = true;
+      const blanks = (sec.passage||[]).map((tok,i)=> tok.blank ? {tok,i} : null).filter(Boolean);
+      let correct = 0;
+      blanks.forEach(({tok,i})=>{
+        const inp = mountEl.querySelector(`.inline-blank-input[data-bid="${i}"]`);
+        const ok = isMatchAr(inp.value, tok.answer, true);
+        inp.classList.add(ok ? 'correct' : 'wrong');
+        inp.disabled = true;
+        if(ok) correct++;
+      });
+      const ratio = blanks.length ? correct/blanks.length : 1;
+      if(window.SoundFX) (ratio>=1 ? SoundFX.correct() : SoundFX.wrong());
+      scoreSum += Math.min(1, ratio);
       document.getElementById('unitCheckBtn').disabled = true;
+      const model = (sec.passage||[]).map(tok=> tok.blank ? `«${epTextSpan(tok.answer||'')}»` : epTextSpan(tok.text||'')).join('');
       const ex = mountEl.querySelector('.quiz-explain');
-      const modelLine = (u.type !== 'sentence' && u.answer) ? `<div class="quiz-model-answer">الحل النموذجي: ${u.answer}</div>` : '';
-      ex.innerHTML = `<b style="color:${ok?'var(--sage-deep)':'#C94848'}">${note}</b>${modelLine}`;
+      ex.innerHTML = `<b>لقيتَ ${correct} فراغًا صحيحًا من أصل ${blanks.length}.</b>
+        <div class="quiz-model-answer">الحل النموذجي الكامل: ${model}</div>`;
       ex.style.display = 'block';
       mountEl.querySelector('.quiz-next-btn').style.display = 'inline-block';
     });
-    mountEl.querySelector('.quiz-next-btn').addEventListener('click', ()=>{
-      idx++;
-      if(idx >= total) finish(); else renderUnit();
-    });
+    mountEl.querySelector('.quiz-next-btn').addEventListener('click', goNext);
   }
 
-  function renderExtractUnit(u){
-    let rowCount = 0;
-    const rowsHtml = () => Array.from(mountEl.querySelectorAll('.extract-row')).length;
+  /* ===== نسخة احتياطية (توافقية) لتمرين «أكمل الفراغ» القديم — قائمة عناصر before/after/answer معًا في صفحة واحدة ===== */
+  function renderFillListPage(sec){
+    const items = sec.items || [];
+    const rows = items.map((it,i)=>`
+      <div class="book-item-row" data-ri="${i}">
+        <div class="book-item-sentence">${items.length>1?`${i+1}) `:''}${epTextSpan(it.before||'')} <input type="text" class="inline-blank-input" data-ri="${i}" autocomplete="off"> ${epTextSpan(it.after||'')}</div>
+        <div class="book-item-feedback" style="display:none"></div>
+      </div>`).join('');
+
     mountEl.innerHTML = `
-      ${header(u.sectionTitle)}
+      ${pageHeader(sec)}
       <div class="quiz-card">
-        ${u.instruction ? `<div class="quiz-q" style="font-size:12.5px;font-weight:700;color:var(--ink-soft);margin-bottom:10px">${u.instruction}</div>` : ''}
-        <div class="extract-source">${u.sourceText||''}</div>
+        ${rows}
+        <div style="text-align:center">
+          <button class="quiz-check-btn" id="unitCheckBtn" type="button">تحقق</button>
+        </div>
+        ${nextBtnHtml()}
+      </div>`;
+
+    document.getElementById('unitCheckBtn').addEventListener('click', ()=>{
+      let correct = 0;
+      items.forEach((it,i)=>{
+        const inp = mountEl.querySelector(`.inline-blank-input[data-ri="${i}"]`);
+        const ok = isMatchAr(inp.value, it.answer, true);
+        inp.classList.add(ok ? 'correct' : 'wrong');
+        inp.disabled = true;
+        const fb = mountEl.querySelector(`.book-item-row[data-ri="${i}"] .book-item-feedback`);
+        fb.style.display = 'block';
+        fb.innerHTML = ok ? '<b style="color:var(--sage-deep)">✓ صحيحة</b>' : `<b style="color:#C94848">✗ الحل النموذجي: ${epTextSpan(it.answer||'')}</b>`;
+        if(ok) correct++;
+      });
+      const ratio = items.length ? correct/items.length : 1;
+      if(window.SoundFX) (ratio>=1 ? SoundFX.correct() : SoundFX.wrong());
+      scoreSum += Math.min(1, ratio);
+      document.getElementById('unitCheckBtn').disabled = true;
+      mountEl.querySelector('.quiz-next-btn').style.display = 'inline-block';
+    });
+    mountEl.querySelector('.quiz-next-btn').addEventListener('click', goNext);
+  }
+
+  /* ===== ٢) تمرين «استخرج» (+ «أعرب ما تحته خط» إن وُجد) — نفس الفقرة، صفحة واحدة، سؤالان معًا ===== */
+  function renderExtractPage(sec){
+    const irabItems = sec.irabItems || [];
+    let rowCount = 0;
+
+    const irabRows = irabItems.map((it,i)=>`
+      <div class="book-item-row" data-iri="${i}">
+        <div class="quiz-term-label" style="font-size:14px">${epTextSpan(it.word||'')}</div>
+        <textarea class="quiz-textarea" data-iri="${i}" placeholder="اكتب الإعراب هنا"></textarea>
+        <div class="book-item-feedback" style="display:none"></div>
+      </div>`).join('');
+
+    mountEl.innerHTML = `
+      ${pageHeader(sec)}
+      <div class="quiz-card">
+        <div class="extract-source">${sec.sourceText||''}</div>
+        ${sec.extractInstructions ? `<div class="book-sub-instr">${sec.extractInstructions}</div>` : ''}
         <table class="extract-table">
           <thead><tr><th>المعطوف عليه</th><th>حرف العطف</th><th>المعطوف</th><th></th></tr></thead>
           <tbody id="extractRows"></tbody>
         </table>
         <button class="extract-add-btn" id="extractAddBtn" type="button">+ أضف حالة</button>
-        <button class="quiz-check-btn" id="unitCheckBtn" type="button">تحقق وإنهاء هذا القسم</button>
+        ${irabItems.length ? `
+          ${sec.irabInstructions ? `<div class="book-sub-instr">${sec.irabInstructions}</div>` : ''}
+          ${irabRows}
+        ` : ''}
+        <div style="text-align:center">
+          <button class="quiz-check-btn" id="unitCheckBtn" type="button">تحقق وإنهاء هذا التمرين</button>
+        </div>
         <div class="quiz-explain" style="display:none"></div>
-        <button class="quiz-next-btn" style="display:none">${idx+1<total ? 'التالي ←' : 'إنهاء وإرسال ✅'}</button>
+        ${nextBtnHtml()}
       </div>`;
 
     const tbody = document.getElementById('extractRows');
@@ -2100,7 +2068,7 @@ function createOpenExerciseEngine(lesson, units, mountEl){
       tbody.appendChild(tr);
     }
     document.getElementById('extractAddBtn').addEventListener('click', addRow);
-    for(let i=0;i<3;i++) addRow();
+    for(let i=0;i<Math.max(3, (sec.pairs||[]).length);i++) addRow();
 
     document.getElementById('unitCheckBtn').addEventListener('click', ()=>{
       const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -2112,29 +2080,100 @@ function createOpenExerciseEngine(lesson, units, mountEl){
         const after = row.querySelector('[data-f="after"]').value;
         if(!before && !conj && !after) return;
         let foundIdx = -1;
-        u.pairs.forEach((m, mIdx)=>{
+        (sec.pairs||[]).forEach((m, mIdx)=>{
           if(foundIdx !== -1 || usedModel.has(mIdx)) return;
           if(isMatchAr(before, m.before, true) && isMatchAr(conj, m.conj, false) && isMatchAr(after, m.after, true)) foundIdx = mIdx;
         });
         if(foundIdx !== -1){ usedModel.add(foundIdx); matched++; row.style.color = 'var(--sage-deep)'; }
         else { row.style.color = '#C94848'; }
       });
-      const ratio = u.pairs.length ? matched / u.pairs.length : 0;
-      if(window.SoundFX) (ratio >= 1 ? SoundFX.correct() : SoundFX.wrong());
-      scoreSum += Math.min(1, ratio);
+      const extractRatio = (sec.pairs||[]).length ? matched / sec.pairs.length : 1;
+
+      let irabCorrect = 0;
+      irabItems.forEach((it,i)=>{
+        const ta = mountEl.querySelector(`textarea[data-iri="${i}"]`);
+        const ok = isMatchAr(ta.value, it.answer, true);
+        ta.disabled = true;
+        const fb = mountEl.querySelector(`.book-item-row[data-iri="${i}"] .book-item-feedback`);
+        fb.style.display = 'block';
+        fb.innerHTML = `<b style="color:${ok?'var(--sage-deep)':'#C94848'}">${ok?'✓ صحيحة':'✗ إجابة غير مطابقة'}</b><div class="quiz-model-answer">الحل النموذجي: ${epTextSpan(it.answer||'')}</div>`;
+        if(ok) irabCorrect++;
+      });
+      const irabRatio = irabItems.length ? irabCorrect/irabItems.length : null;
+
+      const w1 = (sec.pairs||[]).length || 1;
+      const w2 = irabItems.length;
+      const combined = irabRatio===null ? extractRatio : ((extractRatio*w1)+(irabRatio*w2))/(w1+w2);
+
+      if(window.SoundFX) (combined>=1 ? SoundFX.correct() : SoundFX.wrong());
+      scoreSum += Math.min(1, combined);
       Array.from(tbody.querySelectorAll('input')).forEach(i=> i.disabled = true);
       document.getElementById('extractAddBtn').disabled = true;
       document.getElementById('unitCheckBtn').disabled = true;
       const ex = mountEl.querySelector('.quiz-explain');
-      ex.innerHTML = `<b>لقيت ${matched} حالة صحيحة من أصل ${u.pairs.length}.</b>
-        <div class="quiz-model-answer">الحل النموذجي الكامل: ${u.pairs.map(p=>`(${p.before} ${p.conj} ${p.after})`).join('، ')}</div>`;
+      ex.innerHTML = `<b>الاستخراج: لقيتَ ${matched} حالة صحيحة من أصل ${(sec.pairs||[]).length}.</b>
+        <div class="quiz-model-answer">الحل النموذجي الكامل: ${(sec.pairs||[]).map(p=>`(${p.before} ${p.conj} ${p.after})`).join('، ')}</div>`;
       ex.style.display = 'block';
       mountEl.querySelector('.quiz-next-btn').style.display = 'inline-block';
     });
-    mountEl.querySelector('.quiz-next-btn').addEventListener('click', ()=>{
-      idx++;
-      if(idx >= total) finish(); else renderUnit();
+    mountEl.querySelector('.quiz-next-btn').addEventListener('click', goNext);
+  }
+
+  /* ===== ٣) تمرين قائمة (إعراب / معنى حرف / توظيف حرف في جملة) — كل عناصر التمرين معًا في صفحة واحدة ===== */
+  function renderWordListPage(sec, kind){
+    const items = sec.items || [];
+    const rowsHtml = items.map((it,i)=>{
+      const label = kind==='irab' ? (it.word||'') : (it.term||'');
+      const sub = kind==='irab' ? 'أعرب هذه الكلمة' : (kind==='term' ? 'ما المعنى الذي يفيده هذا الحرف؟' : 'وظّف هذا الحرف في جملة من إنشائك');
+      const inputTag = kind==='irab'
+        ? `<textarea class="quiz-textarea" data-ri="${i}" placeholder="اكتب الإعراب هنا"></textarea>`
+        : `<input type="text" class="quiz-text-input" data-ri="${i}" placeholder="${kind==='term'?'اكتب المعنى هنا':'اكتب جملتك هنا'}">`;
+      return `
+        <div class="book-item-row" data-ri="${i}">
+          <div class="quiz-term-label">${i+1}) ${epTextSpan(label)}</div>
+          <div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:8px">${sub}</div>
+          ${inputTag}
+          <div class="book-item-feedback" style="display:none"></div>
+        </div>`;
+    }).join('');
+
+    mountEl.innerHTML = `
+      ${pageHeader(sec)}
+      <div class="quiz-card">
+        ${rowsHtml}
+        <div style="text-align:center">
+          <button class="quiz-check-btn" id="unitCheckBtn" type="button">تحقق وإنهاء هذا التمرين</button>
+        </div>
+        ${nextBtnHtml()}
+      </div>`;
+
+    document.getElementById('unitCheckBtn').addEventListener('click', ()=>{
+      let correct = 0;
+      items.forEach((it,i)=>{
+        const inp = mountEl.querySelector(`[data-ri="${i}"].quiz-text-input, [data-ri="${i}"].quiz-textarea`);
+        const val = inp.value;
+        let ok, note;
+        if(kind === 'sentence'){
+          ok = containsWordAr(val, it.term) && normalizeArabic(val).split(' ').filter(Boolean).length >= 4;
+          note = ok ? '✓ وظّفتَ الحرف في جملة مقبولة' : '✗ تأكد أن جملتك تحتوي الحرف وتكون جملة كاملة';
+        } else {
+          ok = isMatchAr(val, it.answer, true);
+          note = ok ? '✓ إجابة صحيحة' : '✗ إجابة غير مطابقة';
+        }
+        inp.disabled = true;
+        const fb = mountEl.querySelector(`.book-item-row[data-ri="${i}"] .book-item-feedback`);
+        const modelLine = (kind !== 'sentence' && it.answer) ? `<div class="quiz-model-answer">الحل النموذجي: ${epTextSpan(it.answer||'')}</div>` : '';
+        fb.style.display = 'block';
+        fb.innerHTML = `<b style="color:${ok?'var(--sage-deep)':'#C94848'}">${note}</b>${modelLine}`;
+        if(ok) correct++;
+      });
+      const ratio = items.length ? correct/items.length : 1;
+      if(window.SoundFX) (ratio>=1 ? SoundFX.correct() : SoundFX.wrong());
+      scoreSum += Math.min(1, ratio);
+      document.getElementById('unitCheckBtn').disabled = true;
+      mountEl.querySelector('.quiz-next-btn').style.display = 'inline-block';
     });
+    mountEl.querySelector('.quiz-next-btn').addEventListener('click', goNext);
   }
 
   function finish(){
@@ -2142,7 +2181,12 @@ function createOpenExerciseEngine(lesson, units, mountEl){
     finishExercise(lesson, mountEl, pct, Math.round((Date.now()-startTs)/1000));
   }
 
-  renderUnit();
+  renderPage();
+}
+
+/* هروب بسيط من HTML عند حقن نص حر داخل الصفحة (العناوين/الفقرات القادمة من ملفات JSON) */
+function epTextSpan(s){
+  return (s==null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 /* ---------- إنهاء أي تمرين (اختيار من متعدد أو مفتوح): حفظ النتيجة النهائية في الترتيب ---------- */
