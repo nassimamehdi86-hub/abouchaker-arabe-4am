@@ -1406,8 +1406,10 @@ function renderZoomGroupsBox(lesson){
         videoHtml = `<div class="zoom-video-tabs">${videoTabsHtml}</div><div class="zoom-video-embed">${buildZoomEmbedHTML(g.video[0])}</div>`;
       }
 
-      /* الترتيب المطلوب: الفيديو أولاً، ثم وثائق الدرس (ملخّص/تمارين)، وأخيرًا إرفاق حل التمرين */
-      playerBox.innerHTML = videoHtml + docsRow + buildSolutionInlineHtml();
+      /* الترتيب المطلوب: الفيديو أولاً، ثم وثائق الدرس (ملخّص/تمارين)، وأخيرًا إرفاق حل التمرين —
+         وزر إرسال الحل لا يظهر إطلاقًا إلا إذا أضاف الأستاذ رابط تمرين لهذا الفوج تحديدًا */
+      const hasExercise = g.exercises.length > 0;
+      playerBox.innerHTML = videoHtml + docsRow + buildSolutionInlineHtml(hasExercise);
 
       if(g.video.length > 1){
         const videoTabBtns = Array.from(playerBox.querySelectorAll('[data-zoom-video-idx]'));
@@ -1467,9 +1469,11 @@ const SolutionSubmit = {
   }
 };
 
-/* عنصر مصغّر بلا أي شرح: حقل ملف + زر إرسال فقط — لا يظهر إطلاقًا لتلميذ غير مسجَّل دخوله */
-function buildSolutionInlineHtml(){
+/* عنصر مصغّر بلا أي شرح: حقل ملف + زر إرسال فقط — لا يظهر إطلاقًا لتلميذ غير مسجَّل دخوله،
+   ولا يظهر أيضًا إن لم يكن الأستاذ قد أضاف تمرينًا لهذا الفوج (hasExercise=false) */
+function buildSolutionInlineHtml(hasExercise){
   if(!Student.id || !Student.fullName) return '';
+  if(!hasExercise) return '';
   return `
     <div class="solution-inline-row">
       <input type="file" id="solutionFileInput" accept="image/*,.pdf" class="solution-inline-file">
