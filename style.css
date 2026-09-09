@@ -544,7 +544,7 @@
      ========================================================================================= */
   .al-icon, .il-icon, .zoom-telegram-icon, .story-reader-icon,
   .lb-section-icon, .story-list-icon, .situ-panel-icon,
-  .lb-card-icon, .lb-card-num, .lb-main-icon{
+  .lb-card-icon, .lb-card-num, .lb-main-icon, .ld-leaderboard-icon{
     position:relative; overflow:hidden; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
     border:1.3px solid rgba(122,82,22,0.55); background:linear-gradient(150deg,#FBEDC3,#E7C878);
@@ -556,19 +556,19 @@
   }
   .al-icon::before, .il-icon::before, .zoom-telegram-icon::before, .story-reader-icon::before,
   .lb-section-icon::before, .story-list-icon::before, .situ-panel-icon::before,
-  .lb-card-icon::before, .lb-card-num::before, .lb-main-icon::before{
+  .lb-card-icon::before, .lb-card-num::before, .lb-main-icon::before, .ld-leaderboard-icon::before{
     content:""; position:absolute; inset:0; opacity:0.5; mix-blend-mode:multiply; pointer-events:none;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cg fill='none' stroke='%23A9772A' stroke-width='0.7' opacity='0.65'%3E%3Cpath d='M11 1 L21 11 L11 21 L1 11 Z'/%3E%3Cpath d='M11 1 L11 21 M1 11 L21 11'/%3E%3Ccircle cx='11' cy='11' r='3.4'/%3E%3Cpath d='M4.5 4.5 L7.5 7.5 M17.5 4.5 L14.5 7.5 M4.5 17.5 L7.5 14.5 M17.5 17.5 L14.5 14.5'/%3E%3C/g%3E%3C/svg%3E");
   }
   .al-icon::after, .il-icon::after, .zoom-telegram-icon::after, .story-reader-icon::after,
   .lb-section-icon::after, .story-list-icon::after, .situ-panel-icon::after,
-  .lb-card-icon::after, .lb-card-num::after, .lb-main-icon::after{
+  .lb-card-icon::after, .lb-card-num::after, .lb-main-icon::after, .ld-leaderboard-icon::after{
     content:""; position:absolute; top:0; left:0; right:0; height:46%;
     background:linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0)); pointer-events:none;
   }
   .al-icon .icon-glyph, .il-icon .icon-glyph, .zoom-telegram-icon .icon-glyph, .story-reader-icon .icon-glyph,
   .lb-section-icon .icon-glyph, .story-list-icon .icon-glyph, .situ-panel-icon .icon-glyph,
-  .lb-card-icon .icon-glyph, .lb-card-num .icon-glyph, .lb-main-icon .icon-glyph{
+  .lb-card-icon .icon-glyph, .lb-card-num .icon-glyph, .lb-main-icon .icon-glyph, .ld-leaderboard-icon .icon-glyph{
     position:relative; z-index:1; filter:drop-shadow(0 2px 2px rgba(60,38,8,0.35));
   }
 
@@ -585,6 +585,8 @@
   .lb-section-icon::before{ background-size:10px 10px; }
   .lb-main-icon{ width:60px; height:60px; border-radius:19px; font-size:28px; margin:0 auto 10px; }
   .lb-main-icon::before{ background-size:15px 15px; }
+  .ld-leaderboard-icon{ width:56px; height:56px; border-radius:18px; font-size:26px; margin:0 auto 9px; }
+  .ld-leaderboard-icon::before{ background-size:14px 14px; }
   .story-list-icon{ width:32px; height:32px; border-radius:50%; font-size:15px; }
   .story-list-icon::before{ background-size:10px 10px; }
   .situ-panel-icon{ width:32px; height:32px; border-radius:10px; font-size:16px; }
@@ -702,6 +704,21 @@
   }
   .section-title .line{ flex:1; height:1px; background:linear-gradient(90deg, rgba(169,127,42,0.5), transparent); }
   .section-title span{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:16.5px; white-space:nowrap; }
+
+  /* ============ بطاقة "ترتيب تلاميذ هذا الدرس" — آخر عنصر في صفحة الدرس ============ */
+  .ld-leaderboard-card{
+    display:flex; flex-direction:column; align-items:center; text-align:center; cursor:pointer;
+    margin:28px 0 6px; padding:20px 16px 18px; border-radius:17px;
+    background:linear-gradient(150deg, #FFFDF7, #F7F1DF 55%, #F0E8D2);
+    border:1.3px solid var(--gold-3);
+    box-shadow:0 6px 14px rgba(169,127,42,0.10), inset 0 1px 0 rgba(255,255,255,0.7);
+    transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease;
+  }
+  .ld-leaderboard-card:hover{ border-color:var(--gold); box-shadow:0 8px 18px rgba(169,127,42,0.18); }
+  .ld-leaderboard-card:active{ transform:translateY(3px); }
+  .ld-leaderboard-title{
+    font-family:'Aref Ruqaa', serif; font-weight:700; font-size:14.5px; color:var(--ink);
+  }
 
   /* ============ لوحة تحكم الأستاذ — أقسام قابلة للطي (Accordion) ============ */
   .admin-accordion{

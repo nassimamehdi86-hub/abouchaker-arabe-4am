@@ -1269,19 +1269,19 @@ function openLessonDetail(id){
   const ldBadge = document.getElementById('ldBadge');
   if(ldBadge) ldBadge.className = 'badge cat-' + (lesson.category || 'taqweem');
 
-  /* إضافة زر عرض الترتيب (غير مجدٍ لدرس بلا تمارين — يُخفى في هذه الحالة) */
-  let leaderBtn = document.getElementById('ldLeaderboardBtn');
-  if(!leaderBtn){
-    leaderBtn = document.createElement('button');
-    leaderBtn.id = 'ldLeaderboardBtn';
-    leaderBtn.style.cssText = 'background:none; border:none; font-size:24px; cursor:pointer; margin-right:12px; padding:4px;';
-    leaderBtn.title = 'عرض ترتيب التلاميذ';
-    leaderBtn.innerHTML = '🏆';
-    const hub = document.querySelector('.hub');
-    if(hub) hub.insertBefore(leaderBtn, hub.firstChild);
+  /* بطاقة عرض الترتيب (أيقونة كأس بتصميم عربي + عنوان صغير واضح) — آخر عنصر في صفحة الدرس،
+     غير مجدية لدرس بلا تمارين (zoomOnly) فتُخفى في هذه الحالة */
+  let leaderSection = document.getElementById('ldLeaderboardSection');
+  if(leaderSection && !leaderSection.querySelector('.ld-leaderboard-card')){
+    leaderSection.innerHTML = `
+      <div class="ld-leaderboard-card" id="ldLeaderboardBtn">
+        <div class="ld-leaderboard-icon"><span class="icon-glyph">🏆</span></div>
+        <div class="ld-leaderboard-title">ترتيب تلاميذ هذا الدرس</div>
+      </div>`;
   }
-  leaderBtn.style.display = zoomOnly ? 'none' : '';
-  leaderBtn.onclick = ()=>showLeaderboardPopup(lesson);
+  const leaderBtn = document.getElementById('ldLeaderboardBtn');
+  if(leaderSection) leaderSection.style.display = zoomOnly ? 'none' : '';
+  if(leaderBtn) leaderBtn.onclick = ()=>{ if(window.SoundFX) SoundFX.click(); showLeaderboardPopup(lesson); };
 
   /* درس "بلا محتوى" (zoomOnly): يُعرض فقط العنوان + تسجيلات حصص الزوم، وتُخفى بقية الأقسام
      (الشرح، الخريطة الذهنية، اختبار الفهم، تمارين الدرس) بدل تركها فارغة على الشاشة */
