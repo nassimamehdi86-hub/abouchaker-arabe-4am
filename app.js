@@ -62,6 +62,21 @@ function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){
    ========================================================================================= */
 const Student = {
   id:null, fullName:null, status:null, sessionId:null, unsubscribe:null, streak:0,
+  lastQuestionAt:null, QUESTION_COOLDOWN_MS: 7*24*60*60*1000, /* سؤال واحد للأستاذ كل أسبوع */
+
+  /* هل يحق للتلميذ طرح سؤال جديد للأستاذ الآن (لم يمرّ أسبوع كامل بعد آخر سؤال)؟ */
+  canAskQuestion(){
+    if(!this.lastQuestionAt) return true;
+    const last = (typeof this.lastQuestionAt.toMillis === 'function') ? this.lastQuestionAt.toMillis() : this.lastQuestionAt;
+    return (Date.now() - last) >= this.QUESTION_COOLDOWN_MS;
+  },
+  /* كم يومًا متبقيًا حتى يحق له طرح سؤال جديد */
+  daysUntilNextQuestion(){
+    if(!this.lastQuestionAt) return 0;
+    const last = (typeof this.lastQuestionAt.toMillis === 'function') ? this.lastQuestionAt.toMillis() : this.lastQuestionAt;
+    const remainMs = this.QUESTION_COOLDOWN_MS - (Date.now() - last);
+    return Math.max(1, Math.ceil(remainMs / 86400000));
+  },
 
   normalizedKey(fullName){ return normalizeAr(fullName); },
 
@@ -104,6 +119,7 @@ const Student = {
     const docSnap = existing.docs[0];
     const data = docSnap.data();
     this.id = docSnap.id; this.fullName = data.fullName; this.phone = data.phone; this.status = data.status;
+    this.lastQuestionAt = data.lastQuestionAt || null;
 
     if(data.status === 'pending')  return { ok:true, status:'pending', fullName:this.fullName };
     if(data.status === 'rejected') return { ok:true, status:'rejected', fullName:this.fullName };
@@ -174,6 +190,7 @@ const Student = {
       const data = snap.data();
       if(data.status !== 'approved' || data.currentSession !== session) return false;
       this.id = id; this.fullName = data.fullName; this.status = 'approved'; this.sessionId = session;
+      this.lastQuestionAt = data.lastQuestionAt || null;
       this.watchSession();
       await this.updateStreak();
       return true;
@@ -192,6 +209,7 @@ const Student = {
         Student.logout();
         location.reload();
       }
+      if(data.lastQuestionAt) this.lastQuestionAt = data.lastQuestionAt;
     });
   },
 
@@ -2993,6 +3011,11 @@ const Chat = {
       return;
     }
     const isQuestion = text.includes(CHAT_TAG);
+    if(isQuestion && !Student.canAskQuestion()){
+      const days = Student.daysUntilNextQuestion();
+      alert(`لكل تلميذ الحق في طرح سؤال واحد فقط للأستاذ كل أسبوع. يمكنك طرح سؤال جديد بعد ${days} ${days===1?'يوم':'أيام'}.`);
+      return;
+    }
     try{
       await db.collection('chatMessages').add({
         studentId: Student.id,
@@ -3004,6 +3027,15 @@ const Chat = {
         answerAudioUrl: null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
+      if(isQuestion){
+        Student.lastQuestionAt = Date.now(); /* تحديث فوري محليًا حتى لا يُرسل سؤالًا آخر فورًا بالخطأ */
+        try{
+          await db.collection('students').doc(Student.id).update({
+            lastQuestionAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }catch(e){ /* لا نمنع إرسال السؤال إن فشل تحديث هذا الحقل فقط */ }
+        updateChatQuotaNote();
+      }
     }catch(error){
       console.error('فشل إرسال رسالة الدردشة (تحقق من قواعد Firestore لمجموعة chatMessages):', error);
       if(typeof showFbPermissionNotice === 'function') showFbPermissionNotice('chatMessages');
@@ -3012,10 +3044,24 @@ const Chat = {
   }
 };
 
+/* تحديث سطر تذكير حصة الأسئلة الأسبوعية أعلى مربّع الدردشة */
+function updateChatQuotaNote(){
+  const el = document.getElementById('chatQuotaNote');
+  if(!el) return;
+  if(Student.canAskQuestion()){
+    el.textContent = '✅ يحق لك طرح سؤال واحد للأستاذ هذا الأسبوع.';
+  } else {
+    const days = Student.daysUntilNextQuestion();
+    el.textContent = `⏳ لقد استخدمت سؤالك الأسبوعي — يمكنك طرح سؤال جديد بعد ${days} ${days===1?'يوم':'أيام'}.`;
+  }
+}
+
 function renderChatScreen(){
   Chat.ensureListening();
+  updateChatQuotaNote();
   const input = document.getElementById('chatInput');
   const sendBtn = document.getElementById('chatSendBtn');
+  const askBtn = document.getElementById('chatAskTeacherBtn');
   if(sendBtn && !sendBtn._wired){
     sendBtn._wired = true;
     const doSend = ()=>{
@@ -3025,6 +3071,21 @@ function renderChatScreen(){
     };
     sendBtn.addEventListener('click', doSend);
     input.addEventListener('keydown', e=>{ if(e.key === 'Enter') doSend(); });
+  }
+  if(askBtn && !askBtn._wired){
+    askBtn._wired = true;
+    /* زر "❓ سؤال للأستاذ": يضع وسم #الاستاذ أمام التلميذ مباشرة في خانة الكتابة، بدل أن يكتبه يدويًا */
+    askBtn.addEventListener('click', ()=>{
+      if(!Student.canAskQuestion()){
+        const days = Student.daysUntilNextQuestion();
+        alert(`لكل تلميذ الحق في طرح سؤال واحد فقط للأستاذ كل أسبوع. يمكنك طرح سؤال جديد بعد ${days} ${days===1?'يوم':'أيام'}.`);
+        return;
+      }
+      if(!input.value.includes(CHAT_TAG)){
+        input.value = (CHAT_TAG + ' ' + input.value).trim();
+      }
+      input.focus();
+    });
   }
 }
 
@@ -3101,6 +3162,9 @@ const ChatAdmin = {
     });
   },
 
+  /* أقصى مدة تسجيل مسموحة (بالمللي ثانية) — لضمان بقاء الملف (بعد تحويله Base64) ضمن حد حجم مستند Firestore (1MB) */
+  MAX_RECORDING_MS: 60000,
+
   async toggleRecording(btn, qid){
     const statusEl = document.querySelector(`[data-rec-status="${qid}"]`);
     /* إن كان تسجيل آخر جاريًا لسؤال مختلف، أوقفه أولًا */
@@ -3108,17 +3172,18 @@ const ChatAdmin = {
       this._recorder.stop();
     }
     if(this._recorder && this._recorder.state === 'recording' && this._recordingFor === qid){
+      clearTimeout(this._recordingTimeout);
       this._recorder.stop();
       btn.classList.remove('recording'); btn.textContent = '🎙️ تسجيل رد صوتي';
-      if(statusEl) statusEl.textContent = '⏳ جارٍ الرفع...';
+      if(statusEl) statusEl.textContent = '⏳ جارٍ الإرسال...';
       return;
     }
     if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
       alert('المتصفح لا يدعم تسجيل الصوت هنا.');
       return;
     }
-    if(!fbReady || !firebase.storage){
-      alert('التسجيل الصوتي يحتاج Firebase Storage، تعذّر المتابعة.');
+    if(!fbReady || !db){
+      alert('التسجيل الصوتي يحتاج اتصالًا بقاعدة البيانات، تعذّر المتابعة.');
       return;
     }
     try{
@@ -3129,26 +3194,42 @@ const ChatAdmin = {
       recorder.addEventListener('stop', async ()=>{
         stream.getTracks().forEach(t=>t.stop());
         const blob = new Blob(this._recordedChunks, { type:'audio/webm' });
-        try{
-          const path = `teacherAnswers/${qid}-${Date.now()}.webm`;
-          const ref = firebase.storage().ref(path);
-          await ref.put(blob);
-          const url = await ref.getDownloadURL();
-          await db.collection('chatMessages').doc(qid).update({
-            answered:true, answerAudioUrl:url, answerText:null,
-            answeredAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-          if(statusEl) statusEl.textContent = '✅ تم إرسال الرد الصوتي';
-        }catch(error){
-          console.error('فشل رفع التسجيل الصوتي (تحقق من قواعد Firebase Storage):', error);
-          if(statusEl) statusEl.textContent = '❌ تعذّر رفع التسجيل';
-          alert('تعذّر رفع التسجيل الصوتي. تحقق من قواعد Firebase Storage.');
-        }
-        this._recorder = null; this._recordingFor = null;
+        /* نحوّل التسجيل مباشرة إلى Base64 (Data URL) ونخزّنه داخل مستند السؤال في Firestore —
+           لا حاجة لـ Firebase Storage (الذي يتطلب خطة Blaze مدفوعة) */
+        const reader = new FileReader();
+        reader.onloadend = async ()=>{
+          const dataUrl = reader.result;
+          if(dataUrl.length > 900000){
+            if(statusEl) statusEl.textContent = '❌ التسجيل طويل جدًا، أعد تسجيله بمدة أقصر';
+            alert('التسجيل طويل جدًا لتخزينه. يرجى تسجيل رد أقصر (أقل من دقيقة).');
+            this._recorder = null; this._recordingFor = null;
+            return;
+          }
+          try{
+            await db.collection('chatMessages').doc(qid).update({
+              answered:true, answerAudioUrl:dataUrl, answerText:null,
+              answeredAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            if(statusEl) statusEl.textContent = '✅ تم إرسال الرد الصوتي';
+          }catch(error){
+            console.error('فشل إرسال التسجيل الصوتي (تحقق من قواعد Firestore):', error);
+            if(statusEl) statusEl.textContent = '❌ تعذّر إرسال التسجيل';
+            alert('تعذّر إرسال التسجيل الصوتي. تحقق من قواعد Firestore.');
+          }
+          this._recorder = null; this._recordingFor = null;
+        };
+        reader.readAsDataURL(blob);
       });
       recorder.start();
       btn.classList.add('recording'); btn.textContent = '⏹️ إيقاف التسجيل';
-      if(statusEl) statusEl.textContent = '🔴 جارٍ التسجيل...';
+      if(statusEl) statusEl.textContent = '🔴 جارٍ التسجيل... (يتوقف تلقائيًا بعد دقيقة)';
+      this._recordingTimeout = setTimeout(()=>{
+        if(this._recorder && this._recorder.state === 'recording' && this._recordingFor === qid){
+          this._recorder.stop();
+          btn.classList.remove('recording'); btn.textContent = '🎙️ تسجيل رد صوتي';
+          if(statusEl) statusEl.textContent = '⏳ جارٍ الإرسال...';
+        }
+      }, this.MAX_RECORDING_MS);
     }catch(error){
       console.error('تعذّر الوصول للميكروفون:', error);
       alert('تعذّر الوصول للميكروفون. تحقق من إذن المتصفح.');

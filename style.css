@@ -2302,6 +2302,9 @@
   font-size:12.5px; color:var(--ink-soft); background:rgba(199,154,61,0.1);
   border:1.2px dashed var(--gold-3); border-radius:12px; padding:10px 14px; margin-bottom:16px;
 }
+.chat-quota-note{
+  font-size:12px; font-weight:700; color:var(--sage-deep); margin:-8px 0 14px 2px;
+}
 .chat-msg{
   margin-bottom:12px; padding:10px 14px; border-radius:14px; background:var(--paper, #fff);
   border:1.3px solid rgba(169,127,42,0.35); max-width:88%;
