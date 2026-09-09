@@ -1251,6 +1251,31 @@
 }
 .quiz-answer-row{ display:flex; gap:8px; align-items:flex-start; }
 .quiz-answer-row .quiz-text-input, .quiz-answer-row .quiz-textarea{ flex:1; }
+
+/* تمارين الكتاب — تمرين كامل في صفحة واحدة (كما في ورقة التمرين الأصلية) */
+.book-exercise-title{ font-family:'Aref Ruqaa', serif; font-size:18px; font-weight:800; color:var(--gold-3); text-align:center; margin-bottom:4px; }
+.book-exercise-instr{ font-size:12.5px; font-weight:700; color:var(--ink-soft); text-align:center; margin-bottom:14px; }
+.book-sub-instr{ font-size:12.5px; font-weight:800; color:var(--ink-soft); margin:14px 0 8px; border-top:1.4px dashed rgba(169,127,42,0.3); padding-top:10px; }
+.passage-block{
+  font-weight:700; font-size:15px; color:var(--ink); line-height:2.6; margin-bottom:14px; text-align:justify;
+}
+.inline-blank-input{
+  display:inline-block; min-width:60px; max-width:100%; border:none; border-bottom:2px dotted var(--gold-3);
+  background:transparent; font-family:'Cairo'; font-size:14px; font-weight:800; text-align:center; color:var(--ink);
+  margin:0 3px; padding:2px 4px; outline:none;
+}
+.inline-blank-input.inline-blank-textarea{
+  display:block; width:100%; min-width:100%; max-width:100%; min-height:90px; resize:vertical;
+  border:1.6px dotted var(--gold-3); border-radius:10px; text-align:right; line-height:1.9;
+  margin:8px 0 0; padding:10px 12px; font-size:14.5px;
+}
+.inline-blank-input:focus{ border-bottom-style:solid; border-bottom-color:var(--gold-2); }
+.inline-blank-input.correct{ border-bottom-style:solid; border-bottom-color:var(--sage-deep); color:var(--sage-deep); }
+.inline-blank-input.wrong{ border-bottom-style:solid; border-bottom-color:#C94848; color:#C94848; }
+.book-item-row{ margin-bottom:16px; padding-bottom:14px; border-bottom:1.4px dashed rgba(169,127,42,0.25); }
+.book-item-row:last-child{ border-bottom:none; margin-bottom:0; padding-bottom:0; }
+.book-item-sentence{ font-weight:700; font-size:14px; color:var(--ink); line-height:2.1; }
+.book-item-feedback{ font-size:12px; line-height:1.8; margin-top:6px; }
 .quiz-mic-btn{
   flex:none; width:38px; height:38px; border-radius:50%; border:1.6px solid var(--gold-3);
   background:var(--paper); color:var(--gold-3); font-size:15px; display:flex; align-items:center; justify-content:center;
@@ -1800,7 +1825,7 @@
 .ep-q{ font-size:10.5px; font-weight:700; color:#22352B; line-height:1.9; }
 .ep-q .ep-answer{ color:#29806B; font-weight:800; }
 .ep-blank{ display:inline-block; min-width:70px; border-bottom:1.4px solid #A97F2A; margin:0 3px; }
-.ep-source{ font-size:9.5px; font-weight:600; color:#3a3a3a; line-height:1.9; background:#FBF6E8; border:1.4px solid #A97F2A; border-radius:10px; padding:9px 11px; margin-bottom:6px; }
+.ep-source{ font-size:9.5px; font-weight:600; color:#3a3a3a; line-height:1.9; background:#FBF6E8; border:1.4px solid #A97F2A; border-radius:10px; padding:9px 11px; margin-bottom:6px; white-space:pre-line; }
 .ep-table{ width:100%; border-collapse:collapse; }
 .ep-table th{ background:#F0DFA3; color:#33260A; font-size:9px; font-weight:800; padding:5px; border:1px solid #A97F2A; }
 .ep-table td{ border:1px solid #cbb27a; height:22px; }

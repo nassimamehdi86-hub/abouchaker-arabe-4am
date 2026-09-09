@@ -1888,6 +1888,30 @@ function isMatchAr(user, model, loose){
   if(nu === nm) return true;
   return wordOverlapRatioAr(nu, nm) >= (loose ? 0.4 : 0.7);
 }
+/* تصحيح متسامح بالمعنى: يتحقق من وجود الأفكار/الكلمات المفتاحية الأساسية في إجابة التلميذ
+   دون اشتراط تطابق الصياغة الحرفية أو ترتيب الكلمات. يُستعمل عند توفّر "keywords" في عنصر السؤال. */
+function keywordScoreAr(user, keywords){
+  if(!keywords || !keywords.length) return null;
+  const nu = normalizeArabic(user);
+  if(!nu) return 0;
+  const userWords = nu.split(' ').filter(Boolean);
+  let found = 0;
+  keywords.forEach(kw=>{
+    const nkw = normalizeArabic(kw);
+    if(!nkw) return;
+    const isPhrase = nkw.includes(' ');
+    const hit = isPhrase ? nu.includes(nkw) : userWords.includes(nkw);
+    if(hit) found++;
+  });
+  return found / keywords.length;
+}
+function isMeaningMatchAr(user, item){
+  if(item && Array.isArray(item.keywords) && item.keywords.length){
+    const score = keywordScoreAr(user, item.keywords);
+    return score !== null && score >= (item.keywordThreshold || 0.5);
+  }
+  return isMatchAr(user, item && item.answer, true);
+}
 function containsWordAr(user, word){
   const nu = normalizeArabic(user), nw = normalizeArabic(word);
   return nu.split(' ').includes(nw);
@@ -1983,11 +2007,16 @@ function createOpenExerciseEngine(lesson, pages, mountEl){
   /* ===== نسخة احتياطية (توافقية) لتمرين «أكمل الفراغ» القديم — قائمة عناصر before/after/answer معًا في صفحة واحدة ===== */
   function renderFillListPage(sec){
     const items = sec.items || [];
-    const rows = items.map((it,i)=>`
+    const rows = items.map((it,i)=>{
+      const blank = it.multiline
+        ? `<textarea class="inline-blank-input inline-blank-textarea" data-ri="${i}" rows="3" autocomplete="off"></textarea>`
+        : `<input type="text" class="inline-blank-input" data-ri="${i}" autocomplete="off">`;
+      return `
       <div class="book-item-row" data-ri="${i}">
-        <div class="book-item-sentence">${items.length>1?`${i+1}) `:''}${epTextSpan(it.before||'')} <input type="text" class="inline-blank-input" data-ri="${i}" autocomplete="off"> ${epTextSpan(it.after||'')}</div>
+        <div class="book-item-sentence">${items.length>1?`${i+1}) `:''}${epTextSpan(it.before||'')} ${blank} ${epTextSpan(it.after||'')}</div>
         <div class="book-item-feedback" style="display:none"></div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
 
     mountEl.innerHTML = `
       ${pageHeader(sec)}
@@ -2003,7 +2032,7 @@ function createOpenExerciseEngine(lesson, pages, mountEl){
       let correct = 0;
       items.forEach((it,i)=>{
         const inp = mountEl.querySelector(`.inline-blank-input[data-ri="${i}"]`);
-        const ok = isMatchAr(inp.value, it.answer, true);
+        const ok = isMeaningMatchAr(inp.value, it);
         inp.classList.add(ok ? 'correct' : 'wrong');
         inp.disabled = true;
         const fb = mountEl.querySelector(`.book-item-row[data-ri="${i}"] .book-item-feedback`);
@@ -2092,7 +2121,7 @@ function createOpenExerciseEngine(lesson, pages, mountEl){
       let irabCorrect = 0;
       irabItems.forEach((it,i)=>{
         const ta = mountEl.querySelector(`textarea[data-iri="${i}"]`);
-        const ok = isMatchAr(ta.value, it.answer, true);
+        const ok = isMeaningMatchAr(ta.value, it);
         ta.disabled = true;
         const fb = mountEl.querySelector(`.book-item-row[data-iri="${i}"] .book-item-feedback`);
         fb.style.display = 'block';
@@ -2157,7 +2186,7 @@ function createOpenExerciseEngine(lesson, pages, mountEl){
           ok = containsWordAr(val, it.term) && normalizeArabic(val).split(' ').filter(Boolean).length >= 4;
           note = ok ? '✓ وظّفتَ الحرف في جملة مقبولة' : '✗ تأكد أن جملتك تحتوي الحرف وتكون جملة كاملة';
         } else {
-          ok = isMatchAr(val, it.answer, true);
+          ok = isMeaningMatchAr(val, it);
           note = ok ? '✓ إجابة صحيحة' : '✗ إجابة غير مطابقة';
         }
         inp.disabled = true;
