@@ -2525,29 +2525,42 @@ function renderIrabScreen(){
 function renderLeaderboardScreen(){
   const wrap = document.getElementById('leaderboardWrap');
   wrap.innerHTML = `
-    <div class="lb-section">
-      <div class="lb-section-title-clickable" onclick="showOverallLeaderboardPopup()" style="cursor:pointer;">
-        <span class="lb-section-icon"><span class="icon-glyph">🏅</span></span>
-        <span>لوحة الشرف العامة</span>
-        <span class="lb-popup-indicator">→</span>
+    <div class="lb-main-grid">
+      <div class="lb-main-card" id="lbOpenHall">
+        <div class="lb-main-icon"><span class="icon-glyph">🏅</span></div>
+        <div class="lb-main-title">لوحة الشرف العامة</div>
+        <div class="lb-main-desc">ترتيب شامل لكل التلاميذ بمجموع نتائجهم الإجمالية في تمارين الدروس المنجزة</div>
       </div>
-      <div class="sf-label">الترتيب الشامل لجميع التلاميذ في المنصة، بناءً على مجموع نتائجهم الإجمالية في تمارين الدروس المنجزة</div>
+
+      <div class="lb-main-card" id="lbOpenExams">
+        <div class="lb-main-icon"><span class="icon-glyph">📝</span></div>
+        <div class="lb-main-title">ترتيب الفروض والاختبارات</div>
+        <div class="lb-main-desc">ترتيب مستقل بمجموع النقاط المتحصَّل عليها في الفروض والاختبارات المنجزة</div>
+      </div>
+
+      <div class="lb-main-card" id="lbOpenLessons">
+        <div class="lb-main-icon"><span class="icon-glyph">📚</span></div>
+        <div class="lb-main-title">ترتيب تمارين كل درس</div>
+        <div class="lb-main-desc">اختر درسًا من القائمة أدناه لعرض ترتيب تمارينه الخاصة به في نافذة مستقلة</div>
+      </div>
     </div>
 
     <div class="lb-section">
-      <div class="lb-section-title-clickable" onclick="showExamsLeaderboardPopup()" style="cursor:pointer;">
-        <span class="lb-section-icon"><span class="icon-glyph">📝</span></span>
-        <span>ترتيب الفروض والاختبارات</span>
-        <span class="lb-popup-indicator">→</span>
-      </div>
-      <div class="sf-label">ترتيب مستقل للتلاميذ بناءً على مجموع النقاط المتحصل عليها في الفروض والاختبارات المنجزة</div>
-    </div>
-
-    <div class="lb-section">
-      <div class="lb-section-title"><span class="lb-section-icon"><span class="icon-glyph">📚</span></span>ترتيب تمارين كل درس</div>
-      <div class="sf-label">اختر درسًا لعرض ترتيب تمارينه الخاصة به فقط في نافذة منبثقة مستقلة (تظهر البطاقات فور توفر تمارين الدرس)</div>
       <div id="lbLessonGrid" class="lb-lesson-grid"></div>
     </div>`;
+
+  document.getElementById('lbOpenHall').addEventListener('click', ()=>{
+    if(window.SoundFX) SoundFX.click();
+    showOverallLeaderboardPopup();
+  });
+  document.getElementById('lbOpenExams').addEventListener('click', ()=>{
+    if(window.SoundFX) SoundFX.click();
+    showExamsLeaderboardPopup();
+  });
+  document.getElementById('lbOpenLessons').addEventListener('click', ()=>{
+    if(window.SoundFX) SoundFX.click();
+    document.getElementById('lbLessonGrid').scrollIntoView({ behavior:'smooth', block:'start' });
+  });
 
   /* 3) شبكة الدروس — لا تغيير في المنطق: كل بطاقة تفتح ترتيب تمارين درسها فقط */
   const grid = document.getElementById('lbLessonGrid');
@@ -2555,7 +2568,7 @@ function renderLeaderboardScreen(){
     const card = document.createElement('div');
     card.className = 'lb-lesson-card';
     card.innerHTML = `
-      <div class="lb-card-num">${String(l.order).padStart(2,'0')}</div>
+      <div class="lb-card-num">د${String(l.order).padStart(2,'0')}</div>
       <div class="lb-card-icon"><span class="icon-glyph">🏆</span></div>
       <div class="lb-card-title">${l.title}</div>`;
     card.addEventListener('click', ()=> showLeaderboardPopup(l));

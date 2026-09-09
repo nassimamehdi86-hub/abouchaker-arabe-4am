@@ -544,7 +544,7 @@
      ========================================================================================= */
   .al-icon, .il-icon, .zoom-telegram-icon, .story-reader-icon,
   .lb-section-icon, .story-list-icon, .situ-panel-icon,
-  .lb-card-icon, .lb-card-num{
+  .lb-card-icon, .lb-card-num, .lb-main-icon{
     position:relative; overflow:hidden; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
     border:1.3px solid rgba(122,82,22,0.55); background:linear-gradient(150deg,#FBEDC3,#E7C878);
@@ -556,19 +556,19 @@
   }
   .al-icon::before, .il-icon::before, .zoom-telegram-icon::before, .story-reader-icon::before,
   .lb-section-icon::before, .story-list-icon::before, .situ-panel-icon::before,
-  .lb-card-icon::before, .lb-card-num::before{
+  .lb-card-icon::before, .lb-card-num::before, .lb-main-icon::before{
     content:""; position:absolute; inset:0; opacity:0.5; mix-blend-mode:multiply; pointer-events:none;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cg fill='none' stroke='%23A9772A' stroke-width='0.7' opacity='0.65'%3E%3Cpath d='M11 1 L21 11 L11 21 L1 11 Z'/%3E%3Cpath d='M11 1 L11 21 M1 11 L21 11'/%3E%3Ccircle cx='11' cy='11' r='3.4'/%3E%3Cpath d='M4.5 4.5 L7.5 7.5 M17.5 4.5 L14.5 7.5 M4.5 17.5 L7.5 14.5 M17.5 17.5 L14.5 14.5'/%3E%3C/g%3E%3C/svg%3E");
   }
   .al-icon::after, .il-icon::after, .zoom-telegram-icon::after, .story-reader-icon::after,
   .lb-section-icon::after, .story-list-icon::after, .situ-panel-icon::after,
-  .lb-card-icon::after, .lb-card-num::after{
+  .lb-card-icon::after, .lb-card-num::after, .lb-main-icon::after{
     content:""; position:absolute; top:0; left:0; right:0; height:46%;
     background:linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0)); pointer-events:none;
   }
   .al-icon .icon-glyph, .il-icon .icon-glyph, .zoom-telegram-icon .icon-glyph, .story-reader-icon .icon-glyph,
   .lb-section-icon .icon-glyph, .story-list-icon .icon-glyph, .situ-panel-icon .icon-glyph,
-  .lb-card-icon .icon-glyph, .lb-card-num .icon-glyph{
+  .lb-card-icon .icon-glyph, .lb-card-num .icon-glyph, .lb-main-icon .icon-glyph{
     position:relative; z-index:1; filter:drop-shadow(0 2px 2px rgba(60,38,8,0.35));
   }
 
@@ -583,14 +583,16 @@
   .story-reader-icon::before{ background-size:14px 14px; }
   .lb-section-icon{ width:32px; height:32px; border-radius:10px; font-size:16px; }
   .lb-section-icon::before{ background-size:10px 10px; }
+  .lb-main-icon{ width:60px; height:60px; border-radius:19px; font-size:28px; margin:0 auto 10px; }
+  .lb-main-icon::before{ background-size:15px 15px; }
   .story-list-icon{ width:32px; height:32px; border-radius:50%; font-size:15px; }
   .story-list-icon::before{ background-size:10px 10px; }
   .situ-panel-icon{ width:32px; height:32px; border-radius:10px; font-size:16px; }
   .situ-panel-icon::before{ background-size:10px 10px; }
-  .lb-lesson-card .lb-card-icon{ width:38px; height:38px; border-radius:50%; font-size:18px; margin:0 auto; }
-  .lb-lesson-card .lb-card-icon::before{ background-size:10px 10px; }
+  .lb-lesson-card .lb-card-icon{ width:52px; height:52px; border-radius:16px; font-size:24px; margin:0 auto; }
+  .lb-lesson-card .lb-card-icon::before{ background-size:13px 13px; }
   .lb-lesson-card .lb-card-num{
-    position:absolute; top:8px; right:8px; width:22px; height:22px; border-radius:50%; font-size:10px;
+    position:absolute; top:8px; right:8px; width:auto; min-width:26px; height:22px; padding:0 7px; border-radius:11px; font-size:10.5px;
     color:#33260A; font-weight:800; border-width:1px;
   }
   .lb-lesson-card .lb-card-num::before{ background-size:8px 8px; opacity:0.4; }
@@ -761,6 +763,22 @@
     font-weight:700; font-size:17px; color:var(--ink); margin-bottom:6px;
     border-bottom:2px solid var(--gold-3); padding-bottom:8px;
   }
+
+  /* ============ ثلاث بطاقات كبيرة بأيقونة عربية موشّاة لأقسام الترتيب الرئيسية ============ */
+  .lb-main-grid{ display:flex; flex-direction:column; gap:12px; margin-bottom:26px; }
+  .lb-main-card{
+    position:relative; cursor:pointer; text-align:center; padding:20px 16px 18px; border-radius:17px;
+    background:linear-gradient(150deg, #FFFDF7, #F7F1DF 55%, #F0E8D2);
+    border:1.3px solid var(--gold-3);
+    box-shadow:0 6px 14px rgba(169,127,42,0.10), inset 0 1px 0 rgba(255,255,255,0.7);
+    transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease;
+  }
+  .lb-main-card:hover{ border-color:var(--gold); box-shadow:0 8px 18px rgba(169,127,42,0.18); }
+  .lb-main-card:active{ transform:translateY(3px); }
+  .lb-main-title{
+    font-family:'Aref Ruqaa', serif; font-weight:700; font-size:16.5px; color:var(--ink); margin-bottom:5px;
+  }
+  .lb-main-desc{ font-size:11.5px; color:var(--ink-soft); line-height:1.55; max-width:320px; margin:0 auto; }
   
 
   /* ============ لوحة الشرف العامة وترتيب الفروض والاختبارات (صفوف مجمّعة) ============ */
@@ -790,21 +808,22 @@
 
   /* ============ شبكة بطاقات "الترتيب والنقاط" (اختيار الدرس) ============ */
   .lb-lesson-grid{
-    display:grid; grid-template-columns:repeat(3, 1fr); gap:11px; margin-top:16px;
+    display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; margin-top:16px;
   }
-  @media (max-width:420px){ .lb-lesson-grid{ grid-template-columns:repeat(2, 1fr); } }
+  @media (min-width:480px){ .lb-lesson-grid{ grid-template-columns:repeat(3, 1fr); } }
   .lb-lesson-card{
-    position:relative; border-radius:15px; padding:16px 8px 12px; min-height:92px; cursor:pointer;
+    position:relative; border-radius:17px; padding:20px 10px 15px; min-height:118px; cursor:pointer;
     background:linear-gradient(150deg, #FFFDF7, #F7F1DF 55%, #F0E8D2);
     border:1.3px solid var(--gold-3);
     box-shadow:0 6px 14px rgba(169,127,42,0.10), inset 0 1px 0 rgba(255,255,255,0.7);
     display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
-    gap:6px; transition:transform .15s ease;
+    gap:8px; transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease;
   }
+  .lb-lesson-card:hover{ border-color:var(--gold); box-shadow:0 8px 18px rgba(169,127,42,0.18); }
   .lb-lesson-card:active{ transform:translateY(3px); }
   .lb-lesson-card .lb-card-title{
-    font-family:'Aref Ruqaa', serif; font-weight:700; font-size:12.5px; color:var(--ink);
-    line-height:1.35;
+    font-family:'Aref Ruqaa', serif; font-weight:700; font-size:13px; color:var(--ink);
+    line-height:1.4;
   }
 
   /* ============ شبكة بطاقات الدروس ============ */
