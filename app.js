@@ -552,11 +552,12 @@ const Leaderboard = {
   },
 
   /* ---------- ترتيب الفروض والاختبارات — مجموع النقاط المتحصل عليها لكل تلميذ عبر كل الفروض/الاختبارات المنجزة ----------
-     ملاحظة: تسليم الفروض/الاختبارات يتم بالاسم الكامل فقط (بدون حساب دخول)، لذا يتم تجميع النقاط
-     حسب اسم التلميذ(ة) كما كتبه بنفسه عند التسليم. */
+     منذ ربط صفحة تسليم الفرض/الاختبار بحساب التلميذ، تحمل كل نتيجة جديدة studentId مباشرة، فيُجمَّع
+     بحسبه (دقيق 100%، بلا أي التباس بين الأسماء). النتائج القديمة (قبل هذا الربط) لا تحمل studentId
+     فتبقى مجمَّعة بحسب الاسم المكتوب كما كانت، لضمان عدم فقدان أي نتيجة قديمة. */
   async overallExams(){
     if(!fbReady) return [];
-    const byStudent = new Map(); // normalizedName -> {name, total, count}
+    const byKey = new Map(); // key -> {name, studentId, total, count}
     try{
       const examsSnap = await db.collection('exams').get();
       for(const examDoc of examsSnap.docs){
@@ -566,21 +567,49 @@ const Leaderboard = {
             const data = doc.data();
             const name = (data.studentName || '').trim();
             if(!name || typeof data.score !== 'number') return;
-            const key = name.toLowerCase();
-            const entry = byStudent.get(key) || { name, total:0, count:0 };
+            const key = data.studentId ? ('id:'+data.studentId) : ('name:'+name.toLowerCase());
+            const entry = byKey.get(key) || { name, studentId: data.studentId || null, total:0, count:0 };
             entry.total += data.score;
             entry.count += 1;
-            byStudent.set(key, entry);
+            entry.name = name || entry.name;
+            byKey.set(key, entry);
           });
         }catch(e){}
       }
     }catch(e){}
-    const results = Array.from(byStudent.values()).map(e=>({
-      name: e.name, totalPoints: Math.round(e.total*100)/100, examsCount: e.count
+    const results = Array.from(byKey.values()).map(e=>({
+      name: e.name, studentId: e.studentId, totalPoints: Math.round(e.total*100)/100, examsCount: e.count
     }));
     /* الترتيب التنازلي حسب مجموع النقاط المتحصل عليها */
     results.sort((a,b)=> b.totalPoints - a.totalPoints);
     return results;
+  },
+
+  /* ---------- الترتيب الشامل الكامل: تمارين الدروس + الفروض والاختبارات معًا ----------
+     تمارين الدروس مرتبطة دائمًا بحساب التلميذ (studentId). أما الفروض والاختبارات فتُطابَق أولًا
+     بحساب التلميذ (studentId) إن كانت النتيجة مسجَّلة بعد ربط صفحة التسليم بالحساب، وإلا فبمطابقة
+     الاسم الكامل كحلٍّ احتياطي للنتائج القديمة فقط. */
+  async overallCombined(){
+    if(!fbReady) return [];
+    const [lessonResults, examResults, approvedStudents] = await Promise.all([
+      this.overallLessons(), this.overallExams(), Admin.listApprovedFull()
+    ]);
+    const lessonByStudentId = new Map(lessonResults.map(r=> [r.studentId, r.totalScore]));
+    const examByStudentId = new Map(examResults.filter(r=> r.studentId).map(r=> [r.studentId, r.totalPoints]));
+    const examByName = new Map(examResults.map(r=> [(r.name||'').trim().toLowerCase(), r.totalPoints]));
+    const combined = approvedStudents.map(s=>{
+      const lessonScore = lessonByStudentId.get(s.id) || 0;
+      const examScore = examByStudentId.has(s.id)
+        ? examByStudentId.get(s.id)
+        : (examByName.get((s.fullName||'').trim().toLowerCase()) || 0);
+      return {
+        studentId: s.id, name: s.fullName, lessonScore, examScore,
+        totalScore: Math.round((lessonScore + examScore) * 10) / 10
+      };
+    });
+    /* الترتيب التنازلي حسب المجموع الشامل */
+    combined.sort((a,b)=> b.totalScore - a.totalScore);
+    return combined;
   }
 };
 
@@ -2529,6 +2558,7 @@ function renderLeaderboardScreen(){
       <div class="lb-section-title" style="border-bottom:none;padding-bottom:0;margin-bottom:10px">
         <span class="lb-section-icon"><span class="icon-glyph">📊</span></span>نتائجك الإجمالية
       </div>
+      <div class="sf-label" style="margin-bottom:10px">مجموع نقاط تمارين الدروس + الفروض والاختبارات معًا</div>
       <div class="lb-mystats-row">
         <div class="lb-mystat-card">
           <div class="lb-mystat-value" id="lbMyPoints">—</div>
@@ -2605,16 +2635,16 @@ async function loadMyOverallStats(){
   const section = document.getElementById('lbMyStatsSection');
   if(!section || !fbReady || !Student.id) return;
   try{
-    const [results, totalStudents] = await Promise.all([
-      Leaderboard.overallLessons(),
+    const [combined, totalStudents] = await Promise.all([
+      Leaderboard.overallCombined(),
       Admin.allStudentsCount()
     ]);
-    const myIdx = results.findIndex(r=> r.studentId === Student.id);
+    const myIdx = combined.findIndex(r=> r.studentId === Student.id);
     const pointsEl = document.getElementById('lbMyPoints');
     const rankEl = document.getElementById('lbMyRank');
     const totalEl = document.getElementById('lbMyTotalStudents');
     if(!pointsEl || !rankEl || !totalEl) return; /* المستخدم غادر الشاشة قبل انتهاء التحميل */
-    pointsEl.textContent = myIdx !== -1 ? Math.round(results[myIdx].totalScore) : '0';
+    pointsEl.textContent = myIdx !== -1 ? Math.round(combined[myIdx].totalScore) : '0';
     rankEl.textContent = myIdx !== -1 ? `#${myIdx+1}` : '—';
     totalEl.textContent = totalStudents || '—';
     section.style.display = '';

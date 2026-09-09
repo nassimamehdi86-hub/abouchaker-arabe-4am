@@ -2123,13 +2123,19 @@ async function renderStudentExam(){
   function buildPage(){
   const alreadyKey = `submitted_${examId}`;
   const already = localStorage.getItem(alreadyKey);
-  // اسم التلميذ(ة) كما دخل به من الصفحة الرئيسية للمنصة (نفس المتصفح/الأصل، فبالتالي localStorage
-  // مشترك). إذا كان موجودًا، نعرضه مقفلاً وغير قابل للتعديل — حتى لا يتلاعب أحد بالاسم عند التسليم.
+  // اسم التلميذ(ة) وحسابه كما دخل به من الصفحة الرئيسية للمنصة (نفس المتصفح/الأصل، فبالتالي
+  // localStorage مشترك). إذا كان موجودًا، نعرض الاسم مقفلاً وغير قابل للتعديل، ونربط التسليم
+  // بمعرّف حسابه (studentId) مباشرة بدل الاعتماد على الاسم المكتوب فقط — هذا يضمن أن نتيجة
+  // الفرض/الاختبار تُحسب لنفس حساب التلميذ في تمارين الدروس دون أي التباس بين الأسماء المتشابهة.
   let loggedInStudentName = '';
+  let loggedInStudentId = '';
   try{
     const raw = localStorage.getItem('student_name');
     const v = raw ? JSON.parse(raw) : null;
     if(v && typeof v === 'string') loggedInStudentName = v.trim();
+    const rawId = localStorage.getItem('student_id');
+    const vId = rawId ? JSON.parse(rawId) : null;
+    if(vId && typeof vId === 'string') loggedInStudentId = vId;
   }catch(e){}
 
   app.innerHTML = `
@@ -2169,7 +2175,7 @@ async function renderStudentExam(){
       <div class="field"><label>الاسم الكامل</label>
         ${loggedInStudentName ? `
           <input type="text" id="studentName" value="${esc(loggedInStudentName)}" readonly style="background:var(--panel-solid);color:var(--dim);cursor:not-allowed;">
-          <p class="muted" style="margin-top:4px;font-size:12px;">🔒 هذا اسمك المسجَّل فالمنصة، ولا يمكن تغييره هنا لضمان عدم التلاعب بالأسماء.</p>
+          <p class="muted" style="margin-top:4px;font-size:12px;">🔒 هذا اسمك المسجَّل في المنصة، ولا يمكن تغييره هنا${loggedInStudentId ? '. النتيجة ستُربط مباشرة بنفس حسابك وتُحسب معه في ترتيبك الشامل' : ''}.</p>
         ` : `
           <input type="text" id="studentName" placeholder="مثلاً: ياسمين بلعيد">
           <p class="muted" style="margin-top:4px;font-size:12px;">⚠️ يُرجى الدخول أولاً باسمك من الصفحة الرئيسية للمنصة، ثم العودة إلى هذا الاختبار، حتى يُسجَّل اسمك تلقائيًا هنا.</p>
@@ -2227,8 +2233,11 @@ async function renderStudentExam(){
     btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> جارٍ التصحيح...`;
     msg.innerHTML = '';
     try{
-      const dupCheck = await db.collection('exams').doc(examId).collection('submissions')
-        .where('studentName','==', name).limit(1).get();
+      const dupCheck = loggedInStudentId
+        ? await db.collection('exams').doc(examId).collection('submissions')
+            .where('studentId','==', loggedInStudentId).limit(1).get()
+        : await db.collection('exams').doc(examId).collection('submissions')
+            .where('studentName','==', name).limit(1).get();
       if(!dupCheck.empty){
         toast('يوجد تلميذ بنفس الاسم سلّم مسبقًا. يرجى إضافة اللقب أو التواصل مع الأستاذ(ة).');
         btn.disabled=false; btn.innerHTML='✅ تسليم للتصحيح';
@@ -2285,6 +2294,7 @@ async function renderStudentExam(){
       const totalScore = graded.perQuestion.reduce((s,q)=>s+(parseFloat(q.awarded)||0),0);
       const result = {
         studentName: name,
+        studentId: loggedInStudentId || null, /* يربط النتيجة بنفس حساب التلميذ في المنصة، إن كان مسجَّل دخوله */
         score: Math.round(totalScore*100)/100,
         totalPoints: ex.totalPoints,
         perQuestion: graded.perQuestion,
