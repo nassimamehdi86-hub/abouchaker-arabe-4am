@@ -15,6 +15,13 @@
           "keywordThreshold": 0.5
         },
         {
+          "before": "المعطوف عليه:",
+          "after": "",
+          "answer": "لفظ الجلالة الله",
+          "keywords": ["الله"],
+          "keywordThreshold": 1
+        },
+        {
           "before": "حرف العطف:",
           "after": "",
           "answer": "الواو",
