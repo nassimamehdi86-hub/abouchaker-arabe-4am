@@ -449,7 +449,7 @@ const Admin = {
     try{
       const snap = await db.collection('submissions').doc(lessonId).collection('students').get();
       let sum = 0, count = 0;
-      snap.forEach(d=>{ const v = d.data().percent; if(typeof v === 'number'){ sum += v; count++; } });
+      snap.forEach(d=>{ const dd=d.data(); if(dd.completed===false) return; const v = dd.percent; if(typeof v === 'number'){ sum += v; count++; } });
       return { participants:count, total: totalStudents||count, avg: count ? Math.round(sum/count) : 0 };
     }catch(e){ return { participants:0, total:totalStudents||0, avg:0 }; }
   },
@@ -486,7 +486,7 @@ const Admin = {
     for(const l of lessons){
       try{
         const doc = await db.collection('submissions').doc(l.id).collection('students').doc(studentId).get();
-        if(doc.exists && typeof doc.data().percent === 'number') percents.push(doc.data().percent);
+        if(doc.exists && doc.data().completed !== false && typeof doc.data().percent === 'number') percents.push(doc.data().percent);
       }catch(e){}
     }
     if(!percents.length) return null;
@@ -509,13 +509,16 @@ const Leaderboard = {
   async forLesson(lessonId){
     if(!fbReady) return [];
     /* الجلب بلا ترتيب من الخادم (تفاديًا لفهرس مركّب في Firestore)، ثم الترتيب محليًا حسب
-       النسبة المئوية فأقل وقت عند التعادل */
+       النسبة المئوية فأقل وقت عند التعادل. تُستبعد المحاولات غير المكتملة (completed:false) من الترتيب. */
     const snap = await db.collection('submissions').doc(lessonId).collection('students').limit(200).get();
-    const rows = snap.docs.map(d=>({ name:d.data().studentName, percent:d.data().percent, timeSeconds:d.data().timeSeconds }));
+    const rows = snap.docs.filter(d=> d.data().completed !== false)
+      .map(d=>({ name:d.data().studentName, percent:d.data().percent, timeSeconds:d.data().timeSeconds }));
     rows.sort(Leaderboard._rank);
     return rows.slice(0, 50);
   },
-  /* نتيجة التلميذ الحالي في تمرين درس معيّن، إن وُجدت (لمنع إعادة المحاولة وعرض نتيجته السابقة) */
+  /* نتيجة التلميذ الحالي في تمرين درس معيّن، إن وُجدت (لمنع إعادة المحاولة وعرض نتيجته السابقة).
+     completed:false تعني أنّ التلميذ بدأ التمرين ولم يُتمّه بعد (تُسجَّل تدريجيًا تمرينًا بتمرين) —
+     السجلات القديمة لا تحمل هذا الحقل إطلاقًا وتُعتبر دائمًا مكتملة (توافقًا مع البيانات السابقة). */
   async mine(lessonId){
     if(!fbReady || !Student.id) return null;
     try{
@@ -523,17 +526,39 @@ const Leaderboard = {
       return doc.exists ? doc.data() : null;
     }catch(e){ return null; }
   },
-  /* تسجيل نتيجة تمرين درس — محاولة واحدة فقط. timeSeconds: المدة بالثواني من بدء التمرين إلى
+  /* بدء محاولة التمرين: يُنشئ سجلًا فوريًا في قاعدة البيانات بمجرد الضغط على "ابدأ التمرين"،
+     حتى لا يستطيع التلميذ إعادة المحاولة بمجرد تحديث الصفحة قبل إتمام كل التمارين. */
+  async startAttempt(lessonId){
+    if(!fbReady || !Student.id) return { ok:false, reason:'offline' };
+    const ref = db.collection('submissions').doc(lessonId).collection('students').doc(Student.id);
+    try{
+      const existing = await ref.get();
+      if(existing.exists) return { ok:false, reason:'already-started', data: existing.data() };
+      await ref.set({
+        studentName: Student.fullName, percent:0, sectionsDone:0, completed:false,
+        startedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      return { ok:true };
+    }catch(e){ return { ok:false, reason:'error' }; }
+  },
+  /* حفظ التقدّم فور إتمام كل تمرين فرعي (بعد الضغط على «تحقق»)، حتى تُحسب النتيجة تدريجيًا ولا
+     تُفقد المحاولة بتحديث الصفحة في منتصف الطريق. لا يُغيّر completed إلا الإرسال النهائي submit(). */
+  async saveProgress(lessonId, sectionsDone, partialPercent){
+    if(!fbReady || !Student.id) return;
+    const ref = db.collection('submissions').doc(lessonId).collection('students').doc(Student.id);
+    try{ await ref.update({ sectionsDone, percent: partialPercent }); }catch(e){ /* تجاهل صامت */ }
+  },
+  /* تسجيل نتيجة تمرين درس نهائيًا — محاولة واحدة فقط. timeSeconds: المدة بالثواني من بدء التمرين إلى
      إرساله، تُستخدم فقط للفصل بين المتعادلين في النسبة المئوية داخل الترتيب */
   async submit(lessonId, percent, timeSeconds){
     if(!fbReady || !Student.id) return { ok:false, reason:'offline' };
     const ref = db.collection('submissions').doc(lessonId).collection('students').doc(Student.id);
     try{
       const existing = await ref.get();
-      if(existing.exists) return { ok:false, reason:'already-submitted' }; // محاولة واحدة فقط
-      const payload = { studentName: Student.fullName, percent, submittedAt: firebase.firestore.FieldValue.serverTimestamp() };
+      if(existing.exists && existing.data().completed !== false) return { ok:false, reason:'already-submitted' }; // محاولة واحدة فقط
+      const payload = { studentName: Student.fullName, percent, completed:true, submittedAt: firebase.firestore.FieldValue.serverTimestamp() };
       if(typeof timeSeconds === 'number' && isFinite(timeSeconds) && timeSeconds >= 0) payload.timeSeconds = timeSeconds;
-      await ref.set(payload);
+      await ref.set(payload, { merge:true });
       return { ok:true };
     }catch(e){ return { ok:false, reason:'error' }; }
   },
@@ -550,6 +575,7 @@ const Leaderboard = {
         const snap = await db.collection('submissions').doc(l.id).collection('students').get();
         snap.forEach(doc=>{
           const data = doc.data();
+          if(data.completed === false) return; // استبعاد المحاولات غير المكتملة
           if(typeof data.percent !== 'number') return;
           const id = doc.id;
           const entry = byStudent.get(id) || { studentId:id, name:data.studentName || 'طالب غير معروف', total:0, count:0 };
@@ -1764,6 +1790,16 @@ async function renderLessonExercisesBox(lesson){
   }
 
   const mine = await Leaderboard.mine(lesson.id);
+  if(mine && mine.completed === false){
+    /* التلميذ بدأ هذا التمرين سابقًا ولم يُتمّه (محاولة مسجَّلة تدريجيًا) — لا يمكن إعادة المحاولة
+       ولو حدَّث الصفحة أو أغلق التطبيق في المنتصف، لأنّ كل تمرين فرعي يُحسب فور إتمامه. */
+    box.innerHTML = `
+      <div class="lesson-cta-note" style="color:#c0392b;border-color:#c0392b">
+        ⚠️ لقد بدأتَ هذا التمرين سابقًا ولم تُكمله (وصلتَ إلى التمرين ${(mine.sectionsDone||0)+1}).
+        لا يمكن إعادة المحاولة من البداية — تواصل مع أستاذك إذا انقطع اتصالك أثناء الحل.
+      </div>`;
+    return;
+  }
   if(mine && typeof mine.percent === 'number'){
     const pct = mine.percent;
     const tier = pct>=90?'excellent':(pct>=60?'good':'retry');
@@ -1793,11 +1829,22 @@ async function renderLessonExercisesBox(lesson){
 
   box.innerHTML = `
     <button class="lesson-cta-btn" id="ldExerciseStartBtn">▶️ ابدأ التمرين</button>
-    <div class="lesson-cta-note">⚠️ محاولة واحدة فقط — ${countLabel}: ${count}. لا يمكنك إعادة هذا التمرين بعد إرساله، وتُحسب نتيجتك بالنسبة المئوية وتدخل ترتيب هذا الدرس.</div>
+    <div class="lesson-cta-note">⚠️ محاولة واحدة فقط — ${countLabel}: ${count}. تُحسب نتيجة كل تمرين فور إتمامه، ولا يمكنك إعادة المحاولة حتى بتحديث الصفحة. تُحسب نتيجتك بالنسبة المئوية وتدخل ترتيب هذا الدرس.</div>
     <div id="ldExerciseMount" style="margin-top:14px"></div>`;
 
-  document.getElementById('ldExerciseStartBtn').addEventListener('click', ()=>{
-    document.getElementById('ldExerciseStartBtn').style.display = 'none';
+  document.getElementById('ldExerciseStartBtn').addEventListener('click', async ()=>{
+    const startBtn = document.getElementById('ldExerciseStartBtn');
+    startBtn.disabled = true;
+    /* المحرك القديم (اختيار من متعدد) لا يدعم بعد الحفظ التدريجي فيُبقى سلوكه كما كان؛
+       أما تمارين الكتاب (units) فتُسجَّل فور الضغط على "ابدأ" لمنع إعادة المحاولة بتحديث الصفحة. */
+    if(units){
+      const started = await Leaderboard.startAttempt(lesson.id);
+      if(!started.ok){
+        renderLessonExercisesBox(lesson); // أُعيد رسم الصندوق ليعكس الحالة الحقيقية (محاولة سابقة)
+        return;
+      }
+    }
+    startBtn.style.display = 'none';
     const mount = document.getElementById('ldExerciseMount');
     if(units) createOpenExerciseEngine(lesson, units, mount);
     else createExerciseEngine(lesson, data.questions, mount);
@@ -1945,6 +1992,13 @@ function createOpenExerciseEngine(lesson, pages, mountEl){
     if(idx >= total) finish(); else renderPage();
   }
 
+  /* حفظ فوري لتقدّم التلميذ في قاعدة البيانات فور إتمام كل تمرين فرعي (بعد «تحقق»)، حتى لا تُتيح
+     إعادة تحميل الصفحة محاولة جديدة قبل إكمال كل التمارين. صامت الفشل (لا يوقف سير التمرين). */
+  function saveProgressNow(){
+    const partialPercent = Math.round((scoreSum/total)*100);
+    Leaderboard.saveProgress(lesson.id, idx+1, partialPercent);
+  }
+
   function nextBtnHtml(){
     return `<button class="quiz-next-btn" style="display:none">${idx+1<total ? 'التمرين التالي ←' : 'إنهاء وإرسال ✅'}</button>`;
   }
@@ -1995,6 +2049,7 @@ function createOpenExerciseEngine(lesson, pages, mountEl){
       const ratio = blanks.length ? correct/blanks.length : 1;
       if(window.SoundFX) (ratio>=1 ? SoundFX.correct() : SoundFX.wrong());
       scoreSum += Math.min(1, ratio);
+      saveProgressNow();
       document.getElementById('unitCheckBtn').disabled = true;
       const model = (sec.passage||[]).map(tok=> tok.blank ? `«${epTextSpan(tok.answer||'')}»` : epTextSpan(tok.text||'')).join('');
       const ex = mountEl.querySelector('.quiz-explain');
@@ -2045,6 +2100,7 @@ function createOpenExerciseEngine(lesson, pages, mountEl){
       const ratio = items.length ? correct/items.length : 1;
       if(window.SoundFX) (ratio>=1 ? SoundFX.correct() : SoundFX.wrong());
       scoreSum += Math.min(1, ratio);
+      saveProgressNow();
       document.getElementById('unitCheckBtn').disabled = true;
       mountEl.querySelector('.quiz-next-btn').style.display = 'inline-block';
     });
@@ -2138,6 +2194,7 @@ function createOpenExerciseEngine(lesson, pages, mountEl){
 
       if(window.SoundFX) (combined>=1 ? SoundFX.correct() : SoundFX.wrong());
       scoreSum += Math.min(1, combined);
+      saveProgressNow();
       Array.from(tbody.querySelectorAll('input')).forEach(i=> i.disabled = true);
       document.getElementById('extractAddBtn').disabled = true;
       document.getElementById('unitCheckBtn').disabled = true;
@@ -2201,6 +2258,7 @@ function createOpenExerciseEngine(lesson, pages, mountEl){
       const ratio = items.length ? correct/items.length : 1;
       if(window.SoundFX) (ratio>=1 ? SoundFX.correct() : SoundFX.wrong());
       scoreSum += Math.min(1, ratio);
+      saveProgressNow();
       document.getElementById('unitCheckBtn').disabled = true;
       mountEl.querySelector('.quiz-next-btn').style.display = 'inline-block';
     });
