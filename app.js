@@ -1139,7 +1139,7 @@ const Screens = {
   el: {}, // يُملأ عند التحميل بعناصر id لكل شاشة
 
   init(){
-    ['home','lessons','lessonDetail','exams','irab','situation','leaderboard','chat','admin'].forEach(s=>{
+    ['home','lessons','lessonDetail','exams','dailyExercises','irab','situation','leaderboard','chat','admin'].forEach(s=>{
       this.el[s] = document.getElementById('screen-'+s);
     });
     document.querySelectorAll('[data-nav]').forEach(btn=>{
@@ -2878,7 +2878,7 @@ function renderLeaderboardScreen(){
       <div class="lb-main-card" id="lbOpenExams">
         <div class="lb-main-icon"><span class="icon-glyph">📝</span></div>
         <div class="lb-main-title">ترتيب الفروض والاختبارات</div>
-        <div class="lb-main-desc">ترتيب مستقل بمجموع النقاط المتحصَّل عليها في الفروض والاختبارات المنجزة</div>
+        <div class="lb-main-desc">ترتيب مستقل بمجموع النقاط المتحصَّل عليها في الفروض والاختبارات والتمارين اليومية المنجزة</div>
       </div>
 
       <div class="lb-main-card" id="lbOpenLessons">
@@ -3039,7 +3039,7 @@ async function showExamsLeaderboardPopup(){
   
   const subtitle = document.createElement('div');
   subtitle.className = 'leaderboard-modal-subtitle';
-  subtitle.textContent = 'ترتيب التلاميذ حسب نقاطهم في الفروض والاختبارات';
+  subtitle.textContent = 'ترتيب التلاميذ حسب نقاطهم في الفروض والاختبارات والتمارين اليومية';
   
   const closeBtn = document.createElement('button');
   closeBtn.className = 'leaderboard-modal-close';
@@ -3657,8 +3657,11 @@ async function renderAdminPanel(){
   const aiTeacherBody = `
     <div class="note" style="margin-bottom:12px">🧠 وحدة منفصلة تتيح إنشاء اختبار (نص/جدول/رسوم)، طباعته، ورفع تلميذ صورة إجابته لتصحّح تلقائيًا بالذكاء الاصطناعي مع علامة وتقرير فوري.
       <br><b>عند أول استخدام</b> ستطلب منك لوحة الأستاذ(ة) هناك رمزًا سريًا خاصًا بها (منفصل عن رمز هذه اللوحة)، ثم رابط خادم التصحيح (Worker) — راجع ملف <b>worker.js</b> وREADME المرفقين لنشره خلال دقائق.</div>
-    <a class="al-key" style="display:inline-block;width:auto;padding:9px 22px;text-decoration:none" href="smart-teacher.html">🧠 فتح لوحة المعلّم الذكي</a>
-    <div class="note" style="margin-top:12px">💡 بعد نشر اختبار هناك، انسخ رابطه وأرسله لكل التلاميذ عبر قسم "👥 التلاميذ المقبولون" أدناه أو أي وسيلة تواصل معتادة.</div>`;
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a class="al-key" style="display:inline-block;width:auto;padding:9px 22px;text-decoration:none" href="smart-teacher.html">🧠 فتح لوحة المعلّم الذكي — فروض واختبارات</a>
+      <a class="al-key" style="display:inline-block;width:auto;padding:9px 22px;text-decoration:none" href="smart-teacher.html?cat=daily">📅 لوحة التمارين اليومية</a>
+    </div>
+    <div class="note" style="margin-top:12px">💡 بعد نشر اختبار أو تمرين هناك، انسخ رابطه وأرسله لكل التلاميذ عبر قسم "👥 التلاميذ المقبولون" أدناه أو أي وسيلة تواصل معتادة. نتائج التمارين اليومية تُحسب تلقائيًا ضمن نفس ترتيب الفروض والاختبارات.</div>`;
 
   /* زر بارز لإدارة روابط تسجيلات حصص الزوم للأفواج الأربعة — يفتح نافذة منبثقة مستقلة */
   const zoomManageCard = `
