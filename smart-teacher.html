@@ -2231,7 +2231,12 @@ async function renderStudentExam(){
       go('studentResult', {result: cached, examData: ex});
     };
   }
-  document.getElementById('printBtn').onclick = ()=>{ buildPrintSheet(ex); window.print(); };
+  document.getElementById('printBtn').onclick = async ()=>{
+    buildPrintSheet(ex);
+    await waitForFontsAndLayout();
+    await waitForImagesIn(document.getElementById('printArea'));
+    window.print();
+  };
   wireExamPdfButtons('openWritablePdf', 'dlWritablePdf', ex);
   if(ex.examPdfUrl){
     document.getElementById('openOrigPdf').onclick = ()=>{ window.open(ex.examPdfUrl, '_blank'); };
@@ -2489,30 +2494,111 @@ function buildPrintSheet(ex){
   `;
 }
 
-// ينشئ ملف PDF حقيقي من ورقة التصحيح (باستخدام html2canvas + jsPDF) ويرجعه كـ Blob
+// ينتظر تحميل كل الخطوط فعليًا قبل أي التقاط بـ html2canvas، وإلا كيلتقط صورة بخط بديل
+// (fallback) — خصوصًا فأول استعمال للتطبيق قبل ما يتخزّنو الخطوط فذاكرة المتصفح (cache).
+async function waitForFontsAndLayout(){
+  try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
+  await new Promise(r=>setTimeout(r, 150)); // هامش أمان إضافي للتخطيط النهائي بعد جاهزية الخطوط
+}
+// ينتظر اكتمال تحميل/فك ترميز كل الصور داخل عنصر معيّن (مثل صور الأشكال) قبل الطباعة أو
+// الالتقاط — وإلا فقد يُحسب ارتفاع الصورة بشكل خاطئ (كأنها بارتفاع صفر لحظة القياس)، فتنقسم
+// الصورة بشكل غير متوقع بين صفحتين رغم page-break-inside:avoid على حاويتها.
+async function waitForImagesIn(container){
+  if(!container) return;
+  const imgs = Array.from(container.querySelectorAll('img'));
+  await Promise.all(imgs.map(img=>{
+    if(img.complete && img.naturalWidth>0) return Promise.resolve();
+    if(img.decode) return img.decode().catch(()=>{});
+    return new Promise(resolve=>{ img.onload = img.onerror = resolve; });
+  }));
+}
+// يحسب (بوحدة بيكسل الـcanvas) المجالات العمودية للعناصر اللي ما ينبغيش تتقطع بين صفحتين
+// (كل سؤال، كل نص/وثيقة، رأس الورقة...)، عن طريق قياس مواقعها الحقيقية فالصفحة
+// (getBoundingClientRect) وضربها فنفس معامل التكبير (scale) اللي تستعمل مع html2canvas.
+function getNoBreakRanges(sheetEl, scale){
+  const sheetRect = sheetEl.getBoundingClientRect();
+  const toRange = (el)=>{
+    const r = el.getBoundingClientRect();
+    return { top: (r.top - sheetRect.top) * scale, bottom: (r.bottom - sheetRect.top) * scale };
+  };
+  const blockEls = sheetEl.querySelectorAll('.sheet-q, .sheet-passage, .sheet-head, .sheet-footer-brand');
+  const ranges = Array.from(blockEls).map(toRange);
+  const sectionEls = Array.from(sheetEl.querySelectorAll('.sheet-section'));
+  const sheetBottom = sheetRect.height * scale;
+  const groupRanges = sectionEls.map((el, i)=>{
+    const top = toRange(el).top;
+    const bottom = sectionEls[i+1] ? toRange(sectionEls[i+1]).top : sheetBottom;
+    return { top, bottom };
+  });
+  return { ranges, groupRanges };
+}
+// يقطّع صورة (canvas) طويلة كاملة لملف PDF حقيقي متعدد الصفحات بمقاس A4 القياسي (210×297mm)
+// بدل صفحة واحدة طويلة بلا حدود — هذا هو الشكل المناسب للطباعة الفعلية على ورق A4 عادي.
+// noBreak (اختياري): {ranges, groupRanges} من getNoBreakRanges — كيرجّع خط القطع لبداية
+// أقرب عنصر (سؤال/نص/تمرين كامل) بدل ما يقطعو فالمنتصف، ما دام العنصر قادر يدخل فصفحة وحدة.
+async function canvasToA4PdfBlob(canvas, noBreak){
+  const { jsPDF } = window.jspdf;
+  const PAGE_W_MM = 210, PAGE_H_MM = 297;
+  const pxPerMm = canvas.width / PAGE_W_MM;
+  const pageHeightPx = Math.round(PAGE_H_MM * pxPerMm);
+  const ranges = ((noBreak&&noBreak.ranges)||[]).slice().sort((a,b)=>a.top-b.top);
+  const groupRanges = ((noBreak&&noBreak.groupRanges)||[]).slice().sort((a,b)=>a.top-b.top);
+  const pdf = new jsPDF({ unit:'mm', format:'a4' });
+  let y = 0, pageIndex = 0;
+  while(y < canvas.height - 1){
+    let sliceEnd = Math.min(y + pageHeightPx, canvas.height);
+    for(const g of groupRanges){
+      if(g.top > y && g.top < sliceEnd && g.bottom > sliceEnd && (g.bottom - g.top) <= pageHeightPx){
+        sliceEnd = g.top;
+      }
+    }
+    for(const rng of ranges){
+      if(rng.top > y && rng.top < sliceEnd && rng.bottom > sliceEnd){
+        sliceEnd = rng.top;
+      }
+    }
+    if(sliceEnd <= y) sliceEnd = Math.min(y + pageHeightPx, canvas.height); // حماية من حلقة لا نهائية
+    const sliceHeightPx = sliceEnd - y;
+    const pageCanvas = document.createElement('canvas');
+    pageCanvas.width = canvas.width;
+    pageCanvas.height = pageHeightPx; // ارتفاع الصفحة كامل دائمًا (بياض فارغ فآخر صفحة إن قصرت)
+    const ctx = pageCanvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+    ctx.drawImage(canvas, 0, y, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+    const imgData = pageCanvas.toDataURL('image/jpeg', 0.92);
+    if(pageIndex>0) pdf.addPage();
+    pdf.addImage(imgData, 'JPEG', 0, 0, PAGE_W_MM, PAGE_H_MM);
+    y = sliceEnd;
+    pageIndex++;
+  }
+  return pdf.output('blob');
+}
+// يجهّز عنصر الورقة للالتقاط: ينتظر الخطوط والصور، يقيس حدود الأسئلة/النصوص، ويرجّع الـcanvas
+// الكامل مع تلك الحدود (noBreakRanges) لاستعمالها فتقطيع الصفحات.
+async function captureSheetCanvas(){
+  const sheetEl = document.querySelector('#printArea .sheet');
+  const SCALE = 2;
+  await waitForFontsAndLayout();
+  await waitForImagesIn(sheetEl);
+  const noBreakRanges = getNoBreakRanges(sheetEl, SCALE);
+  const canvas = await html2canvas(sheetEl, {scale:SCALE, backgroundColor:'#ffffff', useCORS:true});
+  return { canvas, noBreakRanges };
+}
+
+// ينشئ ملف PDF حقيقي من ورقة التصحيح (باستخدام html2canvas + jsPDF)، بصفحات A4 بيضاء حقيقية
+// (بدل صفحة واحدة طويلة)، ويرجعه كـ Blob
 async function generateCorrectionPdfBlob(ex, result){
   buildCorrectionSheet(ex, result);
-  await new Promise(r=>setTimeout(r, 60)); // إعطاء وقت للتخطيط قبل الالتقاط
-  const sheetEl = document.querySelector('#printArea .sheet');
-  const canvas = await html2canvas(sheetEl, {scale:2, backgroundColor:'#ffffff', useCORS:true});
-  const imgData = canvas.toDataURL('image/jpeg', 0.92);
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF({ unit:'px', format:[canvas.width, canvas.height] });
-  pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
-  return pdf.output('blob');
+  const { canvas, noBreakRanges } = await captureSheetCanvas();
+  return canvasToA4PdfBlob(canvas, noBreakRanges);
 }
 
 // نفس المبدأ ديال generateCorrectionPdfBlob لكن كيولّد PDF لنسخة الأسئلة والنصوص (بلا نتيجة تلميذ)
 async function generateExamPdfBlob(ex){
   buildPrintSheet(ex);
-  await new Promise(r=>setTimeout(r, 60));
-  const sheetEl = document.querySelector('#printArea .sheet');
-  const canvas = await html2canvas(sheetEl, {scale:2, backgroundColor:'#ffffff', useCORS:true});
-  const imgData = canvas.toDataURL('image/jpeg', 0.92);
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF({ unit:'px', format:[canvas.width, canvas.height] });
-  pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
-  return pdf.output('blob');
+  const { canvas, noBreakRanges } = await captureSheetCanvas();
+  return canvasToA4PdfBlob(canvas, noBreakRanges);
 }
 
 // يجهّز زوج أزرار "فتح PDF" و"تنزيل PDF" لنسخة الأسئلة (للأستاذ(ة))
