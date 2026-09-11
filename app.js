@@ -482,13 +482,13 @@ const Admin = {
   async studentAverage(studentId){
     if(!fbReady) return null;
     const lessons = window.LESSONS.filter(l=>l.locked!=='pending');
-    const percents = [];
-    for(const l of lessons){
-      try{
-        const doc = await db.collection('submissions').doc(l.id).collection('students').doc(studentId).get();
-        if(doc.exists && doc.data().completed !== false && typeof doc.data().percent === 'number') percents.push(doc.data().percent);
-      }catch(e){}
-    }
+    /* قراءة نتائج كل الدروس بالتوازي بدل التسلسل، حتى لا تتباطأ الصفحة كلما زاد عدد الدروس */
+    const docs = await Promise.all(lessons.map(l=>
+      db.collection('submissions').doc(l.id).collection('students').doc(studentId).get().catch(()=>null)
+    ));
+    const percents = docs
+      .filter(doc=> doc && doc.exists && doc.data().completed !== false && typeof doc.data().percent === 'number')
+      .map(doc=> doc.data().percent);
     if(!percents.length) return null;
     return Math.round(percents.reduce((a,b)=>a+b,0) / percents.length);
   }
@@ -510,7 +510,7 @@ const Leaderboard = {
     if(!fbReady) return [];
     /* الجلب بلا ترتيب من الخادم (تفاديًا لفهرس مركّب في Firestore)، ثم الترتيب محليًا حسب
        النسبة المئوية فأقل وقت عند التعادل. تُستبعد المحاولات غير المكتملة (completed:false) من الترتيب. */
-    const snap = await db.collection('submissions').doc(lessonId).collection('students').limit(200).get();
+    const snap = await db.collection('submissions').doc(lessonId).collection('students').limit(1000).get();
     const rows = snap.docs.filter(d=> d.data().completed !== false)
       .map(d=>({ name:d.data().studentName, percent:d.data().percent, timeSeconds:d.data().timeSeconds }));
     rows.sort(Leaderboard._rank);
@@ -603,23 +603,26 @@ const Leaderboard = {
     if(!fbReady) return [];
     const byKey = new Map(); // key -> {name, studentId, total, count}
     try{
+      /* قراءة تسليمات كل الفروض/الاختبارات بالتوازي بدل التسلسل، حتى لا تتباطأ الصفحة
+         كلما زاد عدد الفروض والاختبارات */
       const examsSnap = await db.collection('exams').get();
-      for(const examDoc of examsSnap.docs){
-        try{
-          const subsSnap = await db.collection('exams').doc(examDoc.id).collection('submissions').get();
-          subsSnap.forEach(doc=>{
-            const data = doc.data();
-            const name = (data.studentName || '').trim();
-            if(!name || typeof data.score !== 'number') return;
-            const key = data.studentId ? ('id:'+data.studentId) : ('name:'+name.toLowerCase());
-            const entry = byKey.get(key) || { name, studentId: data.studentId || null, total:0, count:0 };
-            entry.total += data.score;
-            entry.count += 1;
-            entry.name = name || entry.name;
-            byKey.set(key, entry);
-          });
-        }catch(e){}
-      }
+      const subsSnaps = await Promise.all(examsSnap.docs.map(examDoc=>
+        db.collection('exams').doc(examDoc.id).collection('submissions').get().catch(()=>null)
+      ));
+      subsSnaps.forEach(subsSnap=>{
+        if(!subsSnap) return;
+        subsSnap.forEach(doc=>{
+          const data = doc.data();
+          const name = (data.studentName || '').trim();
+          if(!name || typeof data.score !== 'number') return;
+          const key = data.studentId ? ('id:'+data.studentId) : ('name:'+name.toLowerCase());
+          const entry = byKey.get(key) || { name, studentId: data.studentId || null, total:0, count:0 };
+          entry.total += data.score;
+          entry.count += 1;
+          entry.name = name || entry.name;
+          byKey.set(key, entry);
+        });
+      });
     }catch(e){}
     const results = Array.from(byKey.values()).map(e=>({
       name: e.name, studentId: e.studentId, totalPoints: Math.round(e.total*100)/100, examsCount: e.count
