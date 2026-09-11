@@ -3170,7 +3170,18 @@ const AA_ICONS = {
     <path d="M8 14 C8 10 11 8 15 8 H49 C53 8 56 10 56 14 V38 C56 42 53 44 49 44 H26 L14 54 V44 H15 C11 44 8 42 8 38 Z" fill="url(#hcCream)" stroke="#D8AE52" stroke-width="1.2"/>
     <circle cx="21" cy="26" r="3.4" fill="#7A5216"/>
     <circle cx="32" cy="26" r="3.4" fill="#7A5216"/>
-    <circle cx="43" cy="26" r="3.4" fill="#7A5216"/>`, AA_BG_GOLD)
+    <circle cx="43" cy="26" r="3.4" fill="#7A5216"/>`, AA_BG_GOLD),
+  /* 📅 تمارين يومية — تقويم ذهبي */
+  dailyExercises: aaIcon(`
+    <rect x="10" y="14" width="44" height="40" rx="5" fill="url(#hcGoldMetal)" stroke="#7A5216" stroke-width="1.3"/>
+    <rect x="10" y="14" width="44" height="10" rx="5" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="1"/>
+    <rect x="16" y="8" width="4" height="10" rx="2" fill="#7A5216"/>
+    <rect x="44" y="8" width="4" height="10" rx="2" fill="#7A5216"/>
+    <rect x="17" y="30" width="8" height="8" rx="1.5" fill="#FFF6DE" opacity="0.9"/>
+    <rect x="28" y="30" width="8" height="8" rx="1.5" fill="#FFF6DE" opacity="0.9"/>
+    <rect x="39" y="30" width="8" height="8" rx="1.5" fill="#FFF6DE" opacity="0.9"/>
+    <rect x="17" y="41" width="8" height="8" rx="1.5" fill="#FFF6DE" opacity="0.9"/>
+    <path d="M31 43 l2.4 2.5 L38 40.5" fill="none" stroke="#3F6350" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`, AA_BG_GOLD)
 };
 
 function adminAccordionHTML(id, titleHtml, bodyHtml){
@@ -3657,11 +3668,14 @@ async function renderAdminPanel(){
   const aiTeacherBody = `
     <div class="note" style="margin-bottom:12px">🧠 وحدة منفصلة تتيح إنشاء اختبار (نص/جدول/رسوم)، طباعته، ورفع تلميذ صورة إجابته لتصحّح تلقائيًا بالذكاء الاصطناعي مع علامة وتقرير فوري.
       <br><b>عند أول استخدام</b> ستطلب منك لوحة الأستاذ(ة) هناك رمزًا سريًا خاصًا بها (منفصل عن رمز هذه اللوحة)، ثم رابط خادم التصحيح (Worker) — راجع ملف <b>worker.js</b> وREADME المرفقين لنشره خلال دقائق.</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <a class="al-key" style="display:inline-block;width:auto;padding:9px 22px;text-decoration:none" href="smart-teacher.html">🧠 فتح لوحة المعلّم الذكي — فروض واختبارات</a>
-      <a class="al-key" style="display:inline-block;width:auto;padding:9px 22px;text-decoration:none" href="smart-teacher.html?cat=daily">📅 لوحة التمارين اليومية</a>
-    </div>
-    <div class="note" style="margin-top:12px">💡 بعد نشر اختبار أو تمرين هناك، انسخ رابطه وأرسله لكل التلاميذ عبر قسم "👥 التلاميذ المقبولون" أدناه أو أي وسيلة تواصل معتادة. نتائج التمارين اليومية تُحسب تلقائيًا ضمن نفس ترتيب الفروض والاختبارات.</div>`;
+    <a class="al-key" style="display:inline-block;width:auto;padding:9px 22px;text-decoration:none" href="smart-teacher.html">🧠 فتح لوحة المعلّم الذكي</a>
+    <div class="note" style="margin-top:12px">💡 بعد نشر اختبار هناك، انسخ رابطه وأرسله لكل التلاميذ عبر قسم "👥 التلاميذ المقبولون" أدناه أو أي وسيلة تواصل معتادة.</div>`;
+
+  const dailyExercisesBody = `
+    <div class="note" style="margin-bottom:12px">📅 وحدة مستقلة خاصة بالتمارين اليومية فقط — ارفع ملف التمرين (PDF) مع ملف الحل النموذجي، وستظهر هنا حصريًا التمارين اليومية (لا تختلط بلائحة الفروض والاختبارات).
+      <br>التلميذ(ة) يطبع التمرين أو يحلّه كتابةً مباشرة، ويُصحَّح فوريًا بالذكاء الاصطناعي.</div>
+    <a class="al-key" style="display:inline-block;width:auto;padding:9px 22px;text-decoration:none" href="smart-teacher.html?cat=daily">📅 فتح لوحة التمارين اليومية</a>
+    <div class="note" style="margin-top:12px">💡 نتائج التمارين اليومية تُحسب تلقائيًا ضمن ترتيب الفروض والاختبارات العام — بلا أي إعداد إضافي.</div>`;
 
   /* زر بارز لإدارة روابط تسجيلات حصص الزوم للأفواج الأربعة — يفتح نافذة منبثقة مستقلة */
   const zoomManageCard = `
@@ -3732,6 +3746,7 @@ async function renderAdminPanel(){
     adminAccordionHTML('situations', `${AA_ICONS.situations} فتح/إغلاق وضعيات الاستئناس (المقاطع)`, situationsBody) +
     adminAccordionHTML('irab', `${AA_ICONS.irab} فتح/إغلاق إعراب الجمل`, irabBody) +
     adminAccordionHTML('aiTeacher', `${AA_ICONS.aiTeacher} المعلّم الذكي — اختبارات وتصحيح آلي`, aiTeacherBody) +
+    adminAccordionHTML('dailyExercises', `${AA_ICONS.dailyExercises} تمارين يومية`, dailyExercisesBody) +
     adminAccordionHTML('stats', `${AA_ICONS.stats} إحصائيات كل درس`, statsBody);
 
   wireAdminAccordions(wrap);

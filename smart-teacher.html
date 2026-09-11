@@ -754,6 +754,17 @@ const app = document.getElementById('app');
 const params = new URLSearchParams(location.search);
 let state = { screen:'landing', examId: params.get('examId') || null };
 
+/* فئة المحتوى الحالية حسب رابط الدخول: ?cat=daily = تمارين يومية، بلا هذه الوسيطة = فروض واختبارات
+   العادية (كما كانت من قبل، توافقًا مع كل الروابط القديمة المنشورة). تُستعمل لتصفية اللائحة
+   المعروضة للتلاميذ ولوحة الأستاذ(ة)، ولوسم كل اختبار/تمرين جديد بفئته عند إنشائه. */
+const CONTENT_CATEGORY = params.get('cat') === 'daily' ? 'daily' : 'test';
+const isDailyMode = CONTENT_CATEGORY === 'daily';
+const CATEGORY_LABELS = {
+  test: { brand:'فروض واختبارات', single:'اختبار', singleWithAl:'الاختبار', plural:'اختبارات', heroSub:'اختبارك… تصحيحك… فورًا بالذكاء الاصطناعي', newBtn:'+ اختبار جديد', fileLabel:'ملف الاختبار (PDF)', filePdfHint:'يُستعمل فقط لاستخراج الأسئلة بالذكاء الاصطناعي، ولن يُخزَّن — التلميذ(ة) سيحصل على نسخة PDF مطابقة تُولَّد تلقائيًا.' },
+  daily: { brand:'تمارين يومية', single:'تمرين', singleWithAl:'التمرين', plural:'تمارين', heroSub:'تمرين اليوم… تصحيحه… فورًا بالذكاء الاصطناعي', newBtn:'+ تمرين يومي جديد', fileLabel:'ملف التمرين (PDF)', filePdfHint:'يُستعمل فقط لاستخراج الأسئلة بالذكاء الاصطناعي، ولن يُخزَّن — التلميذ(ة) سيحصل على نسخة PDF مطابقة تُولَّد تلقائيًا يمكنه طباعتها أو حلّها كتابةً مباشرة.' }
+};
+function catLabels(){ return CATEGORY_LABELS[CONTENT_CATEGORY]; }
+
 function go(screen, extra={}){
   state = {...state, screen, ...extra};
   render();
@@ -763,11 +774,11 @@ function go(screen, extra={}){
 function Header(sub){
   return `
   <header class="top">
-    <a href="${location.pathname}" style="text-decoration:none;">
+    <a href="${location.pathname}${isDailyMode ? '?cat=daily' : ''}" style="text-decoration:none;">
       <div class="brand">
-        <div class="seal">🪄</div>
+        <div class="seal">${isDailyMode ? '📅' : '🪄'}</div>
         <div>
-          <div class="brand-name">المعلّم الذكي</div>
+          <div class="brand-name">${isDailyMode ? 'التمارين اليومية' : 'المعلّم الذكي'}</div>
           <div class="brand-sub">${esc(sub||'اختبار • تصحيح فوري')}</div>
         </div>
       </div>
@@ -793,10 +804,10 @@ async function renderLanding(){
       <div class="hero-content">
       <div class="hero-icon-wrap">
         <div class="hero-icon-glow"></div>
-        <img src="icon-512.png" class="hero-icon-img" alt="فروض واختبارات">
+        <img src="icon-512.png" class="hero-icon-img" alt="${esc(catLabels().brand)}">
       </div>
-      <div class="hero-title" id="heroIconTrigger">فروض واختبارات</div>
-      <div class="hero-sub">اختبارك… تصحيحك… فورًا بالذكاء الاصطناعي</div>
+      <div class="hero-title" id="heroIconTrigger">${esc(catLabels().brand)}</div>
+      <div class="hero-sub">${esc(catLabels().heroSub)}</div>
       <div class="hero-illustration">
         <svg viewBox="0 0 480 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="اختبارك، تصحيح بالذكاء الاصطناعي، نتيجة فورية">
           <defs>
@@ -853,8 +864,8 @@ async function renderLanding(){
       </div>
     </div>
     <div class="card">
-      <h3 style="margin-top:0;">📋 اختباراتك وتمارينك</h3>
-      <div id="examsFeed" class="loadbox"><div class="spinner"></div> جارٍ تحميل الاختبارات...</div>
+      <h3 style="margin-top:0;">📋 ${isDailyMode ? 'تمارينك اليومية' : 'اختباراتك وتمارينك'}</h3>
+      <div id="examsFeed" class="loadbox"><div class="spinner"></div> جارٍ التحميل...</div>
     </div>
     <div class="center" style="margin-top:14px;">
       <a href="#" id="showHidden" class="backlink" style="display:none;">إظهار الاختبارات المخفية</a>
@@ -880,11 +891,12 @@ async function renderLanding(){
       feed.innerHTML = '<div class="loadbox"><div class="spinner"></div> جارٍ تحميل الاختبارات...</div>';
       return;
     }
-    // تظهر كل الاختبارات والتمارين تلقائيًا فور إضافتها من طرف الأستاذ(ة)، بلا أي بحث أو تصفية
+    // تظهر كل الاختبارات والتمارين تلقائيًا فور إضافتها من طرف الأستاذ(ة)، بلا أي بحث أو تصفية،
+    // باستثناء تصفية الفئة (تمارين يومية / فروض واختبارات) حسب رابط الدخول.
     const matched = allDocs;
     const visibleDocs = matched.filter(d=>!hidden.includes(d.id));
     if(matched.length===0){
-      feed.innerHTML = '<p class="muted">لا توجد اختبارات أو تمارين منشورة حاليًا.</p>';
+      feed.innerHTML = `<p class="muted">لا توجد ${isDailyMode?'تمارين يومية منشورة':'اختبارات أو تمارين منشورة'} حاليًا.</p>`;
       return;
     }
     if(visibleDocs.length===0){
@@ -896,7 +908,7 @@ async function renderLanding(){
       return `
         <div class="exam-card" data-open="${doc.id}">
           <button data-hide="${doc.id}" title="إخفاء من قائمتي" class="exam-hide">✕</button>
-          <div class="ico">📘</div>
+          <div class="ico">${isDailyMode ? '📅' : '📘'}</div>
           <div class="t">${esc(ex.title)}</div>
           <div class="s">${ex.level?esc(ex.level)+' — ':''}${esc(ex.subject||'')}${ex.totalPoints?' — '+ex.totalPoints+' ن':''}</div>
         </div>`;
@@ -933,7 +945,10 @@ async function renderLanding(){
     // مهم: الترتيب هنا يتم محليًا (وليس عبر orderBy داخل الاستعلام)، لأن orderBy فـ Firestore
     // يستبعد تلقائيًا أي مستند ناقص فيه الحقل المرتَّب عليه (createdAt) — وهذا بالضبط ما كان
     // يجعل بعض الاختبارات المنشورة حديثًا لا تظهر فهاد اللائحة رغم نجاح نشرها فعليًا.
-    allDocs = snap.docs.slice().sort((a,b)=>{
+    allDocs = snap.docs.slice().filter(d=>{
+      const c = d.data().category === 'daily' ? 'daily' : 'test';
+      return c === CONTENT_CATEGORY;
+    }).sort((a,b)=>{
       const ca = a.data().createdAt, cb = b.data().createdAt;
       const ta = ca && ca.toMillis ? ca.toMillis() : Infinity;
       const tb = cb && cb.toMillis ? cb.toMillis() : Infinity;
@@ -1059,28 +1074,28 @@ function subjectSelectHTML(id, selected){
 
 async function renderTeacherDashboard(){
   app.innerHTML = `
-    ${Header('لوحة الأستاذ(ة)')}
+    ${Header(isDailyMode ? 'لوحة التمارين اليومية' : 'لوحة الأستاذ(ة)')}
     <div class="card">
       <div class="tabbar">
-        <button class="tabbtn active" data-tab="exams">اختباراتي</button>
+        <button class="tabbtn active" data-tab="exams">${isDailyMode ? 'تمارينـي' : 'اختباراتي'}</button>
         <button class="tabbtn" data-tab="archive">📄 نتائج تلاميذي</button>
       </div>
 
       <div class="tabpanel active" id="tab-exams">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-          <h3 style="margin:0;">اختباراتي</h3>
+          <h3 style="margin:0;">${isDailyMode ? 'تمارينـي اليومية' : 'اختباراتي'}</h3>
           <div style="display:flex;gap:8px;">
             <button class="btn btn-ghost" id="refreshExams" title="تحديث اللائحة" style="padding:10px 14px;">🔄</button>
-            <button class="btn btn-primary" id="newExam">+ اختبار جديد</button>
+            <button class="btn btn-primary" id="newExam">${catLabels().newBtn}</button>
           </div>
         </div>
-        <p class="muted" style="margin-top:10px;">جميع اختباراتك تظهر هنا بعناوينها. اضغط على أي اختبار لمعاينته أو الحصول على رابط مشاركته أو حذفه.</p>
+        <p class="muted" style="margin-top:10px;">جميع ${isDailyMode?'تمارينك اليومية تظهر':'اختباراتك تظهر'} هنا بعناوينها. اضغط على أي ${catLabels().single} لمعاينته أو الحصول على رابط مشاركته أو حذفه.</p>
         <div id="examsListMine" class="muted" style="margin-top:14px;">جارٍ التحميل...</div>
       </div>
 
       <div class="tabpanel" id="tab-archive">
         <h3 style="margin-top:0;">📄 نتائج تلاميذي</h3>
-        <p class="muted">تظهر هنا حصريًا الاختبارات التي أجاب عنها تلميذ واحد على الأقل. اختر الاختبار لعرض لائحة التلاميذ وأسماءهم ونقطهم وحلولهم.</p>
+        <p class="muted">تظهر هنا حصريًا ${catLabels().plural} التي أجاب عنها تلميذ واحد على الأقل. اختر ${catLabels().singleWithAl} لعرض لائحة التلاميذ وأسماءهم ونقطهم وحلولهم.</p>
         <div id="examsList" class="muted" style="margin-top:6px;">جارٍ التحميل...</div>
         <div id="submissionsPanel" style="margin-top:8px;"></div>
       </div>
@@ -1123,7 +1138,7 @@ async function renderTeacherDashboard(){
   // تبويبة "اختباراتي": تعرض كل الاختبارات بلا استثناء وبلا تصفية، والضغط على أي واحد يفتح لوحة إدارته
   function renderMineList(){
     if(!examsLoaded){ listBoxMine.innerHTML = '<div class="loadbox"><div class="spinner"></div> جارٍ تحميل الاختبارات...</div>'; return; }
-    if(allExams.length===0){ listBoxMine.innerHTML = '<p class="muted">لا توجد اختبارات بعد. اضغط على "+ اختبار جديد" للبدء.</p>'; return; }
+    if(allExams.length===0){ listBoxMine.innerHTML = `<p class="muted">لا توجد ${catLabels().plural} بعد. اضغط على "${catLabels().newBtn}" للبدء.</p>`; return; }
     listBoxMine.innerHTML = renderExamListHTML(allExams, ex => ex.submissionsCount ? ` — ✅ ${ex.submissionsCount} إجابة` : ' — لا إجابات بعد');
     listBoxMine.querySelectorAll('[data-topic]').forEach(rowEl=>{
       rowEl.onclick = (e)=>{
@@ -1224,7 +1239,10 @@ async function renderTeacherDashboard(){
     let hadPartialError = false;
     try{
       const examsSnap = await withTimeout(db.collection('exams').get(), 15000);
-      const results = await withTimeout(Promise.all(examsSnap.docs.map(async doc=>{
+      const results = await withTimeout(Promise.all(examsSnap.docs.filter(doc=>{
+        const c = doc.data().category === 'daily' ? 'daily' : 'test';
+        return c === CONTENT_CATEGORY;
+      }).map(async doc=>{
         const id = doc.id;
         const data = doc.data();
         let submissions = [];
@@ -1271,7 +1289,7 @@ async function deleteExamCompletely(examId){
 function openExamPanel(examId){ go('teacherExamView', {examId}); }
 
 function newDraft(){
-  return { level:'', subject:'', title:'', examFiles:null, keyFiles:null, questions:null, step:1, extra:'' };
+  return { level:'', subject:'', title:'', examFiles:null, keyFiles:null, questions:null, step:1, extra:'', category: CONTENT_CATEGORY };
 }
 
 // أداة قص دقيقة: كتخلي الأستاذ(ة) يختار صفحة من ملف الاختبار الأصلي، ويسحب مربعًا حول الرسم/الشكل
@@ -1397,7 +1415,7 @@ function renderTeacherCreate(){
   const d = state.draft;
   const editing = !!d.editingExamId;
   app.innerHTML = `
-    ${Header(editing? 'تعديل الاختبار':'اختبار جديد')}
+    ${Header(editing? `تعديل ${catLabels().single}` : `${catLabels().single} جديد`)}
     <div class="card">
       <div class="pill">${editing? 'تعديل': 'الخطوة '+d.step+' من 3'}</div>
       <div id="stepBox" style="margin-top:14px;"></div>
@@ -1413,10 +1431,10 @@ function renderTeacherCreate(){
 
   if(d.step===1){
     box.innerHTML = `
-      <div class="field"><label>عنوان الاختبار</label>
-        <input type="text" id="titleIn" value="${esc(d.title)}" placeholder="مثلاً: اختبار الفصل الثالث"></div>
-      <div class="field"><label>📄 ملف الاختبار (PDF)</label>
-        <p class="muted" style="margin-top:-4px;margin-bottom:8px;font-size:12px;">يُستعمل فقط لاستخراج الأسئلة بالذكاء الاصطناعي، ولن يُخزَّن — التلميذ(ة) سيحصل على نسخة PDF مطابقة تُولَّد تلقائيًا.</p>
+      <div class="field"><label>عنوان ${catLabels().single}</label>
+        <input type="text" id="titleIn" value="${esc(d.title)}" placeholder="${isDailyMode ? 'مثلاً: تمرين يوم الاثنين — القواعد' : 'مثلاً: اختبار الفصل الثالث'}"></div>
+      <div class="field"><label>📄 ${catLabels().fileLabel}</label>
+        <p class="muted" style="margin-top:-4px;margin-bottom:8px;font-size:12px;">${catLabels().filePdfHint}</p>
         <input type="file" id="examPdf" accept="application/pdf"></div>
       <div class="field"><label>✅ ملف الحل النموذجي (PDF) (مع توزيع النقاط)</label>
         <input type="file" id="keyPdf" accept="application/pdf"></div>
@@ -1426,8 +1444,8 @@ function renderTeacherCreate(){
       d.title = document.getElementById('titleIn').value.trim();
       const examFile = document.getElementById('examPdf').files[0];
       const keyFile = document.getElementById('keyPdf').files[0];
-      if(!d.title){ toast('يرجى تعبئة حقل عنوان الاختبار'); return; }
-      if(!examFile || !keyFile){ toast('يجب رفع ملف الاختبار وملف الحل النموذجي'); return; }
+      if(!d.title){ toast(`يرجى تعبئة حقل عنوان ${catLabels().single}`); return; }
+      if(!examFile || !keyFile){ toast(`يجب رفع ${catLabels().fileLabel} وملف الحل النموذجي`); return; }
       d.examFile = examFile;
       box.innerHTML = `<div class="loadbox"><div class="spinner"></div> جارٍ قراءة الملفات واستخراج الأسئلة، يرجى الانتظار قليلاً...</div>`;
       try{
@@ -1857,7 +1875,7 @@ function renderTeacherCreate(){
       <h3>${editing? 'جاهزة لحفظ التعديلات':'جاهز للنشر'}</h3>
       <p class="muted"><b>${esc(d.title)}</b>${d.subject?' — '+esc(d.subject):''} — ${d.questions.length} سؤال — من ${total} نقطة</p>
       ${pendingNotes>0? `<p style="color:var(--red);font-size:13.5px;">⚠️ عندك ${pendingNotes} رسم/شكل مفقود لم تتم إضافته بعد كصورة (راجعي قسم النصوص/الوثائق). هذا الرسم لن يظهر فالاختبار المنشور إلا إذا أضفتيه.</p>`:''}
-      <button class="btn btn-primary btn-block" id="publish">${editing? '💾 حفظ التعديلات':'🖋️ نشر الاختبار'}</button>
+      <button class="btn btn-primary btn-block" id="publish">${editing? '💾 حفظ التعديلات':'🖋️ نشر'}</button>
       <button class="btn btn-ghost btn-block" id="backEdit" style="margin-top:10px;">⟵ رجوع للتعديل</button>
       <div id="pubMsg" style="margin-top:12px;"></div>
     `;
@@ -1874,6 +1892,7 @@ function renderTeacherCreate(){
         function buildExamData(passages){
           return {
             level: d.level, subject: d.subject, title: d.title,
+            category: d.category === 'daily' ? 'daily' : 'test',
             passages,
             questions: d.questions.map((q,i)=>({...q, number:i+1})),
             totalPoints: total,
@@ -1934,7 +1953,7 @@ function renderTeacherCreate(){
           friendly = 'حجم الاختبار أكبر من 1 ميغابايت حتى بعد ضغط الرسوم لأقصى درجة ممكنة. يرجى حذف بعض الرسوم/الأشكال أو تقسيم الاختبار لجزئين، لأن هذا هو الحد الأقصى للخطة المجانية.';
         }
         document.getElementById('pubMsg').innerHTML = `<span style="color:var(--red);">صار خطأ: ${esc(friendly)}</span>`;
-        btn.disabled=false; btn.innerHTML = editing? '💾 حفظ التعديلات':'🖋️ نشر الاختبار';
+        btn.disabled=false; btn.innerHTML = editing? '💾 حفظ التعديلات':'🖋️ نشر';
       }
     };
   }
@@ -1993,6 +2012,7 @@ async function renderTeacherExamView(){
   document.getElementById('editExamBtn').onclick = ()=>{
     const draft = {
       level: ex.level||'', subject: ex.subject||'', title: ex.title||'',
+      category: ex.category === 'daily' ? 'daily' : 'test',
       questions: JSON.parse(JSON.stringify(ex.questions||[])).map(q=>({
         ...q, parts: q.parts || [], answerTable: normalizeAnswerTable(q.answerTable)
       })),
