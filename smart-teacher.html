@@ -312,13 +312,17 @@
 
   /* Printable exam sheet */
   #printArea{position:fixed;top:0;left:-10000px;width:210mm;background:#fff;}
-  .sheet{background:var(--paper);color:var(--paperink);border-radius:10px;padding:30px 26px;position:relative;overflow:hidden;}
+  .sheet{background:#fff;color:var(--paperink);border-radius:10px;padding:30px 26px;position:relative;overflow:hidden;}
+  .sheet-brand-head{position:relative;z-index:1;display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .sheet-brand-logo{width:38px;height:38px;border-radius:9px;flex-shrink:0;}
+  .sheet-brand-name{font-family:'Aref Ruqaa','Cairo',serif;font-weight:700;font-size:14.5px;color:#22352B;}
+  .sheet-brand-sub{font-size:10.5px;color:#7a7188;margin-top:1px;}
   .sheet-watermark{
     position:absolute;inset:-20%;z-index:0;pointer-events:none;overflow:hidden;
     display:flex;flex-wrap:wrap;align-content:flex-start;justify-content:center;
     transform:rotate(-27deg);opacity:.055;
   }
-  .sheet-watermark span{font-size:21px;font-weight:800;color:#22352B;white-space:nowrap;margin:32px 38px;font-family:'Cairo',sans-serif;}
+  .sheet-watermark span{font-size:15px;font-weight:800;color:#22352B;white-space:nowrap;margin:26px 30px;font-family:'Cairo',sans-serif;}
   .sheet-head,.sheet-passage,.sheet-q,.sheet-footer-brand{position:relative;z-index:1;}
   .sheet-footer-brand{margin-top:24px;padding-top:10px;border-top:1px dashed #8b8299;display:flex;align-items:center;justify-content:center;gap:6px;font-size:10.5px;color:#7a7188;}
   .sheet-footer-brand img{width:14px;height:14px;border-radius:4px;}
@@ -528,10 +532,19 @@ function normalizeAnswerTable(at){
 // علامة مائية مدموجة فخلفية أي ورقة PDF مولّدة (اختبار أو تصحيح) + شريط تذييل بشعار التطبيق،
 // باش تبقى هاذ الملفات معروفة أنها صادرة من "المعلّم الذكي" ويصعب انتحالها أو التجارة بها.
 function sheetWatermarkHTML(){
-  return `<div class="sheet-watermark">${Array.from({length:32}).map(()=>'<span>المعلّم الذكي</span>').join('')}</div>`;
+  return `<div class="sheet-watermark">${Array.from({length:32}).map(()=>'<span>منصة الأستاذ محمد أبوشاكر لعبودي</span>').join('')}</div>`;
 }
 function sheetFooterBrandHTML(){
-  return `<div class="sheet-footer-brand"><img src="icon-192.png" alt=""> أُنشئ عبر تطبيق المعلّم الذكي</div>`;
+  return `<div class="sheet-footer-brand"><img src="icon-192.png" alt=""> منصة الأستاذ الوطني محمد أبوشاكر لعبودي — اللغة العربية</div>`;
+}
+function sheetHeaderBrandHTML(){
+  return `<div class="sheet-brand-head">
+    <img class="sheet-brand-logo" src="icon-512.png" alt="" onerror="this.style.display='none'">
+    <div class="sheet-brand-text">
+      <div class="sheet-brand-name">منصة الأستاذ الوطني محمد أبوشاكر لعبودي</div>
+      <div class="sheet-brand-sub">لتدريس اللغة العربية — التعليم المتوسط</div>
+    </div>
+  </div>`;
 }
 // يبني بطاقة تفاصيل سؤال واحد فشاشة النتيجة (عند التلميذ(ة) وعند الأستاذ(ة)): إجابة التلميذ فسطر،
 // والإجابة الصحيحة (النموذجية) فسطر موالي بلون أخضر، ثم الملاحظة إن وُجدت.
@@ -776,7 +789,7 @@ function Header(sub){
   <header class="top">
     <a href="${location.pathname}${isDailyMode ? '?cat=daily' : ''}" style="text-decoration:none;">
       <div class="brand">
-        <div class="seal">${isDailyMode ? '📅' : '🪄'}</div>
+        <div class="seal">${isDailyMode ? '📆' : '🪄'}</div>
         <div>
           <div class="brand-name">${isDailyMode ? 'التمارين اليومية' : 'المعلّم الذكي'}</div>
           <div class="brand-sub">${esc(sub||'اختبار • تصحيح فوري')}</div>
@@ -908,7 +921,7 @@ async function renderLanding(){
       return `
         <div class="exam-card" data-open="${doc.id}">
           <button data-hide="${doc.id}" title="إخفاء من قائمتي" class="exam-hide">✕</button>
-          <div class="ico">${isDailyMode ? '📅' : '📘'}</div>
+          <div class="ico">${isDailyMode ? '📆' : '📘'}</div>
           <div class="t">${esc(ex.title)}</div>
           <div class="s">${ex.level?esc(ex.level)+' — ':''}${esc(ex.subject||'')}${ex.totalPoints?' — '+ex.totalPoints+' ن':''}</div>
         </div>`;
@@ -2462,6 +2475,7 @@ function buildPrintSheet(ex){
   area.innerHTML = `
     <div class="sheet">
       ${sheetWatermarkHTML()}
+      ${sheetHeaderBrandHTML()}
       <div class="sheet-head">
         <div>
           <div class="sheet-title">${esc(ex.title)}</div>
@@ -2593,6 +2607,7 @@ function buildCorrectionSheet(ex, result){
   area.innerHTML = `
     <div class="sheet">
       ${sheetWatermarkHTML()}
+      ${sheetHeaderBrandHTML()}
       <div class="sheet-head">
         <div>
           <div class="sheet-title">تصحيح: ${esc(ex.title)}</div>

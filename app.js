@@ -3171,7 +3171,7 @@ const AA_ICONS = {
     <circle cx="21" cy="26" r="3.4" fill="#7A5216"/>
     <circle cx="32" cy="26" r="3.4" fill="#7A5216"/>
     <circle cx="43" cy="26" r="3.4" fill="#7A5216"/>`, AA_BG_GOLD),
-  /* 📅 تمارين يومية — تقويم ذهبي */
+  /* 📆 تمارين يومية — تقويم ذهبي */
   dailyExercises: aaIcon(`
     <rect x="10" y="14" width="44" height="40" rx="5" fill="url(#hcGoldMetal)" stroke="#7A5216" stroke-width="1.3"/>
     <rect x="10" y="14" width="44" height="10" rx="5" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="1"/>
@@ -3672,9 +3672,9 @@ async function renderAdminPanel(){
     <div class="note" style="margin-top:12px">💡 بعد نشر اختبار هناك، انسخ رابطه وأرسله لكل التلاميذ عبر قسم "👥 التلاميذ المقبولون" أدناه أو أي وسيلة تواصل معتادة.</div>`;
 
   const dailyExercisesBody = `
-    <div class="note" style="margin-bottom:12px">📅 وحدة مستقلة خاصة بالتمارين اليومية فقط — ارفع ملف التمرين (PDF) مع ملف الحل النموذجي، وستظهر هنا حصريًا التمارين اليومية (لا تختلط بلائحة الفروض والاختبارات).
+    <div class="note" style="margin-bottom:12px">📆 وحدة مستقلة خاصة بالتمارين اليومية فقط — ارفع ملف التمرين (PDF) مع ملف الحل النموذجي، وستظهر هنا حصريًا التمارين اليومية (لا تختلط بلائحة الفروض والاختبارات).
       <br>التلميذ(ة) يطبع التمرين أو يحلّه كتابةً مباشرة، ويُصحَّح فوريًا بالذكاء الاصطناعي.</div>
-    <a class="al-key" style="display:inline-block;width:auto;padding:9px 22px;text-decoration:none" href="smart-teacher.html?cat=daily">📅 فتح لوحة التمارين اليومية</a>
+    <a class="al-key" style="display:inline-block;width:auto;padding:9px 22px;text-decoration:none" href="smart-teacher.html?cat=daily">📆 فتح لوحة التمارين اليومية</a>
     <div class="note" style="margin-top:12px">💡 نتائج التمارين اليومية تُحسب تلقائيًا ضمن ترتيب الفروض والاختبارات العام — بلا أي إعداد إضافي.</div>`;
 
   /* زر بارز لإدارة روابط تسجيلات حصص الزوم للأفواج الأربعة — يفتح نافذة منبثقة مستقلة */

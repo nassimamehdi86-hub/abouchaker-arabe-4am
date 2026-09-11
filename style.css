@@ -449,6 +449,9 @@
   .home-card.c2 .hc-icon-wrap{ background:linear-gradient(150deg,#E4EFE6,#C9DFCE); }
   .home-card.c3 .hc-icon-wrap{ background:linear-gradient(150deg,#FBEDC3,#E7C878); }
   .home-card.c4 .hc-icon-wrap{ background:linear-gradient(150deg,#F0E6D6,#D8AE52); }
+  .home-card.c5 .hc-icon-wrap{ background:linear-gradient(150deg,#FBEDC3,#E7C878); }
+  .home-card.c5{ display:flex; flex-direction:column; align-items:center; }
+  .home-card.c5 .hc-sub{ max-width:340px; }
   .home-card .hc-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:18px; color:var(--ink); }
   .home-card .hc-sub{ font-size:11px; color:var(--ink-soft); margin-top:5px; font-weight:600; line-height:1.7; }
   .hc-lock-badge{
