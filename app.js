@@ -542,11 +542,13 @@ const Leaderboard = {
     }catch(e){ return { ok:false, reason:'error' }; }
   },
   /* حفظ التقدّم فور إتمام كل تمرين فرعي (بعد الضغط على «تحقق»)، حتى تُحسب النتيجة تدريجيًا ولا
-     تُفقد المحاولة بتحديث الصفحة في منتصف الطريق. لا يُغيّر completed إلا الإرسال النهائي submit(). */
-  async saveProgress(lessonId, sectionsDone, partialPercent){
+     تُفقد المحاولة بتحديث الصفحة في منتصف الطريق. scoreSum: مجموع النقاط الخام (بين 0 و1 لكل
+     تمرين فرعي) يُحفظ بجانب النسبة المئوية حتى يمكن استئناف التمرين لاحقًا بدقة بلا فقدان كسور
+     النقاط بسبب التقريب. لا يُغيّر completed إلا الإرسال النهائي submit(). */
+  async saveProgress(lessonId, sectionsDone, partialPercent, scoreSum){
     if(!fbReady || !Student.id) return;
     const ref = db.collection('submissions').doc(lessonId).collection('students').doc(Student.id);
-    try{ await ref.update({ sectionsDone, percent: partialPercent }); }catch(e){ /* تجاهل صامت */ }
+    try{ await ref.update({ sectionsDone, percent: partialPercent, scoreSum }); }catch(e){ /* تجاهل صامت */ }
   },
   /* تسجيل نتيجة تمرين درس نهائيًا — محاولة واحدة فقط. timeSeconds: المدة بالثواني من بدء التمرين إلى
      إرساله، تُستخدم فقط للفصل بين المتعادلين في النسبة المئوية داخل الترتيب */
@@ -1793,14 +1795,34 @@ async function renderLessonExercisesBox(lesson){
   }
 
   const mine = await Leaderboard.mine(lesson.id);
+  /* صيغتان مدعومتان لملف التمارين:
+     1) { questions:[...] }  → اختيار من متعدد (المحرك القديم createExerciseEngine)
+     2) { sections:[...] }   → تمارين الكتاب كما هي، كل تمرين (قسم) يُعرض دفعة واحدة في صفحة واحدة
+                                 تمامًا كما يظهر في ورقة التمرين الأصلية (أكمل الفراغ/الإعراب/المعنى/الجملة/الاستخراج) */
+  const units = Array.isArray(data.questions) ? null : buildExercisePages(data);
+  const count = units ? units.length : data.questions.length;
+  const countLabel = units ? 'عدد التمارين' : 'عدد الأسئلة';
+
   if(mine && mine.completed === false){
-    /* التلميذ بدأ هذا التمرين سابقًا ولم يُتمّه (محاولة مسجَّلة تدريجيًا) — لا يمكن إعادة المحاولة
-       ولو حدَّث الصفحة أو أغلق التطبيق في المنتصف، لأنّ كل تمرين فرعي يُحسب فور إتمامه. */
+    /* التلميذ بدأ هذا التمرين سابقًا ولم يُتمّه (محاولة مسجَّلة تدريجيًا) — إجاباته على التمارين
+       الفرعية المُنجَزة محفوظة بالفعل (sectionsDone + scoreSum)، فنتيح له إكمال الباقي فقط بدل
+       حجب الوصول بالكامل. */
+    const doneCount = Math.min(mine.sectionsDone||0, units ? units.length : 0);
     box.innerHTML = `
-      <div class="lesson-cta-note" style="color:#c0392b;border-color:#c0392b">
-        ⚠️ لقد بدأتَ هذا التمرين سابقًا ولم تُكمله (وصلتَ إلى التمرين ${(mine.sectionsDone||0)+1}).
-        لا يمكن إعادة المحاولة من البداية — تواصل مع أستاذك إذا انقطع اتصالك أثناء الحل.
-      </div>`;
+      <div class="lesson-cta-note" style="color:#8a6d1a;border-color:#c9982f">
+        ⏳ لديك محاولة سابقة لم تكتمل بعد في تمرين هذا الدرس — أنجزتَ ${doneCount} من ${count}، وإجاباتك محفوظة.
+        يمكنك إكمال بقية التمارين الآن متى شئت.
+      </div>
+      <button class="lesson-cta-btn" id="ldExerciseResumeBtn">▶️ إكمال التمرين من حيث توقفت</button>
+      <div id="ldExerciseMount" style="margin-top:14px"></div>`;
+    document.getElementById('ldExerciseResumeBtn').addEventListener('click', ()=>{
+      document.getElementById('ldExerciseResumeBtn').style.display = 'none';
+      const mount = document.getElementById('ldExerciseMount');
+      /* fallback للسجلات القديمة السابقة لهذه الميزة والتي لا تحمل scoreSum: نُقدّره من النسبة
+         المئوية المحفوظة (percent) بدل البدء من صفر، تفاديًا لخسارة نقاط التمارين المُنجزة فعلاً. */
+      const initialScoreSum = (typeof mine.scoreSum === 'number') ? mine.scoreSum : ((mine.percent||0)/100)*units.length;
+      createOpenExerciseEngine(lesson, units, mount, { startIdx: doneCount, initialScoreSum });
+    });
     return;
   }
   if(mine && typeof mine.percent === 'number'){
@@ -1822,17 +1844,9 @@ async function renderLessonExercisesBox(lesson){
     return;
   }
 
-  /* صيغتان مدعومتان لملف التمارين:
-     1) { questions:[...] }  → اختيار من متعدد (المحرك القديم createExerciseEngine)
-     2) { sections:[...] }   → تمارين الكتاب كما هي، كل تمرين (قسم) يُعرض دفعة واحدة في صفحة واحدة
-                                 تمامًا كما يظهر في ورقة التمرين الأصلية (أكمل الفراغ/الإعراب/المعنى/الجملة/الاستخراج) */
-  const units = Array.isArray(data.questions) ? null : buildExercisePages(data);
-  const count = units ? units.length : data.questions.length;
-  const countLabel = units ? 'عدد التمارين' : 'عدد الأسئلة';
-
   box.innerHTML = `
     <button class="lesson-cta-btn" id="ldExerciseStartBtn">▶️ ابدأ التمرين</button>
-    <div class="lesson-cta-note">⚠️ محاولة واحدة فقط — ${countLabel}: ${count}. تُحسب نتيجة كل تمرين فور إتمامه، ولا يمكنك إعادة المحاولة حتى بتحديث الصفحة. تُحسب نتيجتك بالنسبة المئوية وتدخل ترتيب هذا الدرس.</div>
+    <div class="lesson-cta-note">⚠️ محاولة واحدة فقط — ${countLabel}: ${count}. تُحسب نتيجة كل تمرين فور إتمامه وتُحفظ تلقائيًا؛ إذا انقطع اتصالك أو أغلقتَ التطبيق في المنتصف يمكنك متابعة الباقي لاحقًا من حيث توقفتَ. تُحسب نتيجتك النهائية بالنسبة المئوية وتدخل ترتيب هذا الدرس.</div>
     <div id="ldExerciseMount" style="margin-top:14px"></div>`;
 
   document.getElementById('ldExerciseStartBtn').addEventListener('click', async ()=>{
@@ -1975,9 +1989,11 @@ function buildExercisePages(data){
 }
 
 /* ---------- محرك «تمارين الدرس» — كل تمرين (قسم) في صفحة واحدة كاملة، كما في ورقة الكتاب ---------- */
-function createOpenExerciseEngine(lesson, pages, mountEl){
+function createOpenExerciseEngine(lesson, pages, mountEl, opts={}){
   const total = pages.length;
-  let idx = 0, scoreSum = 0;
+  /* استئناف تمرين سابق غير مكتمل: نبدأ من أول تمرين فرعي لم يُنجَز بعد (startIdx)، ونعيد نفس
+     مجموع النقاط الخام المحفوظ مسبقًا (initialScoreSum) حتى تبقى النسبة المئوية النهائية دقيقة. */
+  let idx = Math.min(Math.max(opts.startIdx||0, 0), total), scoreSum = opts.initialScoreSum || 0;
   const startTs = Date.now(); /* لحساب مدة إنجاز التمرين — تُستخدم للفصل عند تعادل النسبة المئوية في الترتيب */
 
   function pageHeader(sec){
@@ -1995,12 +2011,13 @@ function createOpenExerciseEngine(lesson, pages, mountEl){
     if(idx >= total) finish(); else renderPage();
   }
 
-  /* حفظ فوري لتقدّم التلميذ في قاعدة البيانات فور إتمام كل تمرين فرعي (بعد «تحقق»)، حتى لا تُتيح
-     إعادة تحميل الصفحة محاولة جديدة قبل إكمال كل التمارين. صامت الفشل (لا يوقف سير التمرين). */
+  /* حفظ فوري لتقدّم التلميذ في قاعدة البيانات فور إتمام كل تمرين فرعي (بعد «تحقق»)، حتى لا تُفقد
+     إجاباته المُنجزة إن انقطع اتصاله أو أغلق التطبيق — ويمكنه إكمال الباقي لاحقًا من نفس النقطة. */
   function saveProgressNow(){
     const partialPercent = Math.round((scoreSum/total)*100);
-    Leaderboard.saveProgress(lesson.id, idx+1, partialPercent);
+    Leaderboard.saveProgress(lesson.id, idx+1, partialPercent, scoreSum);
   }
+
 
   function nextBtnHtml(){
     return `<button class="quiz-next-btn" style="display:none">${idx+1<total ? 'التمرين التالي ←' : 'إنهاء وإرسال ✅'}</button>`;
@@ -2273,7 +2290,7 @@ function createOpenExerciseEngine(lesson, pages, mountEl){
     finishExercise(lesson, mountEl, pct, Math.round((Date.now()-startTs)/1000));
   }
 
-  renderPage();
+  if(idx >= total) finish(); else renderPage();
 }
 
 /* هروب بسيط من HTML عند حقن نص حر داخل الصفحة (العناوين/الفقرات القادمة من ملفات JSON) */
