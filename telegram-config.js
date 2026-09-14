@@ -8,8 +8,9 @@
 
 const TELEGRAM_CONFIG = {
   botToken:    '8693960743:AAFuCcMOC4ru8PBghWUHAmVE_hZLJ4f9y98',
-  chatId:      '5932134668',
-  botUsername: 'abouchaker_laabodi_bot' // يُستخدم لفتح محادثة البوت مباشرة من لوحة الأستاذ (زر "حلول التلاميذ لتمارين الزوم")
+  chatId:      '-1004463304394', // مجموعة "حلول التلاميذ - منصة الأستاذ محمد أبوشاكر" (بدل المحادثة الخاصة مع البوت)
+  botUsername: 'abouchaker_laabodi_bot',
+  groupInviteLink: 'https://t.me/+QR3xozIBy4A5MDY0' // رابط دعوة المجموعة — يُستخدم لفتحها مباشرة من لوحة الأستاذ ومن شاشات التلاميذ
 };
 
 // ✅ التحقق من الإعدادات

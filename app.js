@@ -1692,9 +1692,9 @@ const ExamSolutions = {
 function openExamSolutionsModal(){
   const overlay = document.createElement('div');
   overlay.className = 'zoom-modal-overlay';
-  const telegramBtnHtml = (TELEGRAM_CONFIG && TELEGRAM_CONFIG.botUsername)
-    ? `<a class="zoom-telegram-btn" style="display:block;text-align:center;text-decoration:none;margin-bottom:18px" href="https://t.me/${TELEGRAM_CONFIG.botUsername}" target="_blank" rel="noopener">▶️ فتح محادثة الحلول على تيليجرام</a>`
-    : `<div class="lesson-cta-note">معرّف البوت (username) غير مضبوط في telegram-config.js</div>`;
+  const telegramBtnHtml = (TELEGRAM_CONFIG && TELEGRAM_CONFIG.groupInviteLink)
+    ? `<a class="zoom-telegram-btn" style="display:block;text-align:center;text-decoration:none;margin-bottom:18px" href="${TELEGRAM_CONFIG.groupInviteLink}" target="_blank" rel="noopener">▶️ فتح مجموعة الحلول على تيليجرام</a>`
+    : `<div class="lesson-cta-note">رابط دعوة المجموعة غير مضبوط في telegram-config.js</div>`;
   overlay.innerHTML = `
     <div class="zoom-modal-popup">
       <div class="zoom-modal-header">
@@ -1816,9 +1816,9 @@ const ZoomSolutions = {
 function openSolutionsModal(){
   const overlay = document.createElement('div');
   overlay.className = 'zoom-modal-overlay';
-  const telegramBtnHtml = (TELEGRAM_CONFIG && TELEGRAM_CONFIG.botUsername)
-    ? `<a class="zoom-telegram-btn" style="display:block;text-align:center;text-decoration:none;margin-bottom:18px" href="https://t.me/${TELEGRAM_CONFIG.botUsername}" target="_blank" rel="noopener">▶️ فتح محادثة الحلول على تيليجرام</a>`
-    : `<div class="lesson-cta-note">معرّف البوت (username) غير مضبوط في telegram-config.js</div>`;
+  const telegramBtnHtml = (TELEGRAM_CONFIG && TELEGRAM_CONFIG.groupInviteLink)
+    ? `<a class="zoom-telegram-btn" style="display:block;text-align:center;text-decoration:none;margin-bottom:18px" href="${TELEGRAM_CONFIG.groupInviteLink}" target="_blank" rel="noopener">▶️ فتح مجموعة الحلول على تيليجرام</a>`
+    : `<div class="lesson-cta-note">رابط دعوة المجموعة غير مضبوط في telegram-config.js</div>`;
   overlay.innerHTML = `
     <div class="zoom-modal-popup">
       <div class="zoom-modal-header">
