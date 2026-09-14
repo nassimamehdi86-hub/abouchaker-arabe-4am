@@ -1468,7 +1468,7 @@ const SolutionSubmit = {
       return { ok:false, reason:'not-configured' };
     }
     const caption =
-      `📥 حل تمرين جديد\n` +
+      `📥 حل واجب منزلي جديد\n` +
       `👤 الاسم: ${Student.fullName || '—'}\n` +
       `📞 الهاتف: ${Student.phone || '—'}\n` +
       `👥 الفوج: ${groupLabel}\n` +
@@ -1504,7 +1504,7 @@ function buildSolutionInlineHtml(hasExercise){
   return `
     <div class="solution-inline-row">
       <input type="file" id="solutionFileInput" accept="image/*,.pdf" class="solution-inline-file">
-      <button type="button" class="zoom-doc-btn" id="solutionSendBtn">📨 إرسال حل التمرين</button>
+      <button type="button" class="zoom-doc-btn" id="solutionSendBtn">📨 إرسال حل الواجب المنزلي</button>
     </div>
     <div class="solution-file-preview" id="solutionFilePreview" style="display:none"></div>
     <div class="zoom-save-feedback" id="solutionSendFeedback"></div>`;
@@ -1550,7 +1550,7 @@ function wireSolutionInline(playerBox, lesson, groupKey, groupLabel){
       feedback.textContent = '⚠️ تعذّر إرسال الحل، تحقق من اتصالك بالإنترنت وأعد المحاولة.';
       feedback.style.color = '#b5432a';
     }
-    sendBtn.disabled = false; sendBtn.textContent = '📨 إرسال حل التمرين';
+    sendBtn.disabled = false; sendBtn.textContent = '📨 إرسال حل الواجب المنزلي';
   });
 }
 
@@ -1605,7 +1605,7 @@ function openSolutionsModal(){
   overlay.innerHTML = `
     <div class="zoom-modal-popup">
       <div class="zoom-modal-header">
-        <div class="zoom-modal-title">📨 حلول التلاميذ لتمارين الزوم</div>
+        <div class="zoom-modal-title">📨 حلول التلاميذ للواجب المنزلي المقدم في حصة الزوم</div>
         <div class="zoom-modal-subtitle">افتح المحادثة لمشاهدة الملفات، أو تصفّح من أرسل حلاً لكل درس</div>
         <button type="button" class="zoom-modal-close" id="solutionsModalCloseBtn">✕</button>
       </div>
@@ -3675,7 +3675,7 @@ async function renderAdminPanel(){
         </svg>
       </div>
       <div>
-        <div class="hc-title">حلول التلاميذ لتمارين الزوم</div>
+        <div class="hc-title">حلول التلاميذ للواجب المنزلي المقدم في حصة الزوم</div>
         <div class="hc-sub">إحصائيات من أرسل حلاً لكل درس/فوج، وزر لفتح ملفات الحلول على تيليجرام</div>
       </div>
     </div>`;
