@@ -1555,6 +1555,223 @@ function wireSolutionInline(playerBox, lesson, groupKey, groupLabel){
 }
 
 /* =========================================================================================
+   إرسال حل الفرض/الاختبار (صورة/ملف) إلى الأستاذ عبر بوت تيليجرام — نفس آلية إرسال حل
+   الواجب المنزلي بالضبط، لكنها تظهر في شاشة "الفروض والاختبارات" أسفل روابط الفصل المختار،
+   ومرتبطة بالفصل (t1/t2/t3) بدل الدرس/الفوج. يُرفق تلقائيًا اسم التلميذ ورقم هاتفه والفصل،
+   حتى يعرف الأستاذ فورًا صاحب الحل عند استلامه في تيليجرام دون أي بحث يدوي.
+   ========================================================================================= */
+const ExamSolutionSubmit = {
+  async send(trimesterLabel, file){
+    if(!TELEGRAM_CONFIG || !TELEGRAM_CONFIG.botToken || !TELEGRAM_CONFIG.chatId){
+      return { ok:false, reason:'not-configured' };
+    }
+    const caption =
+      `📥 حل فرض/اختبار جديد\n` +
+      `👤 الاسم: ${Student.fullName || '—'}\n` +
+      `📞 الهاتف: ${Student.phone || '—'}\n` +
+      `📚 الفصل: ${trimesterLabel}`;
+
+    const isImage = /^image\//.test(file.type);
+    const endpoint  = isImage ? 'sendPhoto' : 'sendDocument';
+    const fieldName = isImage ? 'photo' : 'document';
+
+    const form = new FormData();
+    form.append('chat_id', TELEGRAM_CONFIG.chatId);
+    form.append('caption', caption);
+    form.append(fieldName, file, file.name || 'solution.jpg');
+
+    try{
+      const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_CONFIG.botToken}/${endpoint}`, { method:'POST', body:form });
+      const data = await res.json();
+      if(data && data.ok) return { ok:true };
+      console.error('فشل إرسال حل الفرض/الاختبار إلى تيليجرام (رد البوت):', data);
+      return { ok:false, reason:'telegram-error' };
+    }catch(e){
+      console.error('تعذّر الاتصال بخادم تيليجرام لإرسال حل الفرض/الاختبار:', e);
+      return { ok:false, reason:'network' };
+    }
+  }
+};
+
+/* عنصر مصغّر بلا أي شرح: حقل ملف + زر إرسال فقط — لا يظهر إطلاقًا لتلميذ غير مسجَّل دخوله،
+   ولا يظهر أيضًا إن لم يكن الأستاذ قد أضاف أي فرض/اختبار لهذا الفصل (hasItems=false) */
+function buildExamSolutionInlineHtml(hasItems){
+  if(!Student.id || !Student.fullName) return '';
+  if(!hasItems) return '';
+  return `
+    <div class="solution-inline-row">
+      <input type="file" id="examSolutionFileInput" accept="image/*,.pdf" class="solution-inline-file">
+      <button type="button" class="zoom-doc-btn" id="examSolutionSendBtn">📨 إرسال حل الفرض/الاختبار</button>
+    </div>
+    <div class="solution-file-preview" id="examSolutionFilePreview" style="display:none"></div>
+    <div class="zoom-save-feedback" id="examSolutionSendFeedback"></div>`;
+}
+
+function wireExamSolutionInline(panel, trimesterKey, trimesterLabel){
+  const fileInput = panel.querySelector('#examSolutionFileInput');
+  const sendBtn = panel.querySelector('#examSolutionSendBtn');
+  if(!fileInput || !sendBtn) return;
+
+  const preview = panel.querySelector('#examSolutionFilePreview');
+  fileInput.addEventListener('change', ()=>{
+    const file = fileInput.files[0];
+    if(!file){ preview.style.display = 'none'; preview.innerHTML = ''; return; }
+    if(/^image\//.test(file.type)){
+      preview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="معاينة الحل">`;
+    } else {
+      preview.innerHTML = `<div class="solution-file-name">📄 ${escZoomText(file.name)}</div>`;
+    }
+    preview.style.display = 'block';
+  });
+
+  sendBtn.addEventListener('click', async ()=>{
+    const feedback = panel.querySelector('#examSolutionSendFeedback');
+    const file = fileInput.files[0];
+    if(!file){
+      feedback.textContent = '⚠️ الرجاء اختيار صورة أو ملف الحل أولاً.'; feedback.style.color = '#b5432a'; return;
+    }
+
+    sendBtn.disabled = true; sendBtn.textContent = '⏳ جاري الإرسال…';
+    const res = await ExamSolutionSubmit.send(trimesterLabel, file);
+
+    if(res.ok){
+      if(window.SoundFX) SoundFX.correct();
+      feedback.textContent = '✅ تم إرسال حلّك إلى الأستاذ بنجاح.';
+      feedback.style.color = 'var(--sage-deep,#3F6350)';
+      fileInput.value = ''; preview.style.display = 'none'; preview.innerHTML = '';
+      ExamSolutions.log(trimesterKey, trimesterLabel); /* تسجيل إحصائي منفصل تمامًا عن إرسال تيليجرام — لعرضه في لوحة الأستاذ */
+    } else if(res.reason === 'not-configured'){
+      feedback.textContent = '⚠️ إرسال الحلول غير مُفعّل بعد من طرف الأستاذ. حاول لاحقًا.';
+      feedback.style.color = '#b5432a';
+    } else {
+      feedback.textContent = '⚠️ تعذّر إرسال الحل، تحقق من اتصالك بالإنترنت وأعد المحاولة.';
+      feedback.style.color = '#b5432a';
+    }
+    sendBtn.disabled = false; sendBtn.textContent = '📨 إرسال حل الفرض/الاختبار';
+  });
+}
+
+/* =========================================================================================
+   سجلّ إحصائي لحلول الفروض والاختبارات — مستقل تمامًا عن إرسال تيليجرام (الذي يبقى كما هو).
+   يُسجَّل هنا فقط: الفصل، اسم التلميذ ومعرّفه — بلا أي ملف/صورة (تبقى في تيليجرام حصريًا).
+   الهدف: تمكين الأستاذ من رؤية "من أرسل ومن لم يرسل" مباشرة من داخل المنصة.
+   ========================================================================================= */
+const ExamSolutions = {
+  /* وثيقة واحدة لكل (فصل + تلميذ) — إعادة إرسال نفس التلميذ لنفس الفصل تُحدّث الوثيقة بدل تكرارها */
+  async log(trimesterKey, trimesterLabel){
+    if(!fbReady || !Student.id) return;
+    try{
+      await db.collection('examSolutions').doc(`${trimesterKey}_${Student.id}`).set({
+        trimesterKey, trimesterLabel,
+        studentId: Student.id,
+        studentName: Student.fullName,
+        submittedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }catch(e){ console.error('تعذّر تسجيل إحصائية حل الفرض/الاختبار:', e); }
+  },
+
+  /* كل السجلات مجمّعة حسب الفصل — لعرضها في نافذة "حلول التلاميذ للفروض والاختبارات" */
+  async allGrouped(){
+    if(!fbReady) return [];
+    const snap = await db.collection('examSolutions').get();
+    const byTrimester = new Map(); // trimesterKey -> { trimesterLabel, names:[] }
+    snap.forEach(doc=>{
+      const d = doc.data();
+      if(!byTrimester.has(d.trimesterKey)) byTrimester.set(d.trimesterKey, { trimesterLabel:d.trimesterLabel, names:[] });
+      byTrimester.get(d.trimesterKey).names.push(d.studentName);
+    });
+    const order = new Map([['t1',0],['t2',1],['t3',2]]);
+    return Array.from(byTrimester.entries())
+      .map(([trimesterKey, v])=> ({ trimesterKey, trimesterLabel:v.trimesterLabel, names:v.names }))
+      .sort((a,b)=> (order.get(a.trimesterKey) ?? 999) - (order.get(b.trimesterKey) ?? 999));
+  }
+};
+
+/* نافذة "حلول التلاميذ للفروض والاختبارات" من لوحة الأستاذ — زر فتح تيليجرام أعلى النافذة،
+   وتحتها إحصائيات من أرسل حلاً (الفصل، عدد التلاميذ وأسماؤهم) */
+function openExamSolutionsModal(){
+  const overlay = document.createElement('div');
+  overlay.className = 'zoom-modal-overlay';
+  const telegramBtnHtml = (TELEGRAM_CONFIG && TELEGRAM_CONFIG.botUsername)
+    ? `<a class="zoom-telegram-btn" style="display:block;text-align:center;text-decoration:none;margin-bottom:18px" href="https://t.me/${TELEGRAM_CONFIG.botUsername}" target="_blank" rel="noopener">▶️ فتح محادثة الحلول على تيليجرام</a>`
+    : `<div class="lesson-cta-note">معرّف البوت (username) غير مضبوط في telegram-config.js</div>`;
+  overlay.innerHTML = `
+    <div class="zoom-modal-popup">
+      <div class="zoom-modal-header">
+        <div class="zoom-modal-title">📨 حلول التلاميذ للفروض والاختبارات</div>
+        <div class="zoom-modal-subtitle">افتح المحادثة لمشاهدة الملفات، أو تصفّح من أرسل حلاً لكل فصل</div>
+        <button type="button" class="zoom-modal-close" id="examSolutionsModalCloseBtn">✕</button>
+      </div>
+      <div class="zoom-modal-body" id="examSolutionsModalBody">
+        ${telegramBtnHtml}
+        <div id="examSolutionsStatsMount"><div class="sf-label">جاري تحميل الإحصائيات…</div></div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e)=>{ if(e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#examSolutionsModalCloseBtn').addEventListener('click', ()=> overlay.remove());
+
+  renderExamSolutionsStats(overlay);
+}
+
+async function renderExamSolutionsStats(overlay){
+  const mount = overlay.querySelector('#examSolutionsStatsMount');
+  if(!fbReady){
+    mount.innerHTML = '<div class="lesson-cta-note">Firebase غير مفعّل — لا يمكن عرض الإحصائيات.</div>';
+    return;
+  }
+  let data;
+  try{
+    data = await ExamSolutions.allGrouped();
+  }catch(e){
+    mount.innerHTML = '<div class="lesson-cta-note">تعذّر تحميل الإحصائيات، تحقّق من قواعد أمان Firestore لمجموعة examSolutions.</div>';
+    return;
+  }
+  const withSubmissions = data.filter(t=> t.names.length>0);
+  if(!withSubmissions.length){
+    mount.innerHTML = '<div class="lesson-cta-note">لم يُرسل أي تلميذ حلاً بعد.</div>';
+    return;
+  }
+  renderExamSolutionsTrimestersList(overlay, withSubmissions);
+}
+
+/* المستوى الأول: قائمة الفصول — لا يظهر الفصل هنا إلا بعد وصول أول حل له من أي تلميذ */
+function renderExamSolutionsTrimestersList(overlay, data){
+  const mount = overlay.querySelector('#examSolutionsStatsMount');
+  const rows = data.map(t=> `
+    <div class="lesson-row zoom-lesson-row" data-exam-solutions-trimester="${escZoomText(t.trimesterKey)}">
+      <div class="lr-text"><div class="lr-title">📚 ${escZoomText(t.trimesterLabel)}</div></div>
+      <div class="lr-status aa-badge">${t.names.length}</div>
+    </div>`).join('');
+  mount.innerHTML = `<div class="lesson-list">${rows}</div>`;
+  mount.querySelectorAll('[data-exam-solutions-trimester]').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      if(window.SoundFX) SoundFX.click();
+      const key = row.getAttribute('data-exam-solutions-trimester');
+      const t = data.find(x=> x.trimesterKey === key);
+      if(t) renderExamSolutionsNamesList(overlay, data, t);
+    });
+  });
+}
+
+/* المستوى الثاني: أسماء التلاميذ الذين أرسلوا حلاً للفصل المختار */
+function renderExamSolutionsNamesList(overlay, data, t){
+  const mount = overlay.querySelector('#examSolutionsStatsMount');
+  const rows = t.names.map(name=> `
+    <div class="lesson-row">
+      <div class="lr-text"><div class="lr-title">🙋 ${escZoomText(name)}</div></div>
+    </div>`).join('');
+  mount.innerHTML = `
+    <button type="button" class="zoom-back-btn" id="examSolutionsBackToTrimestersBtn">→ رجوع لقائمة الفصول</button>
+    <div class="lr-title" style="margin-bottom:10px">📚 ${escZoomText(t.trimesterLabel)}</div>
+    <div class="lesson-list">${rows}</div>`;
+  mount.querySelector('#examSolutionsBackToTrimestersBtn').addEventListener('click', ()=>{
+    if(window.SoundFX) SoundFX.click();
+    renderExamSolutionsTrimestersList(overlay, data);
+  });
+}
+
+/* =========================================================================================
    سجلّ إحصائي لحلول تمارين الزوم — مستقل تمامًا عن إرسال تيليجرام (الذي يبقى كما هو).
    يُسجَّل هنا فقط: الدرس، الفوج، اسم التلميذ ومعرّفه — بلا أي ملف/صورة (تبقى في تيليجرام حصريًا).
    الهدف: تمكين الأستاذ من رؤية "من أرسل ومن لم يرسل" مباشرة من داخل المنصة.
@@ -2732,11 +2949,13 @@ function renderExamsScreen(){
         panel.innerHTML = `<div class="exam-panel">📋 سيظهر هنا محتوى فروض واختبارات هذا الفصل عند رفعه من الأستاذ/المشرف.</div>`;
         return;
       }
+      const trimesterLabel = trimesters.find(x=> x.key===t).label;
       panel.innerHTML = `<div class="zoom-docs-row" style="flex-direction:column;align-items:stretch;gap:10px">${
         items.map(it=>
           `<a class="zoom-doc-btn" href="${escZoomText(it.link)}" target="_blank" rel="noopener">📝 ${escZoomText(it.title || 'فتح الفرض/الاختبار')}</a>`
         ).join('')
-      }</div>`;
+      }</div>` + buildExamSolutionInlineHtml(items.length > 0);
+      wireExamSolutionInline(panel, t, trimesterLabel);
     }
     tabsWrap.querySelectorAll('.exam-tab').forEach(tab=>{
       tab.addEventListener('click', ()=>{
@@ -3680,6 +3899,24 @@ async function renderAdminPanel(){
       </div>
     </div>`;
 
+  /* زر لفتح محادثة بوت تيليجرام مباشرة — هناك تصل حلول الفروض والاختبارات التي يرسلها التلاميذ */
+  const examSolutionsCard = `
+    <div class="home-card-wide zoom-manage-card" id="examSolutionsBotBtn" style="margin-bottom:16px;cursor:pointer">
+      <div class="hc-icon-wrap" style="background:linear-gradient(150deg,#F0E6D6,#D8AE52)">
+        <svg class="hc-svg-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 20 L32 20 L36 24 L56 24 L56 46 L8 46 Z" fill="url(#hcInk)" stroke="#16241C" stroke-width="1"/>
+          <path d="M10 24 L54 24 L54 44 L10 44 Z" fill="url(#hcCream)" stroke="#D8AE52" stroke-width="1"/>
+          <path d="M10 24 L32 39 L54 24" fill="none" stroke="#8A6A2A" stroke-width="1.6" stroke-linejoin="round"/>
+          <circle cx="46" cy="38" r="9.5" fill="url(#hcGoldMedallion)" stroke="#7A5216" stroke-width="1"/>
+          <path d="M41.5 38 L44.7 41.2 L51 34" fill="none" stroke="#4A3200" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="hc-title">حلول التلاميذ للفروض والاختبارات</div>
+        <div class="hc-sub">إحصائيات من أرسل حلاً لكل فصل، وزر لفتح ملفات الحلول على تيليجرام</div>
+      </div>
+    </div>`;
+
   wrap.innerHTML =
     adminAccordionHTML('chatQuestions', `${AA_ICONS.chat} أسئلة التلاميذ (الدردشة) <span class="aa-badge" id="chatQuestionsBadge">0</span>`, `<div id="chatQuestionsBody"><div class="exam-panel">جارٍ التحميل…</div></div>`) +
     adminAccordionHTML('pending', `${AA_ICONS.pending} طلبات الانتظار <span class="aa-badge">${pending.length}</span>`, pendingBody) +
@@ -3687,6 +3924,7 @@ async function renderAdminPanel(){
     zoomManageCard +
     examLinksManageCard +
     solutionsCard +
+    examSolutionsCard +
     adminAccordionHTML('lessons', `${AA_ICONS.lessons} فتح/إغلاق الدروس`, lessonsBody) +
     adminAccordionHTML('trimesters', `${AA_ICONS.exams} فتح/إغلاق الفروض والاختبارات`, trimestersBody) +
     adminAccordionHTML('situations', `${AA_ICONS.situations} فتح/إغلاق وضعيات الاستئناس (المقاطع)`, situationsBody) +
@@ -3711,6 +3949,11 @@ async function renderAdminPanel(){
   document.getElementById('solutionsBotBtn').addEventListener('click', ()=>{
     if(window.SoundFX) SoundFX.click();
     openSolutionsModal();
+  });
+
+  document.getElementById('examSolutionsBotBtn').addEventListener('click', ()=>{
+    if(window.SoundFX) SoundFX.click();
+    openExamSolutionsModal();
   });
 
   const toggleBtn = document.getElementById('toggleApprovedBtn');
