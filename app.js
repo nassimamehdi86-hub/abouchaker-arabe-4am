@@ -102,6 +102,39 @@ const Student = {
   /* تطبيع رقم الهاتف: نحتفظ فقط بالأرقام (نحذف المسافات والرموز) لضمان تطابق موحّد */
   normalizedPhone(phone){ return (phone||'').replace(/[^0-9]/g,''); },
 
+  /* تطبيع "قانوني" لرقم الهاتف: آخر 9 أرقام فقط، ليتطابق الرقم بصيغته المحلية (0555xxxxxx)
+     مع صيغته الدولية كما يرسلها تيليجرام (+213555xxxxxx) — يُستخدم حصرًا لمطابقة التحقق
+     التلقائي عبر بوت تيليجرام، دون المساس بـ phoneKey الأصلي المستعمل لبقية النظام. */
+  canonicalPhone(phone){
+    const digits = (phone||'').replace(/[^0-9]/g,'');
+    return digits.length >= 9 ? digits.slice(-9) : digits;
+  },
+
+  /* هل شارك صاحب هذا الرقم جهة اتصاله في محادثة خاصة مع بوت تيليجرام؟
+     تُملأ مجموعة telegramVerifiedPhones تلقائيًا من طرف telegram-webhook-worker عند
+     استقبال جهة اتصال موثّقة (راجع TELEGRAM_AUTO_APPROVAL_GUIDE.md). */
+  async checkTelegramVerification(phone){
+    if(!fbReady) return false;
+    const canon = this.canonicalPhone(phone);
+    if(!canon) return false;
+    try{
+      const snap = await db.collection('telegramVerifiedPhones').doc(canon).get();
+      return snap.exists;
+    }catch(e){ console.warn('تعذّر التحقق من تفعيل تيليجرام:', e); return false; }
+  },
+
+  /* بدء جلسة تلميذ مقبول مباشرة — نفس منطق نهاية login() الناجح، تُستخدم بعد القبول
+     التلقائي عبر تيليجرام حتى يدخل التلميذ للمنصة فورًا دون الحاجة لإعادة تسجيل الدخول */
+  async startApprovedSession(){
+    if(!fbReady || !this.id) return;
+    const newSession = genSessionId();
+    await db.collection('students').doc(this.id).update({ currentSession:newSession, lastSeen:firebase.firestore.FieldValue.serverTimestamp() });
+    this.sessionId = newSession;
+    lsSet('student_session', newSession);
+    this.watchSession();
+    await this.updateStreak();
+  },
+
   /* تسجيل الدخول بحساب موجود مسبقًا فقط — لا يُنشئ أي طلب جديد أبدًا.
      إن لم يوجد رقم الهاتف في القاعدة، تُعاد status:'not_found' لتظهر رسالة خطأ للتلميذ. */
   async login(fullName, phone){
@@ -148,6 +181,11 @@ const Student = {
     const col = db.collection('students');
     const existing = await col.where('phoneKey','==', phoneKey).limit(1).get();
 
+    /* تحقق تلقائي: هل شارك هذا الرقم جهة اتصاله مع بوت تيليجرام مسبقًا؟
+       إن كان كذلك، يُقبل التلميذ فورًا دون انتظار موافقة الأستاذ. */
+    const telegramVerified = await this.checkTelegramVerification(phone);
+    const initialStatus = telegramVerified ? 'approved' : 'pending';
+
     if(!existing.empty){
       const docSnap = existing.docs[0];
       const data = docSnap.data();
@@ -159,24 +197,27 @@ const Student = {
 
       /* كان مرفوضًا سابقًا: نسمح له بإعادة إرسال طلب جديد على نفس السجل */
       await docSnap.ref.update({
-        fullName: fullName.trim(), nameKey:key, status:'pending',
+        fullName: fullName.trim(), nameKey:key, status:initialStatus,
         receiptImage: receiptDataUrl || null,
         resubmittedAt: firebase.firestore.FieldValue.serverTimestamp(), currentSession:null
       });
-      this.id = docSnap.id; this.fullName = fullName.trim(); this.phone = phone.trim(); this.status = 'pending';
+      this.id = docSnap.id; this.fullName = fullName.trim(); this.phone = phone.trim(); this.status = initialStatus;
       lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_phone', this.phone);
-      return { ok:true, status:'pending', fullName:this.fullName };
+      if(initialStatus === 'approved') await this.startApprovedSession();
+      return { ok:true, status:initialStatus, fullName:this.fullName };
     }
 
-    /* لا يوجد سجل سابق برقم الهاتف هذا: إنشاء طلب جديد بحالة الانتظار */
+    /* لا يوجد سجل سابق برقم الهاتف هذا: إنشاء حساب جديد — مقبول فورًا إن كان موثّقًا عبر
+       تيليجرام، أو بحالة الانتظار كالمعتاد إن لم يكن كذلك */
     const newDoc = await col.add({
-      fullName: fullName.trim(), nameKey:key, phone: phone.trim(), phoneKey, status:'pending',
+      fullName: fullName.trim(), nameKey:key, phone: phone.trim(), phoneKey, status:initialStatus,
       receiptImage: receiptDataUrl || null, /* صورة وصل اختيارية */
       createdAt: firebase.firestore.FieldValue.serverTimestamp(), currentSession:null
     });
-    this.id = newDoc.id; this.fullName = fullName.trim(); this.phone = phone.trim(); this.status = 'pending';
+    this.id = newDoc.id; this.fullName = fullName.trim(); this.phone = phone.trim(); this.status = initialStatus;
     lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_phone', this.phone);
-    return { ok:true, status:'pending', fullName:this.fullName };
+    if(initialStatus === 'approved') await this.startApprovedSession();
+    return { ok:true, status:initialStatus, fullName:this.fullName };
   },
 
   /* محاولة استرجاع جلسة محفوظة محليًا عند فتح التطبيق */
