@@ -1638,18 +1638,77 @@ async function renderSolutionsStats(overlay){
     mount.innerHTML = '<div class="lesson-cta-note">لم يُرسل أي تلميذ حلاً بعد.</div>';
     return;
   }
-  mount.innerHTML = data.map(l=>{
+  renderSolutionsLessonsList(overlay, data);
+}
+
+/* المستوى الأول: قائمة الدروس — لا يظهر اسم الدرس هنا إطلاقًا إلا بعد وصول أول حل له من أي تلميذ
+   (data قادمة أصلًا من ZoomSolutions.allGrouped التي تُبنى من وثائق Firestore الفعلية فقط، فلا يوجد
+   أي درس فيها بلا حل؛ هذا الفلتر الإضافي احتياطي فقط لضمان عدم ظهور أي درس مجموع حلوله صفر) */
+function renderSolutionsLessonsList(overlay, data){
+  const mount = overlay.querySelector('#solutionsStatsMount');
+  const withSubmissions = data.filter(l=> l.groups.some(g=> g.names.length>0));
+  if(!withSubmissions.length){
+    mount.innerHTML = '<div class="lesson-cta-note">لم يُرسل أي تلميذ حلاً بعد.</div>';
+    return;
+  }
+  const rows = withSubmissions.map(l=>{
     const total = l.groups.reduce((s,g)=> s+g.names.length, 0);
-    const groupsHtml = l.groups.map(g=> `
-      <div style="margin-top:8px">
-        <div class="lr-title">👥 ${escZoomText(g.groupLabel)} — ${g.names.length}</div>
-        <div class="note" style="margin:4px 0 0;text-align:right">${g.names.map(escZoomText).join('، ')}</div>
-      </div>`).join('');
-    return `<div class="lesson-row" style="flex-direction:column;align-items:stretch;text-align:right;margin-bottom:10px">
-      <div class="lr-title">📘 ${escZoomText(l.lessonTitle)} <span class="aa-badge">${total}</span></div>
-      ${groupsHtml}
+    return `<div class="lesson-row zoom-lesson-row" data-solutions-lesson="${escZoomText(l.lessonId)}">
+      <div class="lr-text"><div class="lr-title">📘 ${escZoomText(l.lessonTitle)}</div></div>
+      <div class="lr-status aa-badge">${total}</div>
     </div>`;
   }).join('');
+  mount.innerHTML = `<div class="lesson-list">${rows}</div>`;
+  mount.querySelectorAll('[data-solutions-lesson]').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      if(window.SoundFX) SoundFX.click();
+      const lessonId = row.getAttribute('data-solutions-lesson');
+      const lesson = data.find(l=> String(l.lessonId) === lessonId);
+      if(lesson) renderSolutionsGroupsList(overlay, data, lesson);
+    });
+  });
+}
+
+/* المستوى الثاني: أفواج الدرس المختار — أمام كل فوج عدد التلاميذ الذين أرسلوا حلاً منه */
+function renderSolutionsGroupsList(overlay, data, lesson){
+  const mount = overlay.querySelector('#solutionsStatsMount');
+  const rows = lesson.groups.map((g, idx)=> `
+    <div class="lesson-row zoom-lesson-row" data-solutions-group="${idx}">
+      <div class="lr-text"><div class="lr-title">👥 ${escZoomText(g.groupLabel)}</div></div>
+      <div class="lr-status aa-badge">${g.names.length}</div>
+    </div>`).join('');
+  mount.innerHTML = `
+    <button type="button" class="zoom-back-btn" id="solutionsBackToLessonsBtn">→ رجوع لقائمة الدروس</button>
+    <div class="lr-title" style="margin-bottom:10px">📘 ${escZoomText(lesson.lessonTitle)}</div>
+    <div class="lesson-list">${rows}</div>`;
+  mount.querySelector('#solutionsBackToLessonsBtn').addEventListener('click', ()=>{
+    if(window.SoundFX) SoundFX.click();
+    renderSolutionsLessonsList(overlay, data);
+  });
+  mount.querySelectorAll('[data-solutions-group]').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      if(window.SoundFX) SoundFX.click();
+      const idx = Number(row.getAttribute('data-solutions-group'));
+      renderSolutionsNamesList(overlay, data, lesson, lesson.groups[idx]);
+    });
+  });
+}
+
+/* المستوى الثالث: أسماء التلاميذ الذين أرسلوا حلاً، من الفوج المختار فقط */
+function renderSolutionsNamesList(overlay, data, lesson, group){
+  const mount = overlay.querySelector('#solutionsStatsMount');
+  const rows = group.names.map(name=> `
+    <div class="lesson-row">
+      <div class="lr-text"><div class="lr-title">🙋 ${escZoomText(name)}</div></div>
+    </div>`).join('');
+  mount.innerHTML = `
+    <button type="button" class="zoom-back-btn" id="solutionsBackToGroupsBtn">→ رجوع لأفواج الدرس</button>
+    <div class="lr-title" style="margin-bottom:10px">📘 ${escZoomText(lesson.lessonTitle)} — 👥 ${escZoomText(group.groupLabel)}</div>
+    <div class="lesson-list">${rows}</div>`;
+  mount.querySelector('#solutionsBackToGroupsBtn').addEventListener('click', ()=>{
+    if(window.SoundFX) SoundFX.click();
+    renderSolutionsGroupsList(overlay, data, lesson);
+  });
 }
 
 
@@ -3819,7 +3878,7 @@ const ZOOM_GROUPS = [
 /* وثيقتا "ملخّص الدرس" و"تمارينه" — رابط مستقل لكل فوج (كل فوج له وثائقه ورابط فيديو خاص به) */
 const ZOOM_DOCS = [
   { key:'summary',   label:'📄 رابط ملخّص الدرس', icon:'📄', btnLabel:'تحميل ملخّص الدرس' },
-  { key:'exercises', label:'📝 رابط تمارين الدرس', icon:'📝', btnLabel:'تحميل تمارين الدرس' }
+  { key:'exercises', label:'📝 رابط الواجب المنزلي', icon:'📝', btnLabel:'تحميل واجب منزلي' }
 ];
 
 /* تفادي حقن HTML عند عرض روابط/عناوين داخل سمات value="" أو نص عادي */
@@ -3882,7 +3941,7 @@ async function renderZoomManagerList(overlay){
 const ZOOM_FORM_FIELDS = [
   { key:'video',     label:'🎥 روابط تسجيل الحصة (فيديو)', addLabel:'+ إضافة رابط فيديو آخر' },
   { key:'summary',   label:'📄 روابط ملخّص الدرس',          addLabel:'+ إضافة رابط ملخّص آخر' },
-  { key:'exercises', label:'📝 روابط تمارين الدرس',          addLabel:'+ إضافة رابط تمارين آخر' }
+  { key:'exercises', label:'📝 روابط الواجب المنزلي',          addLabel:'+ إضافة رابط واجب آخر' }
 ];
 
 /* يضيف صفًّا جديدًا (حقل إدخال + زر حذف) داخل حاوية روابط حقل معيّن */
@@ -3919,7 +3978,7 @@ function renderZoomManagerForm(overlay, lesson){
 
   body.innerHTML = `
     <button type="button" class="zoom-back-btn" id="zoomFormBackBtn">→ رجوع لقائمة الدروس</button>
-    <div class="zoom-form-note">لكل فوج 3 حقول: تسجيل الحصة، ملخّص الدرس، وتمارينه — ويمكنك إضافة أكثر من رابط لكل حقل بالضغط على «+ إضافة رابط آخر». اترك الحقل فارغًا إن لم يتوفّر بعد، ثم اضغط «حفظ الروابط» في الأسفل.
+    <div class="zoom-form-note">لكل فوج 3 حقول: تسجيل الحصة، ملخّص الدرس، والواجب المنزلي — ويمكنك إضافة أكثر من رابط لكل حقل بالضغط على «+ إضافة رابط آخر». اترك الحقل فارغًا إن لم يتوفّر بعد، ثم اضغط «حفظ الروابط» في الأسفل.
       <br>✅ روابط يوتيوب/فيميو/Google Drive الخاصة بالفيديو تُشغَّل مباشرة داخل الصفحة.
       <br>📨 روابط تيليجرام (مثل <bdi style="direction:ltr;display:inline-block">t.me/c/…</bdi>) — سواء للفيديو أو للوثائق — تظهر للتلميذ كزر "فتح على تيليجرام"، لأن تيليجرام لا يسمح بالتضمين المباشر، ويشترط أن يكون التلميذ عضوًا مقبولًا في قناة/مجموعة فوجه.</div>
     ${groupsHtml}
