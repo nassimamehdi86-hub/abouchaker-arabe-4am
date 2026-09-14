@@ -28,6 +28,23 @@ const StudentManagement = {
           ...doc.data()
         });
       });
+
+      /* حساب المستوى الحقيقي لكل تلميذ من نتائجه الفعلية في التمارين (نفس الحساب المستعمل
+         في لوحة التحكم عبر Admin.studentAverage)، لأن حقل averageScore لا يُكتب في أي مكان
+         بالمشروع ويبقى دائمًا فارغًا لو اعتُمد عليه مباشرة. يُحسب بالتوازي لتفادي البطء مع
+         عدد كبير من التلاميذ. realAverage تكون null إن لم يشارك التلميذ في أي تمرين بعد. */
+      if (typeof Admin !== 'undefined' && Admin.studentAverage) {
+        await Promise.all(this.allStudents.map(async (s) => {
+          try {
+            s.realAverage = await Admin.studentAverage(s.id);
+          } catch (e) {
+            s.realAverage = null;
+          }
+        }));
+      } else {
+        this.allStudents.forEach(s => { s.realAverage = null; });
+      }
+
       return this.allStudents;
     } catch (error) {
       console.error('خطأ في تحميل التلاميذ:', error);
@@ -86,6 +103,25 @@ const StudentManagement = {
     }
   },
 
+  /* إلغاء توثيق تيليجرام الخاص برقم تلميذ محذوف، حتى إن أعاد التسجيل لاحقًا بنفس الرقم
+     يُعامل كتلميذ جديد (لا يُقبل تلقائيًا) ويُطالَب بالمرور على بوت تيليجرام من جديد.
+     phone هو الرقم كما أُدخل أصلاً (غير المطبَّع)؛ نطبّعه هنا بنفس منطق canonicalPhone
+     المستخدم في Student.checkTelegramVerification لضمان مطابقة معرف المستند في
+     telegramVerifiedPhones. لا تُرمى أي أخطاء هنا حتى لا يوقف فشل هذه الخطوة عملية
+     حذف التلميذ نفسها. */
+  async revokeTelegramVerification(phone) {
+    if (!fbReady || !db || !phone) return;
+    try {
+      const canon = (typeof Student !== 'undefined' && Student.canonicalPhone)
+        ? Student.canonicalPhone(phone)
+        : String(phone).replace(/[^0-9]/g, '').slice(-9);
+      if (!canon) return;
+      await db.collection('telegramVerifiedPhones').doc(canon).delete();
+    } catch (error) {
+      console.warn('تعذّر إلغاء توثيق تيليجرام لرقم التلميذ المحذوف:', error);
+    }
+  },
+
   /* حذف تلميذ واحد */
   lastError: null,
   async deleteStudent(studentId) {
@@ -96,9 +132,20 @@ const StudentManagement = {
     }
 
     try {
+      /* نجلب رقم هاتفه قبل حذف حسابه (من الذاكرة المؤقتة إن وُجد، وإلا من Firestore
+         مباشرة) لإلغاء توثيقه في تيليجرام بعد الحذف */
+      let phone = (this.allStudents.find(s => s.id === studentId) || {}).phone;
+      if (!phone) {
+        try {
+          const snap = await db.collection('students').doc(studentId).get();
+          phone = snap.exists ? snap.data().phone : null;
+        } catch (e) { /* تجاهل: سنكمل الحذف حتى لو تعذّر جلب الرقم */ }
+      }
+
       /* حذف كل نقاطه من الإحصائيات والترتيبات أولاً، ثم حذف حسابه نهائيًا */
       await this.deleteStudentPointsEverywhere(studentId);
       await db.collection('students').doc(studentId).delete();
+      await this.revokeTelegramVerification(phone);
       this.allStudents = this.allStudents.filter(s => s.id !== studentId);
       return true;
     } catch (error) {
@@ -117,10 +164,20 @@ const StudentManagement = {
     }
 
     try {
-      /* حذف نقاط كل تلميذ من الإحصائيات والترتيبات قبل حذف الحسابات */
-      for (const id of studentIds) {
-        await this.deleteStudentPointsEverywhere(id);
-      }
+      /* نجلب أرقام هواتفهم قبل الحذف (من الذاكرة المؤقتة أولاً، وإلا من Firestore)
+         لإلغاء توثيقهم في تيليجرام بعد حذف حساباتهم */
+      const phones = await Promise.all(studentIds.map(async (id) => {
+        const cached = this.allStudents.find(s => s.id === id);
+        if (cached && cached.phone) return cached.phone;
+        try {
+          const snap = await db.collection('students').doc(id).get();
+          return snap.exists ? snap.data().phone : null;
+        } catch (e) { return null; }
+      }));
+
+      /* حذف نقاط كل تلميذ من الإحصائيات والترتيبات قبل حذف الحسابات — بالتوازي لتسريع
+         الحذف الجماعي عند اختيار عدد كبير من التلاميذ */
+      await Promise.all(studentIds.map(id => this.deleteStudentPointsEverywhere(id)));
 
       const batch = db.batch();
       studentIds.forEach(id => {
@@ -129,6 +186,7 @@ const StudentManagement = {
       });
 
       await batch.commit();
+      await Promise.all(phones.map(phone => this.revokeTelegramVerification(phone)));
       this.allStudents = this.allStudents.filter(s => !studentIds.includes(s.id));
       this.selectedStudents.clear();
       return true;
@@ -220,9 +278,10 @@ const StudentManagement = {
 
     let csv = 'الرقم,الاسم واللقب,حالة الحساب,نسبة التقدم,تاريخ الانضمام\n';
     this.allStudents.forEach((student, index) => {
-      const avgScore = student.averageScore || 0;
+      const avgDisplay = (student.realAverage === null || student.realAverage === undefined)
+        ? 'لم يشارك بعد' : `${student.realAverage}%`;
       const joinDate = student.joinDate ? new Date(student.joinDate).toLocaleDateString('ar-EG') : 'غير محدد';
-      csv += `${index + 1},"${student.fullName}",${student.status},${avgScore}%,${joinDate}\n`;
+      csv += `${index + 1},"${student.fullName}",${student.status},${avgDisplay},${joinDate}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -246,21 +305,25 @@ const StudentManagement = {
         return false;
       }
 
-      const batch = db.batch();
-      ids.forEach(id => {
-        const docRef = db.collection('notifications').doc();
-        batch.set(docRef, {
-          title: 'رسالة من الأستاذ',
-          message,
-          icon: '📢',
-          timestamp: new Date(),
-          isNew: true,
-          read: false,
-          sentTo: id
+      /* الإرسال على دفعات (حد أقصى 450 عملية لكل دفعة احتياطًا لحد Firestore البالغ 500)،
+         حتى لا تفشل العملية بصمت عند اختيار عدد كبير من التلاميذ دفعة واحدة */
+      const chunkSize = 450;
+      for (let i = 0; i < ids.length; i += chunkSize) {
+        const batch = db.batch();
+        ids.slice(i, i + chunkSize).forEach(id => {
+          const docRef = db.collection('notifications').doc();
+          batch.set(docRef, {
+            title: 'رسالة من الأستاذ',
+            message,
+            icon: '📢',
+            timestamp: new Date(),
+            isNew: true,
+            read: false,
+            sentTo: id
+          });
         });
-      });
-
-      await batch.commit();
+        await batch.commit();
+      }
       return true;
     } catch (error) {
       console.error('خطأ في إرسال الرسائل الجماعية:', error);
@@ -288,25 +351,28 @@ const StudentManagement = {
     }
   },
 
-  /* حساب متوسط الدرجات */
+  /* حساب متوسط الدرجات — على أساس التلاميذ الذين شاركوا في تمرين واحد على الأقل فقط،
+     حتى لا يُخفَّض المتوسط العام بمن لم يشارك بعد (realAverage = null) */
   calculateAverageScore(students) {
-    if (students.length === 0) return 0;
-    const sum = students.reduce((acc, s) => acc + (s.averageScore || 0), 0);
-    return Math.round(sum / students.length);
+    const participated = students.filter(s => typeof s.realAverage === 'number');
+    if (participated.length === 0) return 0;
+    const sum = participated.reduce((acc, s) => acc + s.realAverage, 0);
+    return Math.round(sum / participated.length);
   },
 
-  /* الحصول على أفضل الطلاب */
+  /* الحصول على أفضل الطلاب — من بين من شاركوا في التمارين فقط */
   getTopPerformers(students, limit = 5) {
     return students
-      .sort((a, b) => (b.averageScore || 0) - (a.averageScore || 0))
+      .filter(s => typeof s.realAverage === 'number')
+      .sort((a, b) => b.realAverage - a.realAverage)
       .slice(0, limit);
   },
 
-  /* الحصول على الطلاب الذين يحتاجون مساعدة */
+  /* الحصول على الطلاب الذين يحتاجون مساعدة — ممن شاركوا وكانت نتيجتهم دون 50% */
   getStudentsNeedingHelp(students, limit = 5) {
     return students
-      .filter(s => (s.averageScore || 0) < 50)
-      .sort((a, b) => (a.averageScore || 0) - (b.averageScore || 0))
+      .filter(s => typeof s.realAverage === 'number' && s.realAverage < 50)
+      .sort((a, b) => a.realAverage - b.realAverage)
       .slice(0, limit);
   }
 };
