@@ -1,0 +1,149 @@
+{
+  "lessonId": "basita-murakkaba",
+  "sections": [
+    {
+      "number": "1",
+      "title": "التمرين 1: ميّز الجمل البسيطة من المركّبة مع التعليل",
+      "instructions": "ميّز الجمل البسيطة من المركّبة مع التعليل:",
+      "type": "fill",
+      "items": [
+        {
+          "before": "تتداعى الأمم على المسلمين في زمننا هذا.",
+          "after": "",
+          "answer": "بسيطة: لأن عناصرها مفردة",
+          "multiline": true,
+          "keywords": ["بسيطة", "مفردة"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "المسلمون يعيشون اليوم أسوأ مراحل الضّعف.",
+          "after": "",
+          "answer": "مركّبة: لأن الخبر جملة",
+          "multiline": true,
+          "keywords": ["مركبة", "الخبر جملة"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "إنّ غزّة تنادي العالم.",
+          "after": "",
+          "answer": "مركّبة: لأن خبر إنّ جملة",
+          "multiline": true,
+          "keywords": ["مركبة", "خبر إن جملة"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "تنادي: من يجيرني.",
+          "after": "",
+          "answer": "مركّبة: لأن المفعول به جملة",
+          "multiline": true,
+          "keywords": ["مركبة", "المفعول به جملة"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "آمنّا بقضاء الله وقدره.",
+          "after": "",
+          "answer": "بسيطة: لأن عناصرها مفردة",
+          "multiline": true,
+          "keywords": ["بسيطة", "مفردة"],
+          "keywordThreshold": 0.5
+        }
+      ]
+    },
+    {
+      "number": "2",
+      "title": "التمرين 2: حوّل الجمل البسيطة إلى مركّبة",
+      "instructions": "حوّل الجمل البسيطة إلى مركّبة فيما يلي:",
+      "type": "fill",
+      "items": [
+        {
+          "before": "إنّ القرية محاصرة.",
+          "after": "",
+          "answer": "إنّ القرية تُحاصَر.",
+          "multiline": true,
+          "keywords": ["تحاصر"],
+          "keywordThreshold": 1
+        },
+        {
+          "before": "الصّدق هادٍ إلى الجنّة.",
+          "after": "",
+          "answer": "الصّدق يهدي إلى الجنّة.",
+          "multiline": true,
+          "keywords": ["يهدي"],
+          "keywordThreshold": 1
+        },
+        {
+          "before": "لعلّ الغائب عائد يوما.",
+          "after": "",
+          "answer": "لعل الغائب يعود يوما.",
+          "multiline": true,
+          "keywords": ["يعود"],
+          "keywordThreshold": 1
+        },
+        {
+          "before": "ساعدت الرّجل دون معرفته.",
+          "after": "",
+          "answer": "ساعدت الرّجل دون أن أعرفه.",
+          "multiline": true,
+          "keywords": ["أن أعرفه"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "أقبل الولد مبتسما.",
+          "after": "",
+          "answer": "أقبل الولد يبتسم.",
+          "multiline": true,
+          "keywords": ["يبتسم"],
+          "keywordThreshold": 1
+        }
+      ]
+    },
+    {
+      "number": "3",
+      "title": "التمرين 3: حوّل الجمل المركّبة إلى بسيطة",
+      "instructions": "حوّل الجمل المركّبة إلى بسيطة فيما يلي:",
+      "type": "fill",
+      "items": [
+        {
+          "before": "التلوّث يهدّد أمن المجتمعات.",
+          "after": "",
+          "answer": "التلوّث مهدِّد أمن المجتمعات.",
+          "multiline": true,
+          "keywords": ["مهدد"],
+          "keywordThreshold": 1
+        },
+        {
+          "before": "استطعت أن أحقّق المرتبة الأولى.",
+          "after": "",
+          "answer": "استطعت تحقيق المرتبة الأولى.",
+          "multiline": true,
+          "keywords": ["تحقيق"],
+          "keywordThreshold": 1
+        },
+        {
+          "before": "الأنترنت منافعها كثيرة.",
+          "after": "",
+          "answer": "الأنترنت كثيرة المنافع.",
+          "multiline": true,
+          "keywords": ["كثيرة المنافع"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "عاد الولد إلى البيت وقد أنهكه التّعب.",
+          "after": "",
+          "answer": "عاد الولد إلى البيت منهكا من التّعب.",
+          "multiline": true,
+          "keywords": ["منهكا"],
+          "keywordThreshold": 1
+        },
+        {
+          "before": "هذا يوم يُكرم فيه المُجدّ.",
+          "after": "",
+          "answer": "هذا يوم إكرام المُجدّ.",
+          "multiline": true,
+          "keywords": ["إكرام"],
+          "keywordThreshold": 1
+        }
+      ]
+    }
+  ]
+}

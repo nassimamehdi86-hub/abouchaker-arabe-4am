@@ -1,0 +1,114 @@
+{
+  "lessonId": "khabar-inshaa",
+  "sections": [
+    {
+      "number": "1",
+      "title": "التمرين 1: ميّز أسلوب الجمل، ونوعه وصيغته إن كان إنشائيا",
+      "instructions": "ميّز أسلوب الجمل الآتية، ونوعه وصيغته إن كان إنشائيا:",
+      "type": "fill",
+      "items": [
+        {
+          "before": "تفوّق أحمد في امتحان اللّغة العربيّة.",
+          "after": "",
+          "answer": "خبري.",
+          "keywords": ["خبري"],
+          "keywordThreshold": 1
+        },
+        {
+          "before": "نظّف أسنانك قبل النّوم.",
+          "after": "",
+          "answer": "إنشائي، طلبي، صيغته: الأمر.",
+          "multiline": true,
+          "keywords": ["إنشائي طلبي", "الأمر"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "نِعمَ الرّجل أبوك.",
+          "after": "",
+          "answer": "إنشائي، غير طلبي، مدح.",
+          "multiline": true,
+          "keywords": ["إنشائي", "مدح"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "والله لن يفلح الظّالم.",
+          "after": "",
+          "answer": "إنشائي، غير طلبي، قَسَم.",
+          "multiline": true,
+          "keywords": ["إنشائي", "قسم"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "زرت مكّة العام الماضي.",
+          "after": "",
+          "answer": "خبري.",
+          "keywords": ["خبري"],
+          "keywordThreshold": 1
+        },
+        {
+          "before": "لا تنه عن خُلق وتأتي مثله.",
+          "after": "",
+          "answer": "إنشائي، طلبي، نهي.",
+          "multiline": true,
+          "keywords": ["إنشائي", "نهي"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "ازرع جميلا ولو في غير موضعه.",
+          "after": "",
+          "answer": "إنشائي، طلبي، أمر.",
+          "multiline": true,
+          "keywords": ["إنشائي", "أمر"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "ليت الشّباب يعود يوما.",
+          "after": "",
+          "answer": "إنشائي، طلبي، تمنٍّ.",
+          "multiline": true,
+          "keywords": ["إنشائي", "تمن"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "ما أطيب ريح المسك!",
+          "after": "",
+          "answer": "إنشائي، غير طلبي، تعجّب.",
+          "multiline": true,
+          "keywords": ["إنشائي", "تعجب"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "هل تعرف معنى الحرّيّة؟",
+          "after": "",
+          "answer": "إنشائي، طلبي، استفهام.",
+          "multiline": true,
+          "keywords": ["إنشائي", "استفهام"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "اللّهمّ آتنا في الدّنيا حسنة وفي الآخرة حسنة وقنا عذاب النّار.",
+          "after": "",
+          "answer": "إنشائي، طلبي، دعاء.",
+          "multiline": true,
+          "keywords": ["إنشائي", "دعاء"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "بئس القول قولك.",
+          "after": "",
+          "answer": "إنشائي، غير طلبي، ذمّ.",
+          "multiline": true,
+          "keywords": ["إنشائي", "ذم"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "الله يعلم ما في الصّدور.",
+          "after": "",
+          "answer": "خبري.",
+          "keywords": ["خبري"],
+          "keywordThreshold": 1
+        }
+      ]
+    }
+  ]
+}

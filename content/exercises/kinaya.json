@@ -1,0 +1,77 @@
+{
+  "lessonId": "kinaya",
+  "sections": [
+    {
+      "number": "1",
+      "title": "التمرين 1: حدّد نوع الكناية واذكر المكنّى عنه",
+      "instructions": "حدّد نوع الكناية واذكر المكنّى عنه فيما يلي:",
+      "type": "fill",
+      "items": [
+        {
+          "before": "حاتم بيته مفتوح",
+          "after": "",
+          "answer": "كناية عن صفة الجود والكرم.",
+          "multiline": true,
+          "keywords": ["صفة", "الجود"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "تعيش الجزائر مرفوعة الرّأس",
+          "after": "",
+          "answer": "كناية عن صفة الفخر والاعتزاز.",
+          "multiline": true,
+          "keywords": ["صفة", "الفخر"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "أخي نظيف اليد",
+          "after": "",
+          "answer": "كناية عن صفة العفّة أو الأمانة.",
+          "multiline": true,
+          "keywords": ["صفة", "العفة"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "ولي بين الضّلوع دم ولحم",
+          "after": "",
+          "answer": "كناية عن موصوف، وهو القلب.",
+          "multiline": true,
+          "keywords": ["موصوف", "القلب"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "الجود في ركابه",
+          "after": "",
+          "answer": "كناية عن نسبة الجود له.",
+          "multiline": true,
+          "keywords": ["نسبة", "الجود"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "دعا صاحب الحوت ربّه",
+          "after": "",
+          "answer": "كناية عن موصوف، وهو يونس عليه السّلام.",
+          "multiline": true,
+          "keywords": ["موصوف", "يونس"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "المجد بين بُردَيه",
+          "after": "",
+          "answer": "كناية عن نسبة المجد له.",
+          "multiline": true,
+          "keywords": ["نسبة", "المجد"],
+          "keywordThreshold": 0.5
+        },
+        {
+          "before": "فأصبح يقلّب كفّيه",
+          "after": "",
+          "answer": "كناية عن صفة النّدم.",
+          "multiline": true,
+          "keywords": ["صفة", "الندم"],
+          "keywordThreshold": 0.5
+        }
+      ]
+    }
+  ]
+}
