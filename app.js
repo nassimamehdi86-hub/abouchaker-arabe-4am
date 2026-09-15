@@ -514,7 +514,11 @@ const Admin = {
   async listApprovedFull(){
     if(!fbReady) return [];
     const snap = await db.collection('students').where('status','==','approved').get();
-    const list = snap.docs.map(d=>({ id:d.id, fullName:d.data().fullName }));
+    const list = snap.docs.map(d=>({
+      id:d.id, fullName:d.data().fullName,
+      completedExercisesCount: d.data().completedExercisesCount,
+      totalScoreSum: d.data().totalScoreSum
+    }));
     list.sort((a,b)=> a.fullName.localeCompare(b.fullName, 'ar'));
     return list;
   },
@@ -551,7 +555,7 @@ const Leaderboard = {
     if(!fbReady) return [];
     /* الجلب بلا ترتيب من الخادم (تفاديًا لفهرس مركّب في Firestore)، ثم الترتيب محليًا حسب
        النسبة المئوية فأقل وقت عند التعادل. تُستبعد المحاولات غير المكتملة (completed:false) من الترتيب. */
-    const snap = await db.collection('submissions').doc(lessonId).collection('students').limit(1000).get();
+    const snap = await db.collection('submissions').doc(lessonId).collection('students').limit(3000).get();
     const rows = snap.docs.filter(d=> d.data().completed !== false)
       .map(d=>({ name:d.data().studentName, percent:d.data().percent, timeSeconds:d.data().timeSeconds }));
     rows.sort(Leaderboard._rank);
@@ -602,6 +606,14 @@ const Leaderboard = {
       const payload = { studentName: Student.fullName, percent, completed:true, submittedAt: firebase.firestore.FieldValue.serverTimestamp() };
       if(typeof timeSeconds === 'number' && isFinite(timeSeconds) && timeSeconds >= 0) payload.timeSeconds = timeSeconds;
       await ref.set(payload, { merge:true });
+      /* تحديث تراكمي فوري (بزيادة ذرّية، بلا قراءة إضافية) لمجموع النقاط وعدد التمارين المنجزة
+         في مستند التلميذ نفسه، حتى تُحسب لوحة الإدارة ولوحة الشرف العامة المعدّل من هذا الحقل
+         الجاهز مباشرة بدل إعادة قراءة نتائج كل الدروس من جديد في كل مرة (يوفّر آلاف القراءات
+         مع عدد كبير من التلاميذ). لا يؤثر فشل هذه الخطوة على نجاح تسجيل النتيجة الأساسية. */
+      db.collection('students').doc(Student.id).update({
+        completedExercisesCount: firebase.firestore.FieldValue.increment(1),
+        totalScoreSum: firebase.firestore.FieldValue.increment(percent)
+      }).catch(()=>{});
       return { ok:true };
     }catch(e){ return { ok:false, reason:'error' }; }
   },
@@ -611,31 +623,27 @@ const Leaderboard = {
      مجموع نتائجهم الإجمالية. يُعاد أيضًا متوسط النسبة المئوية وعدد التمارين المنجزة لكل تلميذ. */
   async overallLessons(){
     if(!fbReady) return [];
-    const lessons = window.LESSONS.filter(l=>l.locked!=='pending');
-    const byStudent = new Map(); // studentId -> {name, total, count}
-    for(const l of lessons){
-      try{
-        const snap = await db.collection('submissions').doc(l.id).collection('students').get();
-        snap.forEach(doc=>{
-          const data = doc.data();
-          if(data.completed === false) return; // استبعاد المحاولات غير المكتملة
-          if(typeof data.percent !== 'number') return;
-          const id = doc.id;
-          const entry = byStudent.get(id) || { studentId:id, name:data.studentName || 'طالب غير معروف', total:0, count:0 };
-          entry.total += data.percent;
-          entry.count += 1;
-          entry.name = data.studentName || entry.name;
-          byStudent.set(id, entry);
+    /* بدل تكرار قراءة نتائج كل تلميذ عبر كل درس (تكلفة: عدد التلاميذ × عدد الدروس)، تُقرأ
+       مجموعة التلاميذ المقبولين مرة واحدة فقط، ويُستعمل مجموع النقاط التراكمي (totalScoreSum)
+       وعدد التمارين المنجزة (completedExercisesCount) المحفوظان مسبقًا في مستند كل تلميذ
+       (يُحدَّثان لحظيًا في Submissions.submit عند كل تمرين جديد). */
+    try{
+      const snap = await db.collection('students').where('status','==','approved').get();
+      const results = [];
+      snap.forEach(doc=>{
+        const data = doc.data();
+        const count = (typeof data.completedExercisesCount === 'number') ? data.completedExercisesCount : 0;
+        if(count <= 0) return; // لم يشارك بعد في أي تمرين
+        const total = (typeof data.totalScoreSum === 'number') ? data.totalScoreSum : 0;
+        results.push({
+          studentId: doc.id, name: data.fullName || 'طالب غير معروف',
+          totalScore: Math.round(total*10)/10, avgPercent: Math.round(total/count), exercisesCount: count
         });
-      }catch(e){}
-    }
-    const results = Array.from(byStudent.values()).map(e=>({
-      studentId: e.studentId, name: e.name, totalScore: Math.round(e.total*10)/10,
-      avgPercent: Math.round(e.total / e.count), exercisesCount: e.count
-    }));
-    /* الترتيب التنازلي حسب مجموع النتائج الإجمالية */
-    results.sort((a,b)=> b.totalScore - a.totalScore);
-    return results;
+      });
+      /* الترتيب التنازلي حسب مجموع النتائج الإجمالية */
+      results.sort((a,b)=> b.totalScore - a.totalScore);
+      return results;
+    }catch(e){ return []; }
   },
 
   /* ---------- ترتيب الفروض والاختبارات — مجموع النقاط المتحصل عليها لكل تلميذ عبر كل الفروض/الاختبارات المنجزة ----------
@@ -4025,9 +4033,10 @@ async function renderAdminPanel(){
         row.style.display = (!q || name.includes(q)) ? 'flex' : 'none';
       });
     });
-    /* حساب مستوى كل تلميذ في التمارين تدريجيًا (بلا حجب الواجهة) */
-    students.forEach(async (s)=>{
-      const avg = await Admin.studentAverage(s.id);
+    /* حساب مستوى كل تلميذ من الحقول الجاهزة أصلًا ضمن بيانات القائمة (بلا أي قراءة إضافية) */
+    students.forEach((s)=>{
+      const count = (typeof s.completedExercisesCount === 'number') ? s.completedExercisesCount : 0;
+      const avg = (count > 0 && typeof s.totalScoreSum === 'number') ? Math.round(s.totalScoreSum / count) : null;
       const el = document.getElementById('perf-'+s.id);
       if(el) el.textContent = (avg === null) ? 'لم يشارك بعد' : ('مستواه: ' + avg + '%');
     });
@@ -4742,7 +4751,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(typeof initWisdomBanner === 'function') setTimeout(initWisdomBanner, 500);
   if(typeof initNotificationsSystem === 'function') setTimeout(initNotificationsSystem, 500);
   if(typeof setupLessonLiveUpdates === 'function') setTimeout(setupLessonLiveUpdates, 500);
-  if(typeof initPlatformStatsWidget === 'function') setTimeout(initPlatformStatsWidget, 500);
+  /* خانة إحصائيات المنصّة (عدد التلاميذ/المتصلين الآن) أُلغيت نهائيًا: كانت تعمل عند كل
+     تلميذ وتقرأ كل مستندات التلاميذ كل 30 ثانية، مما يستهلك سقف قراءات Firestore
+     المجاني بسرعة كبيرة مع عدد كبير من التلاميذ. */
 
   /* تحديث لوحة التحكم لتشمل إدارة التلاميذ */
   const originalRenderAdminPanel = window.renderAdminPanel;

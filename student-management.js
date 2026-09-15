@@ -9,6 +9,46 @@ const StudentManagement = {
   selectedStudents: new Set(),
   allStudents: [],
 
+  /* ⚠️ عملية تُشغَّل يدويًا مرة واحدة فقط (وليست تلقائية) — لتعبئة معدّل التلاميذ الذين
+     أنجزوا تمارين قبل اعتماد الحقلين التراكميين (completedExercisesCount و totalScoreSum).
+     تكلفتها القرائية تساوي تقريبًا: عدد التلاميذ × عدد الدروس — لذا يُفضَّل تشغيلها مرة
+     واحدة فقط بعد نشر هذا التحديث (يُستحسن بعد تصفير السقف اليومي)، ولن تحتاجها بعدها
+     إطلاقًا لأن كل تمرين جديد يُحدِّث الحقلين تلقائيًا ولحظيًا من الآن فصاعدًا. */
+  async backfillAverages(){
+    if(!fbReady) return { ok:false, reason:'offline' };
+    const lessons = (window.LESSONS || []).filter(l=>l.locked!=='pending');
+    const byStudent = new Map(); // studentId -> {total, count}
+    for(const l of lessons){
+      try{
+        const snap = await db.collection('submissions').doc(l.id).collection('students').get();
+        snap.forEach(doc=>{
+          const data = doc.data();
+          if(data.completed === false) return;
+          if(typeof data.percent !== 'number') return;
+          const id = doc.id;
+          const entry = byStudent.get(id) || { total:0, count:0 };
+          entry.total += data.percent;
+          entry.count += 1;
+          byStudent.set(id, entry);
+        });
+      }catch(e){ /* تجاهل درسًا تعذّرت قراءته ومتابعة الباقي */ }
+    }
+    const ids = Array.from(byStudent.keys());
+    const chunkSize = 400; /* أقل من حد 500 عملية لكل batch في Firestore */
+    for(let i=0; i<ids.length; i+=chunkSize){
+      const batch = db.batch();
+      ids.slice(i, i+chunkSize).forEach(id=>{
+        const e = byStudent.get(id);
+        batch.update(db.collection('students').doc(id), {
+          completedExercisesCount: e.count,
+          totalScoreSum: Math.round(e.total*100)/100
+        });
+      });
+      await batch.commit();
+    }
+    return { ok:true, studentsUpdated: ids.length };
+  },
+
   /* تحميل قائمة التلاميذ المقبولين */
   async loadStudents() {
     if (!fbReady || !db) {
@@ -29,21 +69,15 @@ const StudentManagement = {
         });
       });
 
-      /* حساب المستوى الحقيقي لكل تلميذ من نتائجه الفعلية في التمارين (نفس الحساب المستعمل
-         في لوحة التحكم عبر Admin.studentAverage)، لأن حقل averageScore لا يُكتب في أي مكان
-         بالمشروع ويبقى دائمًا فارغًا لو اعتُمد عليه مباشرة. يُحسب بالتوازي لتفادي البطء مع
-         عدد كبير من التلاميذ. realAverage تكون null إن لم يشارك التلميذ في أي تمرين بعد. */
-      if (typeof Admin !== 'undefined' && Admin.studentAverage) {
-        await Promise.all(this.allStudents.map(async (s) => {
-          try {
-            s.realAverage = await Admin.studentAverage(s.id);
-          } catch (e) {
-            s.realAverage = null;
-          }
-        }));
-      } else {
-        this.allStudents.forEach(s => { s.realAverage = null; });
-      }
+      /* المستوى الحقيقي لكل تلميذ يُقرأ مباشرة من الحقلين التراكميين المحفوظين أصلًا في
+         مستنده (completedExercisesCount و totalScoreSum، يُحدَّثان لحظيًا في Submissions.submit
+         عند كل تمرين جديد) — بلا أي قراءة إضافية من Firestore لكل تلميذ، بعد أن كانت هذه
+         الخطوة تعيد قراءة نتائج كل الدروس لكل تلميذ من جديد في كل مرة (تكلفة كانت تُقاس
+         بعدد التلاميذ × عدد الدروس). realAverage تبقى null إن لم يشارك التلميذ في أي تمرين بعد. */
+      this.allStudents.forEach(s => {
+        const count = (typeof s.completedExercisesCount === 'number') ? s.completedExercisesCount : 0;
+        s.realAverage = (count > 0 && typeof s.totalScoreSum === 'number') ? Math.round(s.totalScoreSum / count) : null;
+      });
 
       return this.allStudents;
     } catch (error) {

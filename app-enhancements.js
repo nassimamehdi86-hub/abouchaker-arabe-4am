@@ -171,6 +171,7 @@ async function renderStudentManagementPanel() {
         <button id="deselectAllStudentsBtn" class="al-key" style="flex:1;min-width:120px">☐ إلغاء التحديد</button>
         <button id="deleteSelectedBtn" class="al-key" style="flex:1;min-width:140px;background:#c84;color:#fff">🗑️ حذف المحددين</button>
         <button id="exportStudentsBtn" class="al-key" style="flex:1;min-width:140px">📥 تصدير CSV</button>
+        <button id="backfillAveragesBtn" class="al-key" style="flex:1;min-width:220px">🔄 تحديث معدّلات التلاميذ القدامى (مرة واحدة)</button>
       </div>
 
       <div id="selectedCountDisplay" style="font-size:12px;font-weight:700;color:#A97F2A;margin-bottom:10px">المحددون: 0</div>
@@ -293,6 +294,34 @@ async function renderStudentManagementPanel() {
   /* تصدير CSV */
   document.getElementById('exportStudentsBtn').addEventListener('click', () => {
     StudentManagement.exportToCSV();
+  });
+
+  /* تحديث معدّلات التلاميذ القدامى — عملية تُشغَّل يدويًا مرة واحدة فقط */
+  document.getElementById('backfillAveragesBtn').addEventListener('click', async () => {
+    const confirmed = confirm(
+      'هذه العملية تُقرأ نتائج كل التلاميذ عبر كل الدروس مرة واحدة (تكلفة قراءات كبيرة نسبيًا) ' +
+      'لتعبئة معدّل من أنجز تمارين قبل هذا التحديث. شغّلها مرة واحدة فقط بعد نشر التحديث ' +
+      '(يُفضَّل بعد تصفير سقف Firestore اليومي)، ولن تحتاج تكرارها بعد ذلك أبدًا.\n\nهل تريد المتابعة؟'
+    );
+    if (!confirmed) return;
+    const btn = document.getElementById('backfillAveragesBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ جارٍ التحديث...';
+    try {
+      const result = await StudentManagement.backfillAverages();
+      if (result.ok) {
+        alert(`تم تحديث معدّلات ${result.studentsUpdated} تلميذًا بنجاح.`);
+        renderStudentManagementPanel();
+      } else {
+        alert('تعذّر إتمام العملية. تحقق من اتصال الإنترنت وحاول مجددًا.');
+        btn.disabled = false;
+        btn.textContent = '🔄 تحديث معدّلات التلاميذ القدامى (مرة واحدة)';
+      }
+    } catch (e) {
+      alert('حدث خطأ أثناء التحديث.');
+      btn.disabled = false;
+      btn.textContent = '🔄 تحديث معدّلات التلاميذ القدامى (مرة واحدة)';
+    }
   });
 
   /* إرسال الإشعار */
