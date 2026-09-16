@@ -271,6 +271,14 @@ const Student = {
         location.reload();
       }
       if(data.lastQuestionAt) this.lastQuestionAt = data.lastQuestionAt;
+      /* حقول الترتيب المخزَّنة مسبقًا (تُحدَّث مرة كل 24 ساعة ضمن state/leaderboardCache) —
+         تصل هنا تلقائيًا مع نفس الاتصال الحي بوثيقة التلميذ، بلا أي قراءة إضافية */
+      this.lessonsRank = (typeof data.lessonsRank === 'number') ? data.lessonsRank : null;
+      this.lessonsScore = (typeof data.lessonsScore === 'number') ? data.lessonsScore : null;
+      this.examsRank = (typeof data.examsRank === 'number') ? data.examsRank : null;
+      this.examsPoints = (typeof data.examsPoints === 'number') ? data.examsPoints : null;
+      this.combinedRank = (typeof data.combinedRank === 'number') ? data.combinedRank : null;
+      this.combinedScore = (typeof data.combinedScore === 'number') ? data.combinedScore : null;
     });
   },
 
@@ -728,6 +736,87 @@ const Leaderboard = {
     /* الترتيب التنازلي حسب المجموع الشامل */
     combined.sort((a,b)=> b.totalScore - a.totalScore);
     return combined;
+  },
+
+  /* ---------- تخزين مؤقت للترتيب (24 ساعة) ----------
+     المشكلة: فتح صفحة الترتيب كان يقرأ كل مستندات التلاميذ 3 مرات (overallLessons + overallExams +
+     listApprovedFull) في كل مرة يفتحها أي تلميذ — بعدد كبير من التلاميذ هذا يستنزف حصة القراءات
+     المجانية اليومية من Firestore خلال دقائق.
+     الحل: نحسب الترتيب الكامل مرة واحدة كل 24 ساعة فقط (أول من يفتح الصفحة بعد انتهاء الصلاحية
+     يتحمّل هذه القراءة الكاملة نيابة عن الجميع)، ونخزّن أفضل 10 في مستند واحد صغير (state/
+     leaderboardCache) يقرأه الجميع بقراءة واحدة فقط. أما "مرتبة التلميذ نفسه"، فتُكتب داخل مستنده
+     الشخصي (lessonsRank/examsRank/combinedRank...) الذي يراقبه أصلاً باستمرار عبر watchSession —
+     فتصل إليه بلا أي قراءة إضافية إطلاقًا. */
+  CACHE_MAX_AGE_MS: 24 * 60 * 60 * 1000,
+
+  async getCache(){
+    if(!fbReady) return null;
+    try{
+      const snap = await db.collection('state').doc('leaderboardCache').get();
+      return snap.exists ? snap.data() : null;
+    }catch(e){ console.error('تعذّرت قراءة state/leaderboardCache:', e); return null; }
+  },
+
+  /* يُعيد نسخة محدَّثة من الترتيب (من التخزين المؤقت إن كان لا يزال صالحًا، أو يُعيد حسابه كاملاً
+     إن انتهت صلاحيته — مرة كل 24 ساعة كحد أقصى بغض النظر عن عدد مرات فتح الصفحة). */
+  async refreshIfStale(){
+    const cache = await this.getCache();
+    const age = cache && cache.updatedAt && typeof cache.updatedAt.toMillis === 'function'
+      ? (Date.now() - cache.updatedAt.toMillis()) : Infinity;
+    if(cache && age < this.CACHE_MAX_AGE_MS) return cache;
+
+    /* التخزين المؤقت غائب أو منتهي الصلاحية: نعيد الحساب الكامل (هذا هو الجزء المكلف، يحدث
+       مرة كل 24 ساعة على الأكثر) */
+    try{
+      const [lessonResults, examResults, approvedStudents] = await Promise.all([
+        this.overallLessons(), this.overallExams(), Admin.listApprovedFull()
+      ]);
+      const lessonRankByStudent = new Map(lessonResults.map((r,i)=> [r.studentId, i+1]));
+      const examRankByStudent = new Map();
+      examResults.forEach((r,i)=>{ if(r.studentId) examRankByStudent.set(r.studentId, {rank:i+1, points:r.totalPoints}); });
+      const lessonByStudentId = new Map(lessonResults.map(r=> [r.studentId, r.totalScore]));
+      const examByStudentId = new Map(examResults.filter(r=> r.studentId).map(r=> [r.studentId, r.totalPoints]));
+      const examByName = new Map(examResults.map(r=> [(r.name||'').trim().toLowerCase(), r.totalPoints]));
+      const combined = approvedStudents.map(s=>{
+        const lessonScore = lessonByStudentId.get(s.id) || 0;
+        const examScore = examByStudentId.has(s.id) ? examByStudentId.get(s.id) : (examByName.get((s.fullName||'').trim().toLowerCase()) || 0);
+        return { studentId:s.id, totalScore: Math.round((lessonScore+examScore)*10)/10 };
+      });
+      combined.sort((a,b)=> b.totalScore - a.totalScore);
+      const combinedRankByStudent = new Map(combined.map((r,i)=> [r.studentId, i+1]));
+
+      /* كتابة مرتبة كل تلميذ داخل مستنده الشخصي، على دفعات (500 عملية كحد أقصى للدفعة الواحدة
+         في Firestore)، حتى تصل له لاحقًا بلا أي قراءة إضافية عبر watchSession */
+      const chunks = [];
+      for(let i=0;i<approvedStudents.length;i+=450) chunks.push(approvedStudents.slice(i,i+450));
+      for(const chunk of chunks){
+        const batch = db.batch();
+        chunk.forEach(s=>{
+          const ref = db.collection('students').doc(s.id);
+          batch.update(ref, {
+            lessonsRank: lessonRankByStudent.get(s.id) || null,
+            lessonsScore: lessonByStudentId.get(s.id) || 0,
+            examsRank: (examRankByStudent.get(s.id)||{}).rank || null,
+            examsPoints: (examRankByStudent.get(s.id)||{}).points || 0,
+            combinedRank: combinedRankByStudent.get(s.id) || null,
+            combinedScore: (combined.find(c=>c.studentId===s.id)||{}).totalScore || 0
+          });
+        });
+        await batch.commit().catch(e=> console.error('تعذّر تحديث دفعة مراتب التلاميذ:', e));
+      }
+
+      const newCache = {
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        totalStudents: approvedStudents.length,
+        top10Lessons: lessonResults.slice(0,10),
+        top10Exams: examResults.slice(0,10)
+      };
+      await db.collection('state').doc('leaderboardCache').set(newCache);
+      return Object.assign({}, newCache, { updatedAt:{ toMillis:()=>Date.now() } });
+    }catch(e){
+      console.error('تعذّر إعادة حساب الترتيب:', e);
+      return cache; // نُبقي على القديم إن فشلت إعادة الحساب، أفضل من عدم عرض شيء
+    }
   }
 };
 
@@ -3162,18 +3251,16 @@ async function loadMyOverallStats(){
   const section = document.getElementById('lbMyStatsSection');
   if(!section || !fbReady || !Student.id) return;
   try{
-    const [combined, totalStudents] = await Promise.all([
-      Leaderboard.overallCombined(),
-      Admin.allStudentsCount()
-    ]);
-    const myIdx = combined.findIndex(r=> r.studentId === Student.id);
+    const cache = await Leaderboard.refreshIfStale(); // قراءة واحدة عادةً، أو إعادة حساب كاملة نادرًا (مرة كل 24 س)
     const pointsEl = document.getElementById('lbMyPoints');
     const rankEl = document.getElementById('lbMyRank');
     const totalEl = document.getElementById('lbMyTotalStudents');
     if(!pointsEl || !rankEl || !totalEl) return; /* المستخدم غادر الشاشة قبل انتهاء التحميل */
-    pointsEl.textContent = myIdx !== -1 ? Math.round(combined[myIdx].totalScore) : '0';
-    rankEl.textContent = myIdx !== -1 ? `#${myIdx+1}` : '—';
-    totalEl.textContent = totalStudents || '—';
+    /* مرتبة التلميذ ونقاطه تصلان جاهزتين من مستنده الشخصي (Student.combinedRank/combinedScore)
+       الذي يراقبه أصلاً باستمرار — بلا أي قراءة إضافية */
+    pointsEl.textContent = (typeof Student.combinedScore === 'number') ? Math.round(Student.combinedScore) : '0';
+    rankEl.textContent = Student.combinedRank ? `#${Student.combinedRank}` : '—';
+    totalEl.textContent = (cache && cache.totalStudents) || '—';
     section.style.display = '';
   }catch(e){ console.error('تعذّر تحميل بطاقة نتائجك الإجمالية:', e); }
 }
@@ -3213,7 +3300,7 @@ async function showOverallLeaderboardPopup(){
   
   const subtitle = document.createElement('div');
   subtitle.className = 'leaderboard-modal-subtitle';
-  subtitle.textContent = 'الترتيب الشامل لجميع التلاميذ';
+  subtitle.textContent = 'أفضل 10 تلاميذ — ومرتبتك أنت';
   
   const closeBtn = document.createElement('button');
   closeBtn.className = 'leaderboard-modal-close';
@@ -3234,18 +3321,27 @@ async function showOverallLeaderboardPopup(){
   document.body.appendChild(overlay);
   
   try{
-    const results = await Leaderboard.overallLessons();
+    const cache = await Leaderboard.refreshIfStale(); // قراءة واحدة عادةً؛ إعادة حساب كاملة نادرًا (كل 24 س)
+    const results = (cache && cache.top10Lessons) || [];
     if(!results.length){
       listDiv.innerHTML = '<div class="leaderboard-empty" style="padding:30px 20px;">لا توجد نتائج بعد</div>';
       return;
     }
     
-    listDiv.innerHTML = results.map((r, idx)=> renderHallRow(
+    let html = results.map((r, idx)=> renderHallRow(
       idx, (idx+1),
       r.name,
       `مجموع النتائج: ${r.totalScore} — ${r.exercisesCount} تمرين منجز`,
       `${r.avgPercent}%`
     )).join('');
+    /* صفّ إضافي يعرض مرتبة التلميذ الحالي هو، إن لم يكن أصلاً ضمن العشرة الأوائل */
+    const inTop10 = results.some(r=> r.studentId === Student.id);
+    if(!inTop10 && Student.id && Student.lessonsRank){
+      html += `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #ccc;"></div>` +
+        renderHallRow(-1, `#${Student.lessonsRank}`, `${Student.fullName} (أنت)`,
+          `مجموع النتائج: ${Student.lessonsScore||0}`, '');
+    }
+    listDiv.innerHTML = html;
   }catch(e){
     console.error('Error loading overall leaderboard popup:', e);
     listDiv.innerHTML = '<div class="leaderboard-empty" style="padding:30px 20px;">خطأ في تحميل الترتيب</div>';
@@ -3273,7 +3369,7 @@ async function showExamsLeaderboardPopup(){
   
   const subtitle = document.createElement('div');
   subtitle.className = 'leaderboard-modal-subtitle';
-  subtitle.textContent = 'ترتيب التلاميذ حسب نقاطهم في الفروض والاختبارات والتمارين اليومية';
+  subtitle.textContent = 'أفضل 10 تلاميذ في الفروض والاختبارات — ومرتبتك أنت';
   
   const closeBtn = document.createElement('button');
   closeBtn.className = 'leaderboard-modal-close';
@@ -3294,18 +3390,26 @@ async function showExamsLeaderboardPopup(){
   document.body.appendChild(overlay);
   
   try{
-    const results = await Leaderboard.overallExams();
+    const cache = await Leaderboard.refreshIfStale(); // قراءة واحدة عادةً؛ إعادة حساب كاملة نادرًا (كل 24 س)
+    const results = (cache && cache.top10Exams) || [];
     if(!results.length){
       listDiv.innerHTML = '<div class="leaderboard-empty" style="padding:30px 20px;">لا توجد فروض أو اختبارات منجزة بعد</div>';
       return;
     }
     
-    listDiv.innerHTML = results.map((r, idx)=> renderHallRow(
+    let html = results.map((r, idx)=> renderHallRow(
       idx, (idx+1),
       r.name,
       `${r.examsCount} فرض/اختبار منجز`,
       `${r.totalPoints} نقطة`
     )).join('');
+    const inTop10 = results.some(r=> r.studentId === Student.id);
+    if(!inTop10 && Student.id && Student.examsRank){
+      html += `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #ccc;"></div>` +
+        renderHallRow(-1, `#${Student.examsRank}`, `${Student.fullName} (أنت)`,
+          `${Student.examsPoints||0} نقطة`, '');
+    }
+    listDiv.innerHTML = html;
   }catch(e){
     console.error('Error loading exams leaderboard popup:', e);
     listDiv.innerHTML = '<div class="leaderboard-empty" style="padding:30px 20px;">خطأ في تحميل الترتيب</div>';
@@ -4159,20 +4263,48 @@ async function renderAdminPanel(){
   const statsMount = document.getElementById('adminStatsMount');
   for(const l of window.LESSONS){
     if(l.locked==='pending') continue;
-    const st = await Admin.lessonStats(l.id, totalStudents);
-    const pctParticipation = totalStudents ? Math.round((st.participants/totalStudents)*100) : 0;
     const card = document.createElement('div');
     card.className = 'stat-card';
+    card.dataset.lessonId = l.id;
     card.innerHTML = `
-      <div class="sc-head"><div class="sc-num">${String(l.order).padStart(2,'0')}</div><div class="sc-title">${l.title}</div></div>
-      <div class="stat-row">
-        <div class="stat-box"><div class="sb-value">${st.participants}</div><div class="sb-label">مشارك من ${st.total}</div></div>
-        <div class="stat-box"><div class="sb-value">${pctParticipation}%</div><div class="sb-label">نسبة المشاركة</div></div>
-        <div class="stat-box"><div class="sb-value">${st.avg}%</div><div class="sb-label">متوسط التقدّم</div></div>
+      <div class="sc-head" style="cursor:pointer;" data-stats-toggle>
+        <div class="sc-num">${String(l.order).padStart(2,'0')}</div>
+        <div class="sc-title">${l.title}</div>
       </div>
-      <div class="progress-track"><div class="progress-fill" style="width:${st.avg}%"></div></div>`;
+      <div class="stat-card-body" style="display:none;">
+        <div class="sf-label" style="padding:10px 0;">اضغط لعرض إحصائيات هذا الدرس…</div>
+      </div>`;
     statsMount.appendChild(card);
   }
+  /* الإحصائيات لا تُحسب إلا عند فتح الدرس فعليًا (وليس لكل الدروس دفعة واحدة عند كل فتح للوحة) —
+     كل درس يُحمَّل مرة واحدة فقط لكل جلسة (يُخزَّن الناتج مؤقتًا في dataset.loaded) ثم يُطوى/يُفتح
+     محليًا بلا أي قراءة إضافية من Firestore. */
+  statsMount.querySelectorAll('[data-stats-toggle]').forEach(head=>{
+    head.addEventListener('click', async ()=>{
+      const card = head.closest('.stat-card');
+      const body = card.querySelector('.stat-card-body');
+      const isOpen = body.style.display !== 'none';
+      if(isOpen){ body.style.display = 'none'; return; }
+      body.style.display = '';
+      if(card.dataset.loaded === '1') return; // مُحمَّل مسبقًا هذه الجلسة، لا داعي لإعادة القراءة
+      const lessonId = card.dataset.lessonId;
+      body.innerHTML = '<div class="sf-label" style="padding:10px 0;">جاري التحميل…</div>';
+      try{
+        const st = await Admin.lessonStats(lessonId, totalStudents);
+        const pctParticipation = totalStudents ? Math.round((st.participants/totalStudents)*100) : 0;
+        body.innerHTML = `
+          <div class="stat-row">
+            <div class="stat-box"><div class="sb-value">${st.participants}</div><div class="sb-label">مشارك من ${st.total}</div></div>
+            <div class="stat-box"><div class="sb-value">${pctParticipation}%</div><div class="sb-label">نسبة المشاركة</div></div>
+            <div class="stat-box"><div class="sb-value">${st.avg}%</div><div class="sb-label">متوسط التقدّم</div></div>
+          </div>
+          <div class="progress-track"><div class="progress-fill" style="width:${st.avg}%"></div></div>`;
+        card.dataset.loaded = '1';
+      }catch(e){
+        body.innerHTML = '<div class="sf-label" style="padding:10px 0;">تعذّر تحميل إحصائيات هذا الدرس.</div>';
+      }
+    });
+  });
 }
 
 /* =========================================================================================
