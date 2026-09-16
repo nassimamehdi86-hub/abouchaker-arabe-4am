@@ -21,8 +21,8 @@ const NotificationsSystem = {
 
   /* تحميل الإشعارات من Firebase أو LocalStorage */
   loadNotifications() {
-    if (fbReady && db) {
-      db.collection('notifications')
+    if (auxFbReady()) {
+      auxDb().collection('notifications')
         .orderBy('timestamp', 'desc')
         .limit(50)
         .onSnapshot(snapshot => {
@@ -53,12 +53,12 @@ const NotificationsSystem = {
 
   /* الاستماع للإشعارات الجديدة في الوقت الفعلي */
   listenForNewNotifications() {
-    if (!fbReady || !db) return;
+    if (!auxFbReady()) return;
     /* نتذكر أي إشعار عرضنا شريطه (Banner) بالفعل في هذه الجلسة كي لا يتكرر
        عند كل إعادة تحميل للصفحة أو إعادة اتصال باللحظي (onSnapshot) */
     if (!this._shownBannerIds) this._shownBannerIds = new Set();
 
-    db.collection('notifications')
+    auxDb().collection('notifications')
       .where('isNew', '==', true)
       .onSnapshot(snapshot => {
         snapshot.docChanges().forEach(change => {
@@ -68,7 +68,7 @@ const NotificationsSystem = {
             this.playNotificationSound();
             /* إطفاء العلم isNew حتى لا يُعاد عرض نفس الإشعار كشريط علوي لاحقًا
                (كل من فتح الصفحة الآن رأى الشريط، والقراءة الفعلية تُدار عبر read/unreadCount) */
-            db.collection('notifications').doc(change.doc.id).update({ isNew: false }).catch(() => {});
+            auxDb().collection('notifications').doc(change.doc.id).update({ isNew: false }).catch(() => {});
           }
         });
       }, error => {
@@ -151,13 +151,13 @@ const NotificationsSystem = {
 
   /* إرسال إشعار جديد (من الأستاذ) */
   async sendNotification(title, message, icon = '📢') {
-    if (!fbReady || !db) {
+    if (!auxFbReady()) {
       alert('لا يمكن إرسال الإشعار بدون اتصال Firebase');
       return false;
     }
 
     try {
-      await db.collection('notifications').add({
+      await auxDb().collection('notifications').add({
         title,
         message,
         icon,
@@ -211,9 +211,9 @@ const NotificationsSystem = {
     const notif = this.notifications.find(n => n.id === notifId);
     if (notif) notif.read = true;
 
-    if (fbReady && db) {
+    if (auxFbReady()) {
       try {
-        await db.collection('notifications').doc(notifId).update({ read: true });
+        await auxDb().collection('notifications').doc(notifId).update({ read: true });
       } catch (e) {
         console.error('خطأ في وضع علامة قراءة:', e);
       }
@@ -226,9 +226,9 @@ const NotificationsSystem = {
   async deleteNotification(notifId) {
     this.notifications = this.notifications.filter(n => n.id !== notifId);
 
-    if (fbReady && db) {
+    if (auxFbReady()) {
       try {
-        await db.collection('notifications').doc(notifId).delete();
+        await auxDb().collection('notifications').doc(notifId).delete();
       } catch (e) {
         console.error('خطأ في حذف الإشعار:', e);
       }

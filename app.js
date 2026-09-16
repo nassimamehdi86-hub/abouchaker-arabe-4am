@@ -12,6 +12,26 @@ try{
   }
 }catch(e){ console.warn('Firebase init failed', e); }
 
+/* ---------- مشروع Firebase ثانٍ منفصل (اختياري) للدردشة والإشعارات فقط ----------
+   الهدف: عزل قراءات هذين القسمين (اللذين يعملان عند كل تلميذ فور فتح الصفحة) عن باقي
+   المنصة (التسجيل، التمارين، المعدّلات) في مشروع Firebase مختلف بسقف يومي مستقل خاص به،
+   حتى لا يوقف أي منهما بقية المنصة عند استهلاك سقف القراءات المجاني.
+   إن لم تُضبط مفاتيح window.FIREBASE_CONFIG_SECONDARY بعد (في firebase-config.js)،
+   يرجع النظام تلقائيًا لاستعمال نفس قاعدة البيانات الرئيسية حتى لا يتعطّل شيء. */
+let fbApp2 = null, db2 = null, fbReady2 = false;
+try{
+  if(window.FIREBASE_CONFIG_SECONDARY && window.FIREBASE_CONFIG_SECONDARY.apiKey && window.FIREBASE_CONFIG_SECONDARY.apiKey.indexOf('ضع_') === -1){
+    fbApp2 = firebase.initializeApp(window.FIREBASE_CONFIG_SECONDARY, 'secondary');
+    db2 = fbApp2.firestore();
+    fbReady2 = true;
+  }
+}catch(e){ console.warn('Firebase (secondary) init failed', e); }
+
+/* قاعدة البيانات الفعلية المستعملة للدردشة والإشعارات: المشروع الثاني إن كان مضبوطًا،
+   وإلا نرجع مؤقتًا لنفس قاعدة البيانات الرئيسية (fallback آمن قبل إعداد المشروع الثاني). */
+function auxDb(){ return fbReady2 ? db2 : db; }
+function auxFbReady(){ return fbReady2 || fbReady; }
+
 function fbUnavailableNotice(){
   return `<div class="note" style="margin:14px 0">
     <b>تنبيه:</b> لم يتم بعد ربط هذه النسخة بمشروع Firebase حقيقي. عدّل ملف
@@ -3456,9 +3476,9 @@ const Chat = {
   _lastCount: 0,
 
   ensureListening(){
-    if(this._listening || !fbReady || !db) return;
+    if(this._listening || !auxFbReady()) return;
     this._listening = true;
-    db.collection('chatMessages').orderBy('createdAt','asc').limitToLast(200)
+    auxDb().collection('chatMessages').orderBy('createdAt','asc').limitToLast(200)
       .onSnapshot(snap=>{
         const msgs = snap.docs.map(d=>({ id:d.id, ...d.data() }));
         this._lastCount = msgs.length;
@@ -3566,7 +3586,7 @@ const Chat = {
       alert('يرجى تسجيل الدخول أولًا للمشاركة في الدردشة.');
       return;
     }
-    if(!fbReady || !db){
+    if(!auxFbReady()){
       alert('الدردشة تحتاج اتصالًا بقاعدة البيانات، تعذّر الإرسال حاليًا.');
       return;
     }
@@ -3577,7 +3597,7 @@ const Chat = {
       return;
     }
     try{
-      await db.collection('chatMessages').add({
+      await auxDb().collection('chatMessages').add({
         studentId: Student.id,
         studentName: Student.fullName,
         text,
@@ -3659,9 +3679,9 @@ const ChatAdmin = {
   _recordingFor: null,
 
   ensureListening(){
-    if(this._listening || !fbReady || !db) return;
+    if(this._listening || !auxFbReady()) return;
     this._listening = true;
-    db.collection('chatMessages').where('isQuestion','==',true).where('answered','==',false)
+    auxDb().collection('chatMessages').where('isQuestion','==',true).where('answered','==',false)
       .orderBy('createdAt','asc')
       .onSnapshot(snap=>{
         const list = snap.docs.map(d=>({ id:d.id, ...d.data() }));
@@ -3705,7 +3725,7 @@ const ChatAdmin = {
         if(!answerText){ alert('يرجى كتابة الجواب أولًا.'); return; }
         btn.disabled = true; btn.textContent = '⏳ جارٍ الإرسال...';
         try{
-          await db.collection('chatMessages').doc(id).update({
+          await auxDb().collection('chatMessages').doc(id).update({
             answered:true, answerText, answerAudioUrl:null,
             answeredAt: firebase.firestore.FieldValue.serverTimestamp()
           });
@@ -3742,7 +3762,7 @@ const ChatAdmin = {
       alert('المتصفح لا يدعم تسجيل الصوت هنا.');
       return;
     }
-    if(!fbReady || !db){
+    if(!auxFbReady()){
       alert('التسجيل الصوتي يحتاج اتصالًا بقاعدة البيانات، تعذّر المتابعة.');
       return;
     }
@@ -3766,7 +3786,7 @@ const ChatAdmin = {
             return;
           }
           try{
-            await db.collection('chatMessages').doc(qid).update({
+            await auxDb().collection('chatMessages').doc(qid).update({
               answered:true, answerAudioUrl:dataUrl, answerText:null,
               answeredAt: firebase.firestore.FieldValue.serverTimestamp()
             });
