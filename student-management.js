@@ -8,9 +8,6 @@
 const StudentManagement = {
   selectedStudents: new Set(),
   allStudents: [],
-  /* الفوج المعروض حاليًا في لوحة "إدارة التلاميذ" — افتراضيًا الفوج 1، أو 'all' لعرض كل
-     التلاميذ معًا (تكلفة قرائية أعلى بخمسة أضعاف تقريبًا مع خمسة أفواج). */
-  currentGroup: '1',
 
   /* ⚠️ عملية تُشغَّل يدويًا مرة واحدة فقط (وليست تلقائية) — لتعبئة معدّل التلاميذ الذين
      أنجزوا تمارين قبل اعتماد الحقلين التراكميين (completedExercisesCount و totalScoreSum).
@@ -52,28 +49,6 @@ const StudentManagement = {
     return { ok:true, studentsUpdated: ids.length };
   },
 
-  /* تعيين فوج للتلاميذ المحدَّدين دفعة واحدة — مخصّصة أساسًا للتلاميذ الذين سجّلوا قبل
-     إضافة خانة اختيار الفوج، والذين لا يحملون حقل group إطلاقًا (لا يظهرون إلا تحت تبويب "الكل"). */
-  async assignGroupToSelected(group){
-    if (!fbReady || !db) return false;
-    const ids = Array.from(this.selectedStudents);
-    if (!ids.length) return false;
-    try {
-      const chunkSize = 400; /* أقل من حد 500 عملية لكل batch في Firestore */
-      for (let i = 0; i < ids.length; i += chunkSize) {
-        const batch = db.batch();
-        ids.slice(i, i + chunkSize).forEach(id => {
-          batch.update(db.collection('students').doc(id), { group: String(group) });
-        });
-        await batch.commit();
-      }
-      return true;
-    } catch (e) {
-      console.error('خطأ في تعيين الفوج:', e);
-      return false;
-    }
-  },
-
   /* تحميل قائمة التلاميذ المقبولين */
   async loadStudents() {
     if (!fbReady || !db) {
@@ -82,11 +57,9 @@ const StudentManagement = {
     }
 
     try {
-      let query = db.collection('students').where('status', '==', 'approved');
-      if (this.currentGroup && this.currentGroup !== 'all') {
-        query = query.where('group', '==', this.currentGroup);
-      }
-      const snapshot = await query.get();
+      const snapshot = await db.collection('students')
+        .where('status', '==', 'approved')
+        .get();
       
       this.allStudents = [];
       snapshot.forEach(doc => {
