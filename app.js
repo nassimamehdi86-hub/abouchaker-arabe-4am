@@ -599,6 +599,51 @@ const Leaderboard = {
       return doc.exists ? doc.data() : null;
     }catch(e){ return null; }
   },
+  LESSON_CACHE_MAX_AGE_MS: 24 * 60 * 60 * 1000,
+
+  /* ---------- تخزين مؤقت لترتيب درس واحد (24 ساعة) ----------
+     نفس فكرة تخزين الترتيب العام: بدل قراءة نتائج كل تلميذ أنجز الدرس في كل مرة يفتح فيها أي
+     تلميذ ترتيب ذلك الدرس، نحسبه مرة واحدة كل 24 ساعة فقط (أول من يفتحه بعد انتهاء الصلاحية
+     يتحمّل القراءة الكاملة نيابة عن الجميع)، ونخزّن أفضل 3 + خريطة (معرّف التلميذ → مرتبته) في
+     مستند واحد صغير يقرأه الجميع بقراءة واحدة. مرتبة التلميذ نفسه تُستخرج من نفس الخريطة، ونتيجته
+     التفصيلية (النسبة/الوقت) تُجلب بقراءة واحدة خفيفة من submissions عبر mine() فقط إن احتاجها. */
+  async refreshLessonIfStale(lessonId){
+    if(!fbReady) return null;
+    const ref = db.collection('lessonLeaderboardCache').doc(lessonId);
+    let cache = null;
+    try{
+      const snap = await ref.get();
+      cache = snap.exists ? snap.data() : null;
+    }catch(e){ console.error('تعذّرت قراءة lessonLeaderboardCache:', e); }
+    const age = cache && cache.updatedAt && typeof cache.updatedAt.toMillis === 'function'
+      ? (Date.now() - cache.updatedAt.toMillis()) : Infinity;
+    if(cache && age < this.LESSON_CACHE_MAX_AGE_MS) return cache;
+
+    /* منتهي الصلاحية أو غائب: نعيد الحساب الكامل لهذا الدرس فقط (مرة كل 24 ساعة كحد أقصى) */
+    try{
+      const snap = await db.collection('submissions').doc(lessonId).collection('students').limit(3000).get();
+      const rows = [];
+      snap.forEach(d=>{
+        const data = d.data();
+        if(data.completed === false) return;
+        rows.push({ studentId:d.id, name:data.studentName, percent:data.percent, timeSeconds:data.timeSeconds, submittedAt:data.submittedAt });
+      });
+      rows.sort(this._rank);
+      const ranks = {};
+      rows.forEach((r,i)=>{ ranks[r.studentId] = i+1; });
+      const newCache = {
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        participantsCount: rows.length,
+        top3: rows.slice(0,3),
+        ranks
+      };
+      await ref.set(newCache);
+      return Object.assign({}, newCache, { updatedAt:{ toMillis:()=>Date.now() } });
+    }catch(e){
+      console.error('تعذّر إعادة حساب ترتيب الدرس:', e);
+      return cache; // نُبقي على القديم إن فشلت إعادة الحساب
+    }
+  },
   /* بدء محاولة التمرين: يُنشئ سجلًا فوريًا في قاعدة البيانات بمجرد الضغط على "ابدأ التمرين"،
      حتى لا يستطيع التلميذ إعادة المحاولة بمجرد تحديث الصفحة قبل إتمام كل التمارين. */
   async startAttempt(lessonId){
@@ -869,23 +914,16 @@ async function showLeaderboardPopup(lesson){
   overlay.appendChild(popup);
   document.body.appendChild(overlay);
   
-  /* جلب البيانات من Firebase */
+  /* جلب البيانات من الذاكرة المؤقتة (قراءة واحدة عادةً، أو إعادة حساب كاملة نادرًا لهذا الدرس فقط
+     — مرة كل 24 ساعة كحد أقصى، بدل قراءة كل نتائج الدرس في كل فتحة) */
   try{
-    const submissionsRef = db.collection('submissions').doc(lesson.id).collection('students');
-    const snap = await submissionsRef.get();
-    
-    if(snap.empty){
+    const cache = await Leaderboard.refreshLessonIfStale(lesson.id);
+    const top3 = (cache && cache.top3) || [];
+
+    if(!top3.length){
       listDiv.innerHTML = '<div class="leaderboard-empty">لا توجد نتائج بعد لهذا الدرس</div>';
       return;
     }
-    
-    const results = [];
-    snap.forEach(doc=>{
-      results.push({ ...doc.data(), studentId:doc.id });
-    });
-    
-    /* ترتيب حسب النسبة المئوية تنازليًا، وعند التعادل يُفصل بينهم بأقل وقت استغرقه إنجاز التمرين */
-    results.sort(Leaderboard._rank);
 
     /* بناء صفّ واحد في القائمة — يُستعمل لعرض الثلاثة الأوائل، ثم صفّ التلميذ الحالي بمرتبته
        الحقيقية إن لم يكن من ضمنهم، بدل عرض قائمة كاملة قد تضم مئات الأسماء */
@@ -905,7 +943,7 @@ async function showLeaderboardPopup(lesson){
 
       const name = document.createElement('div');
       name.className = 'leaderboard-name';
-      name.textContent = (res.studentId === Student.id) ? `${res.studentName || 'طالب غير معروف'} (أنت)` : (res.studentName || 'طالب غير معروف');
+      name.textContent = (res.studentId === Student.id) ? `${res.name || res.studentName || 'طالب غير معروف'} (أنت)` : (res.name || res.studentName || 'طالب غير معروف');
 
       const score = document.createElement('div');
       score.className = 'leaderboard-score';
@@ -931,16 +969,17 @@ async function showLeaderboardPopup(lesson){
     };
 
     listDiv.innerHTML = '';
-    const top3 = results.slice(0, 3);
     top3.forEach((res, idx)=> listDiv.appendChild(buildItem(res, idx+1)));
 
-    const myIdx = results.findIndex(r=> r.studentId === Student.id);
-    if(myIdx >= 3){
+    const myRank = cache.ranks ? cache.ranks[Student.id] : null;
+    if(myRank && myRank > 3){
+      /* قراءة خفيفة إضافية (مستند واحد فقط) لجلب تفاصيل نتيجة التلميذ نفسه */
+      const mine = await Leaderboard.mine(lesson.id);
       const sep = document.createElement('div');
       sep.style.cssText = 'margin:10px 0;border-top:1px dashed #ccc;';
       listDiv.appendChild(sep);
-      listDiv.appendChild(buildItem(results[myIdx], myIdx+1));
-    } else if(myIdx === -1 && Student.id){
+      listDiv.appendChild(buildItem(Object.assign({ studentId:Student.id, name:Student.fullName }, mine||{}), myRank));
+    } else if(!myRank && Student.id){
       const note = document.createElement('div');
       note.className = 'leaderboard-empty';
       note.style.padding = '10px 0';
@@ -3234,9 +3273,10 @@ function renderLeaderboardScreen(){
 
   loadMyOverallStats(); /* بطاقة نقاطك/ترتيبك/عدد التلاميذ — مجموع كل الدروس، لا درس بعينه */
 
-  /* 3) شبكة الدروس — لا تغيير في المنطق: كل بطاقة تفتح ترتيب تمارين درسها فقط */
+  /* 3) شبكة الدروس — تُعرض فقط الدروس المفتوحة حاليًا من طرف الأستاذ (وليس كل الدروس بغضّ النظر
+     عن حالة القفل)، حتى لا يرى التلميذ ترتيب درس لم يُفتح له بعد */
   const grid = document.getElementById('lbLessonGrid');
-  window.LESSONS.filter(l=>l.locked!=='pending').forEach(l=>{
+  window.LESSONS.filter(l=> l.locked!=='pending' && !Locks.isLessonLocked(l.id)).forEach(l=>{
     const card = document.createElement('div');
     card.className = 'lb-lesson-card';
     card.innerHTML = `
@@ -4790,6 +4830,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     if(document.getElementById('screen-situation').style.display !== 'none') renderSituationPracticeTabs();
     if(document.getElementById('screen-irab').style.display !== 'none') renderIrabScreen();
     if(document.getElementById('screen-exams').style.display !== 'none') renderExamsScreen();
+    if(document.getElementById('screen-leaderboard').style.display !== 'none') renderLeaderboardScreen();
     updateIrabHomeCardLock();
   });
   Locks.load().then(updateIrabHomeCardLock);
