@@ -886,26 +886,27 @@ async function showLeaderboardPopup(lesson){
     
     /* ترتيب حسب النسبة المئوية تنازليًا، وعند التعادل يُفصل بينهم بأقل وقت استغرقه إنجاز التمرين */
     results.sort(Leaderboard._rank);
-    
-    listDiv.innerHTML = '';
-    results.forEach((res, idx)=>{
+
+    /* بناء صفّ واحد في القائمة — يُستعمل لعرض الثلاثة الأوائل، ثم صفّ التلميذ الحالي بمرتبته
+       الحقيقية إن لم يكن من ضمنهم، بدل عرض قائمة كاملة قد تضم مئات الأسماء */
+    const buildItem = (res, rankNum)=>{
       const item = document.createElement('div');
       item.className = 'leaderboard-item';
-      
+
       const rank = document.createElement('div');
       rank.className = 'leaderboard-rank';
-      if(idx===0) rank.classList.add('first');
-      else if(idx===1) rank.classList.add('second');
-      else if(idx===2) rank.classList.add('third');
-      rank.textContent = (idx+1);
-      
+      if(rankNum===1) rank.classList.add('first');
+      else if(rankNum===2) rank.classList.add('second');
+      else if(rankNum===3) rank.classList.add('third');
+      rank.textContent = rankNum;
+
       const info = document.createElement('div');
       info.className = 'leaderboard-info';
-      
+
       const name = document.createElement('div');
       name.className = 'leaderboard-name';
-      name.textContent = res.studentName || 'طالب غير معروف';
-      
+      name.textContent = (res.studentId === Student.id) ? `${res.studentName || 'طالب غير معروف'} (أنت)` : (res.studentName || 'طالب غير معروف');
+
       const score = document.createElement('div');
       score.className = 'leaderboard-score';
       let dateLabel = 'غير محدد';
@@ -915,19 +916,37 @@ async function showLeaderboardPopup(lesson){
       }
       const timeLabel = (typeof res.timeSeconds === 'number') ? ` — ⏱ ${formatDurationAr(res.timeSeconds)}` : '';
       score.textContent = `تاريخ: ${dateLabel}${timeLabel}`;
-      
+
       info.appendChild(name);
       info.appendChild(score);
-      
+
       const percent = document.createElement('div');
       percent.className = 'leaderboard-percent';
       percent.textContent = `${res.percent || 0}%`;
-      
+
       item.appendChild(rank);
       item.appendChild(info);
       item.appendChild(percent);
-      listDiv.appendChild(item);
-    });
+      return item;
+    };
+
+    listDiv.innerHTML = '';
+    const top3 = results.slice(0, 3);
+    top3.forEach((res, idx)=> listDiv.appendChild(buildItem(res, idx+1)));
+
+    const myIdx = results.findIndex(r=> r.studentId === Student.id);
+    if(myIdx >= 3){
+      const sep = document.createElement('div');
+      sep.style.cssText = 'margin:10px 0;border-top:1px dashed #ccc;';
+      listDiv.appendChild(sep);
+      listDiv.appendChild(buildItem(results[myIdx], myIdx+1));
+    } else if(myIdx === -1 && Student.id){
+      const note = document.createElement('div');
+      note.className = 'leaderboard-empty';
+      note.style.padding = '10px 0';
+      note.textContent = 'لم تُنجز هذا التمرين بعد.';
+      listDiv.appendChild(note);
+    }
   }catch(e){
     console.error('Error loading leaderboard:', e);
     listDiv.innerHTML = '<div class="leaderboard-empty">خطأ في تحميل النتائج</div>';
@@ -1240,7 +1259,7 @@ function renderWelcome(){
 
 /* =========================================================================================
    شارات الإنجاز — مبنية على بيانات حقيقية (سلسلة الدخول من Firestore، بقية الشارات محليًا
-   على جهاز التلميذ من نتائج اختبار الفهم، ونجم الأسبوع من ترتيب تمارين الدرس الفعلي)
+   على جهاز التلميذ من نتائج اختبار الفهم)
    ========================================================================================= */
 function getAchievements(){
   if(!Student.id) return { passed:[], perfect:false };
@@ -1280,21 +1299,6 @@ async function renderBadges(){
   if(fastEl) fastEl.classList.toggle('active', a.passed.length >= 3);
   const perfectEl = document.getElementById('badge-perfect');
   if(perfectEl) perfectEl.classList.toggle('active', !!a.perfect);
-
-  /* نجم الأسبوع: تحقّق فعلي من التصدّر في ترتيب أي درس (يعتمد على وجود تمارين درس حقيقية) */
-  const starEl = document.getElementById('badge-star');
-  if(starEl && fbReady){
-    const openLessons = window.LESSONS.filter(l=>l.locked!=='pending');
-    for(const l of openLessons){
-      try{
-        const rows = await Leaderboard.forLesson(l.id);
-        if(rows.length && rows[0].name === Student.fullName){
-          starEl.classList.add('active');
-          break;
-        }
-      }catch(e){}
-    }
-  }
 }
 
 /* ---------- تصنيفات الدروس (كما تصنيف الفهرس) ---------- */
