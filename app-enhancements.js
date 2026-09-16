@@ -159,8 +159,16 @@ async function renderStudentManagementPanel() {
   const section = document.createElement('div');
   section.id = 'studentManagementSection';
 
+  const groupTabs = ['1','2','3','4','5','all'].map(g => {
+    const label = g === 'all' ? 'الكل' : `الفوج ${g}`;
+    const active = StudentManagement.currentGroup === g;
+    return `<button class="al-key group-tab-btn" data-group="${g}" style="flex:1;min-width:70px;${active ? 'background:#A97F2A;color:#fff' : ''}">${label}</button>`;
+  }).join('');
+
   const studentManageBody = `
     <div class="student-management-panel">
+      <div class="group-tabs" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">${groupTabs}</div>
+
       <div class="search-bar">
         <input type="text" id="studentSearchManage" placeholder="🔎 ابحث عن تلميذ..." 
           style="width:100%;padding:10px 14px;border-radius:11px;border:1.4px solid #A97F2A;font-family:'Cairo';font-size:13px;margin-bottom:12px;background:#FFFDF7;color:#22352B">
@@ -172,6 +180,17 @@ async function renderStudentManagementPanel() {
         <button id="deleteSelectedBtn" class="al-key" style="flex:1;min-width:140px;background:#c84;color:#fff">🗑️ حذف المحددين</button>
         <button id="exportStudentsBtn" class="al-key" style="flex:1;min-width:140px">📥 تصدير CSV</button>
         <button id="backfillAveragesBtn" class="al-key" style="flex:1;min-width:220px">🔄 تحديث معدّلات التلاميذ القدامى (مرة واحدة)</button>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+        <select id="assignGroupSelect" style="padding:8px 10px;border-radius:11px;border:1.4px solid #A97F2A;font-family:'Cairo';font-size:13px;background:#FFFDF7;color:#22352B">
+          <option value="1">الفوج 1</option>
+          <option value="2">الفوج 2</option>
+          <option value="3">الفوج 3</option>
+          <option value="4">الفوج 4</option>
+          <option value="5">الفوج 5</option>
+        </select>
+        <button id="assignGroupBtn" class="al-key" style="flex:1;min-width:160px">🏷️ تعيين هذا الفوج للمحددين</button>
       </div>
 
       <div id="selectedCountDisplay" style="font-size:12px;font-weight:700;color:#A97F2A;margin-bottom:10px">المحددون: 0</div>
@@ -195,6 +214,14 @@ async function renderStudentManagementPanel() {
   wrap.appendChild(section);
   wireAdminAccordions(section);
 
+  /* أزرار التبديل بين الأفواج — كل ضغطة تعيد تحميل اللوحة بفوج مختلف فقط */
+  section.querySelectorAll('.group-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      StudentManagement.currentGroup = btn.getAttribute('data-group');
+      renderStudentManagementPanel();
+    });
+  });
+
   /* تحميل التلاميذ والتعامل مع البحث */
   const students = await StudentManagement.loadStudents();
   const searchInput = document.getElementById('studentSearchManage');
@@ -210,7 +237,7 @@ async function renderStudentManagementPanel() {
         </div>
         <div class="lr-text">
           <div class="lr-title">${student.fullName}</div>
-          <div style="font-size:11px;color:#5B6E62">${student.status === 'approved' ? '✅ مقبول' : '⏳ في الانتظار'}</div>
+          <div style="font-size:11px;color:#5B6E62">${student.status === 'approved' ? '✅ مقبول' : '⏳ في الانتظار'} — ${student.group ? 'الفوج ' + student.group : '⚠️ بلا فوج'}</div>
         </div>
         <button class="al-key" style="width:auto;padding:6px 14px" data-delete-student="${student.id}">🗑️ حذف</button>
       </div>
@@ -294,6 +321,21 @@ async function renderStudentManagementPanel() {
   /* تصدير CSV */
   document.getElementById('exportStudentsBtn').addEventListener('click', () => {
     StudentManagement.exportToCSV();
+  });
+
+  /* تعيين فوج للتلاميذ المحدَّدين دفعة واحدة (أساسًا للتلاميذ القدامى بلا فوج) */
+  document.getElementById('assignGroupBtn').addEventListener('click', async () => {
+    const count = StudentManagement.getSelectedCount();
+    if (count === 0) { alert('لم تحدد أي تلاميذ'); return; }
+    const group = document.getElementById('assignGroupSelect').value;
+    if (!confirm(`هل تريد تعيين الفوج ${group} لعدد ${count} تلميذ(ة) محدَّد(ين)؟`)) return;
+    const ok = await StudentManagement.assignGroupToSelected(group);
+    if (ok) {
+      alert(`تم تعيين الفوج ${group} لـ${count} تلميذ(ة) بنجاح.`);
+      renderStudentManagementPanel();
+    } else {
+      alert('تعذّر تعيين الفوج. تحقق من اتصال الإنترنت وحاول مجددًا.');
+    }
   });
 
   /* تحديث معدّلات التلاميذ القدامى — عملية تُشغَّل يدويًا مرة واحدة فقط */

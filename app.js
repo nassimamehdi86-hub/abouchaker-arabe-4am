@@ -81,7 +81,7 @@ function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){
    حالة الطالب الحالية (Student State)
    ========================================================================================= */
 const Student = {
-  id:null, fullName:null, status:null, sessionId:null, unsubscribe:null, streak:0,
+  id:null, fullName:null, status:null, sessionId:null, unsubscribe:null, streak:0, group:null,
   lastQuestionAt:null, QUESTION_COOLDOWN_MS: 7*24*60*60*1000, /* سؤال واحد للأستاذ كل أسبوع */
 
   /* هل يحق للتلميذ طرح سؤال جديد للأستاذ الآن (لم يمرّ أسبوع كامل بعد آخر سؤال)؟ */
@@ -173,6 +173,7 @@ const Student = {
     const data = docSnap.data();
     this.id = docSnap.id; this.fullName = data.fullName; this.phone = data.phone; this.status = data.status;
     this.lastQuestionAt = data.lastQuestionAt || null;
+    this.group = data.group || null;
 
     if(data.status === 'pending')  return { ok:true, status:'pending', fullName:this.fullName };
     if(data.status === 'rejected') return { ok:true, status:'rejected', fullName:this.fullName };
@@ -191,12 +192,13 @@ const Student = {
   /* إنشاء حساب جديد فقط — إن كان رقم الهاتف مسجَّلًا من قبل بحالة "مقبول" أو "قيد الانتظار"،
      لا يُنشأ طلب مكرَّر، بل تُعاد status:'already_exists'.
      أما إن كان مرفوضًا سابقًا، فيُسمح للتلميذ بإعادة التسجيل: نُحدِّث نفس السجل ونعيده إلى "قيد الانتظار". */
-  async register(fullName, phone, receiptDataUrl){
+  async register(fullName, phone, receiptDataUrl, group){
     if(!fbReady) return { ok:false, reason:'no-firebase' };
     const key = this.normalizedKey(fullName);
     const phoneKey = this.normalizedPhone(phone);
     if(!key) return { ok:false, reason:'empty-name' };
     if(!phoneKey) return { ok:false, reason:'empty-phone' };
+    const groupValue = group ? String(group) : null;
 
     const col = db.collection('students');
     const existing = await col.where('phoneKey','==', phoneKey).limit(1).get();
@@ -217,11 +219,12 @@ const Student = {
 
       /* كان مرفوضًا سابقًا: نسمح له بإعادة إرسال طلب جديد على نفس السجل */
       await docSnap.ref.update({
-        fullName: fullName.trim(), nameKey:key, status:initialStatus,
+        fullName: fullName.trim(), nameKey:key, status:initialStatus, group:groupValue,
         receiptImage: receiptDataUrl || null,
         resubmittedAt: firebase.firestore.FieldValue.serverTimestamp(), currentSession:null
       });
       this.id = docSnap.id; this.fullName = fullName.trim(); this.phone = phone.trim(); this.status = initialStatus;
+      this.group = groupValue;
       lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_phone', this.phone);
       if(initialStatus === 'approved') await this.startApprovedSession();
       return { ok:true, status:initialStatus, fullName:this.fullName };
@@ -230,11 +233,12 @@ const Student = {
     /* لا يوجد سجل سابق برقم الهاتف هذا: إنشاء حساب جديد — مقبول فورًا إن كان موثّقًا عبر
        تيليجرام، أو بحالة الانتظار كالمعتاد إن لم يكن كذلك */
     const newDoc = await col.add({
-      fullName: fullName.trim(), nameKey:key, phone: phone.trim(), phoneKey, status:initialStatus,
+      fullName: fullName.trim(), nameKey:key, phone: phone.trim(), phoneKey, status:initialStatus, group:groupValue,
       receiptImage: receiptDataUrl || null, /* صورة وصل اختيارية */
       createdAt: firebase.firestore.FieldValue.serverTimestamp(), currentSession:null
     });
     this.id = newDoc.id; this.fullName = fullName.trim(); this.phone = phone.trim(); this.status = initialStatus;
+    this.group = groupValue;
     lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_phone', this.phone);
     if(initialStatus === 'approved') await this.startApprovedSession();
     return { ok:true, status:initialStatus, fullName:this.fullName };
@@ -252,6 +256,7 @@ const Student = {
       if(data.status !== 'approved' || data.currentSession !== session) return false;
       this.id = id; this.fullName = data.fullName; this.status = 'approved'; this.sessionId = session;
       this.lastQuestionAt = data.lastQuestionAt || null;
+      this.group = data.group || null;
       this.watchSession();
       await this.updateStreak();
       return true;
@@ -571,11 +576,14 @@ const Leaderboard = {
     const tb = (typeof b.timeSeconds === 'number') ? b.timeSeconds : Infinity;
     return ta - tb;
   },
-  async forLesson(lessonId){
+  async forLesson(lessonId, group){
     if(!fbReady) return [];
     /* الجلب بلا ترتيب من الخادم (تفاديًا لفهرس مركّب في Firestore)، ثم الترتيب محليًا حسب
-       النسبة المئوية فأقل وقت عند التعادل. تُستبعد المحاولات غير المكتملة (completed:false) من الترتيب. */
-    const snap = await db.collection('submissions').doc(lessonId).collection('students').limit(3000).get();
+       النسبة المئوية فأقل وقت عند التعادل. تُستبعد المحاولات غير المكتملة (completed:false) من الترتيب.
+       تصفية حسب الفوج (إن كان معلومًا) تُخفّض حجم القراءة إلى تلاميذ نفس الفوج فقط بدل كل التلاميذ. */
+    let query = db.collection('submissions').doc(lessonId).collection('students');
+    if(group){ query = query.where('group','==', String(group)); }
+    const snap = await query.limit(3000).get();
     const rows = snap.docs.filter(d=> d.data().completed !== false)
       .map(d=>({ name:d.data().studentName, percent:d.data().percent, timeSeconds:d.data().timeSeconds }));
     rows.sort(Leaderboard._rank);
@@ -623,7 +631,7 @@ const Leaderboard = {
     try{
       const existing = await ref.get();
       if(existing.exists && existing.data().completed !== false) return { ok:false, reason:'already-submitted' }; // محاولة واحدة فقط
-      const payload = { studentName: Student.fullName, percent, completed:true, submittedAt: firebase.firestore.FieldValue.serverTimestamp() };
+      const payload = { studentName: Student.fullName, percent, completed:true, group: Student.group || null, submittedAt: firebase.firestore.FieldValue.serverTimestamp() };
       if(typeof timeSeconds === 'number' && isFinite(timeSeconds) && timeSeconds >= 0) payload.timeSeconds = timeSeconds;
       await ref.set(payload, { merge:true });
       /* تحديث تراكمي فوري (بزيادة ذرّية، بلا قراءة إضافية) لمجموع النقاط وعدد التمارين المنجزة
@@ -782,8 +790,11 @@ async function showLeaderboardPopup(lesson){
   
   /* جلب البيانات من Firebase */
   try{
-    const submissionsRef = db.collection('submissions').doc(lesson.id).collection('students');
-    const snap = await submissionsRef.get();
+    let submissionsRef = db.collection('submissions').doc(lesson.id).collection('students');
+    /* تصفية حسب فوج التلميذ الحالي (إن كان معلومًا) — تُخفّض القراءة إلى تلاميذ فوجه فقط
+       بدل كل تلاميذ المنصة، وتُبقي حدًّا أقصى احترازيًا (limit) حتى لا تُقرأ الأعداد الكبيرة كاملة. */
+    if(Student.group){ submissionsRef = submissionsRef.where('group','==', String(Student.group)); }
+    const snap = await submissionsRef.limit(3000).get();
     
     if(snap.empty){
       listDiv.innerHTML = '<div class="leaderboard-empty">لا توجد نتائج بعد لهذا الدرس</div>';
@@ -1198,7 +1209,7 @@ async function renderBadges(){
     const openLessons = window.LESSONS.filter(l=>l.locked!=='pending');
     for(const l of openLessons){
       try{
-        const rows = await Leaderboard.forLesson(l.id);
+        const rows = await Leaderboard.forLesson(l.id, Student.group);
         if(rows.length && rows[0].name === Student.fullName){
           starEl.classList.add('active');
           break;
@@ -4518,6 +4529,8 @@ function setupLoginModal(){
   const phoneInput      = document.getElementById('loginPhoneInput');
   const firstNameInput  = document.getElementById('loginFirstNameInput');
   const lastNameInput   = document.getElementById('loginLastNameInput');
+  const groupWrap       = document.getElementById('loginGroupWrap');
+  const groupInput      = document.getElementById('loginGroupInput');
   const recalledBox     = document.getElementById('loginRecalledBox');
   const recalledName    = document.getElementById('loginRecalledName');
   const submitBtn       = document.getElementById('loginSubmitBtn');
@@ -4561,12 +4574,14 @@ function setupLoginModal(){
     msgBox.textContent = '';
     if(mode === 'signup'){
       formTitle.textContent = 'إنشاء حساب جديد';
-      formSub.textContent = 'أدخل رقم هاتفك واسمك ولقبك لإرسال طلب تسجيل';
+      formSub.textContent = 'أدخل رقم هاتفك واسمك ولقبك واختر فوجك لإرسال طلب تسجيل';
       clearFormFields();
+      groupWrap.style.display = 'block'; /* الفوج يُختار فقط عند إنشاء حساب جديد */
     } else {
       formTitle.textContent = 'تسجيل الدخول';
       formSub.textContent = 'أدخل رقم هاتفك واسمك ولقبك، أو تحقق من معلوماتك المسترجَعة أدناه';
       fillFromLocalMemory();
+      groupWrap.style.display = 'none'; /* فوج التلميذ الحالي محفوظ أصلًا في حسابه */
     }
   }
 
@@ -4598,7 +4613,7 @@ function setupLoginModal(){
     /* الوضعان منفصلان تمامًا: تسجيل الدخول لا يُنشئ أي طلب أبدًا،
        وإنشاء حساب جديد لا يُنشئ طلبًا مكرَّرًا لرقم هاتف مسجَّل من قبل */
     const res = (currentMode === 'signup')
-      ? await Student.register(name, phone, null)
+      ? await Student.register(name, phone, null, groupInput.value)
       : await Student.login(name, phone);
 
     submitBtn.disabled = false; submitBtn.textContent = 'دخول';
