@@ -599,9 +599,9 @@ const Leaderboard = {
       return doc.exists ? doc.data() : null;
     }catch(e){ return null; }
   },
-  LESSON_CACHE_MAX_AGE_MS: 24 * 60 * 60 * 1000,
+  LESSON_CACHE_MAX_AGE_MS: 60 * 60 * 1000,
 
-  /* ---------- تخزين مؤقت لترتيب درس واحد (24 ساعة) ----------
+  /* ---------- تخزين مؤقت لترتيب درس واحد (ساعة واحدة) ----------
      نفس فكرة تخزين الترتيب العام: بدل قراءة نتائج كل تلميذ أنجز الدرس في كل مرة يفتح فيها أي
      تلميذ ترتيب ذلك الدرس، نحسبه مرة واحدة كل 24 ساعة فقط (أول من يفتحه بعد انتهاء الصلاحية
      يتحمّل القراءة الكاملة نيابة عن الجميع)، ونخزّن أفضل 3 + خريطة (معرّف التلميذ → مرتبته) في
@@ -634,7 +634,7 @@ const Leaderboard = {
       const newCache = {
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         participantsCount: rows.length,
-        top3: rows.slice(0,3),
+        top10: rows.slice(0,10),
         ranks
       };
       await ref.set(newCache);
@@ -787,12 +787,12 @@ const Leaderboard = {
      المشكلة: فتح صفحة الترتيب كان يقرأ كل مستندات التلاميذ 3 مرات (overallLessons + overallExams +
      listApprovedFull) في كل مرة يفتحها أي تلميذ — بعدد كبير من التلاميذ هذا يستنزف حصة القراءات
      المجانية اليومية من Firestore خلال دقائق.
-     الحل: نحسب الترتيب الكامل مرة واحدة كل 24 ساعة فقط (أول من يفتح الصفحة بعد انتهاء الصلاحية
+     الحل: نحسب الترتيب الكامل مرة واحدة كل ساعة فقط (أول من يفتح الصفحة بعد انتهاء الصلاحية
      يتحمّل هذه القراءة الكاملة نيابة عن الجميع)، ونخزّن أفضل 10 في مستند واحد صغير (state/
      leaderboardCache) يقرأه الجميع بقراءة واحدة فقط. أما "مرتبة التلميذ نفسه"، فتُكتب داخل مستنده
      الشخصي (lessonsRank/examsRank/combinedRank...) الذي يراقبه أصلاً باستمرار عبر watchSession —
      فتصل إليه بلا أي قراءة إضافية إطلاقًا. */
-  CACHE_MAX_AGE_MS: 24 * 60 * 60 * 1000,
+  CACHE_MAX_AGE_MS: 60 * 60 * 1000,
 
   async getCache(){
     if(!fbReady) return null;
@@ -918,14 +918,14 @@ async function showLeaderboardPopup(lesson){
      — مرة كل 24 ساعة كحد أقصى، بدل قراءة كل نتائج الدرس في كل فتحة) */
   try{
     const cache = await Leaderboard.refreshLessonIfStale(lesson.id);
-    const top3 = (cache && cache.top3) || [];
+    const top10 = (cache && cache.top10) || [];
 
-    if(!top3.length){
+    if(!top10.length){
       listDiv.innerHTML = '<div class="leaderboard-empty">لا توجد نتائج بعد لهذا الدرس</div>';
       return;
     }
 
-    /* بناء صفّ واحد في القائمة — يُستعمل لعرض الثلاثة الأوائل، ثم صفّ التلميذ الحالي بمرتبته
+    /* بناء صفّ واحد في القائمة — يُستعمل لعرض العشرة الأوائل، ثم صفّ التلميذ الحالي بمرتبته
        الحقيقية إن لم يكن من ضمنهم، بدل عرض قائمة كاملة قد تضم مئات الأسماء */
     const buildItem = (res, rankNum)=>{
       const item = document.createElement('div');
@@ -969,10 +969,10 @@ async function showLeaderboardPopup(lesson){
     };
 
     listDiv.innerHTML = '';
-    top3.forEach((res, idx)=> listDiv.appendChild(buildItem(res, idx+1)));
+    top10.forEach((res, idx)=> listDiv.appendChild(buildItem(res, idx+1)));
 
     const myRank = cache.ranks ? cache.ranks[Student.id] : null;
-    if(myRank && myRank > 3){
+    if(myRank && myRank > 10){
       /* قراءة خفيفة إضافية (مستند واحد فقط) لجلب تفاصيل نتيجة التلميذ نفسه */
       const mine = await Leaderboard.mine(lesson.id);
       const sep = document.createElement('div');
