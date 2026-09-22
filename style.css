@@ -2431,3 +2431,5 @@
 }
 .chat-q-actions{ display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
 .chat-q-actions button.recording{ background:#B8382C !important; color:#fff !important; }
+.chat-q-actions .chat-q-delete{ color:#B8382C !important; border-color:rgba(184,56,44,0.4) !important; }
+.chat-q-actions .chat-q-delete:hover{ background:rgba(184,56,44,0.08) !important; }

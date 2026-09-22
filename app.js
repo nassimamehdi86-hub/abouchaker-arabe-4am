@@ -3904,6 +3904,7 @@ const ChatAdmin = {
         <div class="chat-q-actions">
           <button type="button" class="al-key" style="width:auto;padding:7px 16px" data-send-text="${q.id}">📝 إرسال جواب مكتوب</button>
           <button type="button" class="al-key" style="width:auto;padding:7px 16px" data-record="${q.id}">🎙️ تسجيل رد صوتي</button>
+          <button type="button" class="al-key chat-q-delete" style="width:auto;padding:7px 16px" data-delete-q="${q.id}">🗑️ حذف السؤال</button>
           <span class="chat-pending-note" data-rec-status="${q.id}"></span>
         </div>
       </div>`).join('');
@@ -3934,6 +3935,27 @@ const ChatAdmin = {
     el.querySelectorAll('[data-record]').forEach(btn=>{
       btn.addEventListener('click', ()=> this.toggleRecording(btn, btn.getAttribute('data-record')));
     });
+
+    el.querySelectorAll('[data-delete-q]').forEach(btn=>{
+      btn.addEventListener('click', ()=> this.deleteQuestion(btn, btn.getAttribute('data-delete-q')));
+    });
+  },
+
+  /* حذف السؤال نهائيًا من غير أي رد — يُزال المستند من Firestore بالكامل،
+     فيختفي فورًا من لوحة الأستاذ ومن دردشة التلميذ في آنٍ واحد (onSnapshot)
+     دون أن يظهر للتلميذ أي أثر له (لا سؤال، ولا "بانتظار الرد"، ولا أي إشعار) */
+  async deleteQuestion(btn, qid){
+    if(!confirm('هل تريد حذف هذا السؤال نهائيًا دون الرد عليه؟ لن يظهر أي شيء للتلميذ.')) return;
+    const card = btn.closest('.chat-q-card');
+    btn.disabled = true; btn.textContent = '⏳ جارٍ الحذف...';
+    try{
+      await auxDb().collection('chatMessages').doc(qid).delete();
+      if(card) card.remove();
+    }catch(error){
+      console.error('فشل حذف السؤال:', error);
+      alert('تعذّر حذف السؤال. تحقق من قواعد Firestore.');
+      btn.disabled = false; btn.textContent = '🗑️ حذف السؤال';
+    }
   },
 
   /* أقصى مدة تسجيل مسموحة (بالمللي ثانية) — لضمان بقاء الملف (بعد تحويله Base64) ضمن حد حجم مستند Firestore (1MB) */
