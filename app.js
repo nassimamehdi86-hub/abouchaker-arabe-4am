@@ -3320,9 +3320,12 @@ function renderLeaderboardScreen(){
   loadMyOverallStats(); /* بطاقة نقاطك/ترتيبك/عدد التلاميذ — مجموع كل الدروس، لا درس بعينه */
 
   /* 3) شبكة الدروس — تُعرض فقط الدروس المفتوحة حاليًا من طرف الأستاذ (وليس كل الدروس بغضّ النظر
-     عن حالة القفل)، حتى لا يرى التلميذ ترتيب درس لم يُفتح له بعد */
+     عن حالة القفل)، حتى لا يرى التلميذ ترتيب درس لم يُفتح له بعد.
+     تُستبعد أيضًا سلسلة "المكتسبات القبلية" (category:'muktasabat') ودروس zoomOnly، لأنها بلا
+     تمارين حقيقية أصلاً (نفس الاستثناء المطبَّق في openLessonDetail على بطاقة "ترتيب تلاميذ هذا
+     الدرس")، فلا داعي لظهورها هنا في قائمة اختيار الدروس */
   const grid = document.getElementById('lbLessonGrid');
-  window.LESSONS.filter(l=> l.locked!=='pending' && !Locks.isLessonLocked(l.id)).forEach(l=>{
+  window.LESSONS.filter(l=> l.locked!=='pending' && !Locks.isLessonLocked(l.id) && l.category!=='muktasabat' && !l.zoomOnly).forEach(l=>{
     const card = document.createElement('div');
     card.className = 'lb-lesson-card';
     card.innerHTML = `
