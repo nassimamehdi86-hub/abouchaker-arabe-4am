@@ -532,6 +532,16 @@ const Admin = {
     const snap = await db.collection('students').where('status','==','pending').get();
     return snap.docs.map(d=>({ id:d.id, ...d.data() }));
   },
+  /* استماع لحظي لطلبات التسجيل الجديدة (قيد الانتظار) — أي طلب جديد ينعكس فورًا في لوحة
+     التحكم إن كانت مفتوحة حاليًا، دون الحاجة لإعادة تحميل الصفحة يدويًا */
+  listenPending(onChange){
+    if(!fbReady) return;
+    db.collection('students').where('status','==','pending').onSnapshot(()=>{
+      if(onChange) onChange();
+    }, error=>{
+      console.error('تعذّر الاستماع لطلبات الانتظار — تحقق من قواعد Firestore:', error);
+    });
+  },
   /* حذف صورة الوصل تلقائيًا من الوثيقة فور اتخاذ القرار — لا نُبقي أي صورة مخزَّنة بعد المعالجة */
   async approve(id){ if(fbReady) await db.collection('students').doc(id).update({status:'approved', receiptImage: firebase.firestore.FieldValue.delete()}); },
   async reject(id){ if(fbReady) await db.collection('students').doc(id).update({status:'rejected', receiptImage: firebase.firestore.FieldValue.delete()}); },
@@ -4870,6 +4880,13 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     updateIrabHomeCardLock();
   });
   Locks.load().then(updateIrabHomeCardLock);
+
+  /* طلبات التسجيل قيد الانتظار: استماع لحظي — أي طلب تسجيل جديد يصل يُحدِّث العدّاد وقائمة
+     "طلبات الانتظار" فورًا في لوحة تحكم الأستاذ إن كانت مفتوحة حاليًا، بلا حاجة لإعادة تحميل
+     الصفحة يدويًا */
+  Admin.listenPending(()=>{
+    if(Admin.authed && document.getElementById('screen-admin').style.display !== 'none') renderAdminPanel();
+  });
 
   /* روابط حصص الزوم: تحميل أولي، ثم استماع لحظي — أي تحديث من الأستاذ ينعكس فورًا في صفحة
      الدرس المفتوحة حاليًا عند التلميذ دون الحاجة لإعادة تحميل الصفحة */
