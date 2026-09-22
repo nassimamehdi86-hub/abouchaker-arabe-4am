@@ -569,14 +569,24 @@ const Admin = {
     return snap.docs.map(d=>({ id:d.id, ...d.data() }));
   },
   /* استماع لحظي لطلبات التسجيل الجديدة (قيد الانتظار) — أي طلب جديد ينعكس فورًا في لوحة
-     التحكم إن كانت مفتوحة حاليًا، دون الحاجة لإعادة تحميل الصفحة يدويًا */
+     التحكم إن كانت مفتوحة حاليًا، دون الحاجة لإعادة تحميل الصفحة يدويًا.
+     ⚠️ يجب تفعيله فقط بعد تسجيل دخول الأستاذ (وليس عند فتح الموقع لأي زائر)، لأن onSnapshot
+     يُحتسب قراءة لكل تلميذ في نتيجة الاستعلام، لكل عميل مشترك، عند كل تغيير — فلو اشترك كل
+     تلميذ زائر للموقع في هذا الاستماع (كما كان يحدث سابقًا)، كل طلب تسجيل جديد يصل يُضاعِف
+     عدد القراءات بعدد كل التلاميذ المتصلين في تلك اللحظة. هذا كان على الأرجح السبب الرئيسي
+     لاستنفاد حصة القراءات. */
+  _pendingUnsub: null,
   listenPending(onChange){
     if(!fbReady) return;
-    db.collection('students').where('status','==','pending').onSnapshot(()=>{
+    if(this._pendingUnsub) return; /* مُفعَّل مسبقًا، لا داعي للاشتراك مرتين */
+    this._pendingUnsub = db.collection('students').where('status','==','pending').onSnapshot(()=>{
       if(onChange) onChange();
     }, error=>{
       console.error('تعذّر الاستماع لطلبات الانتظار — تحقق من قواعد Firestore:', error);
     });
+  },
+  stopListenPending(){
+    if(this._pendingUnsub){ this._pendingUnsub(); this._pendingUnsub = null; }
   },
   /* حذف صورة الوصل تلقائيًا من الوثيقة فور اتخاذ القرار — لا نُبقي أي صورة مخزَّنة بعد المعالجة */
   async approve(id){ if(fbReady) await db.collection('students').doc(id).update({status:'approved', receiptImage: firebase.firestore.FieldValue.delete()}); },
@@ -593,43 +603,61 @@ const Admin = {
     }catch(e){ return { participants:0, total:totalStudents||0, avg:0 }; }
   },
 
-  async allStudentsCount(){
-    if(!fbReady) return 0;
+  /* ====== ذاكرة تخزين مؤقت (Cache) موحّدة لقائمة التلاميذ المقبولين ======
+     المشكلة التي كانت تستنزف حصة القراءات: 4 دوال منفصلة (allStudentsCount،
+     studentsCounts، listApproved، listApprovedFull) كل واحدة تعيد قراءة كامل
+     مجموعة "students" بحالة approved من جديد — وأخطر من ذلك، renderAdminPanel()
+     يستدعي studentsCounts() في كل مرة يفتح فيها الأستاذ اللوحة، وأيضًا تلقائيًا
+     عبر Admin.listenPending() في كل مرة يصل فيها طلب تسجيل جديد (onSnapshot).
+     مع كثرة الطلبات، هذا يعني إعادة قراءة كل تلميذ مقبول (قد يكونوا المئات) في
+     كل مرة يصل فيها طلب واحد فقط — وهذا على الأرجح السبب الرئيسي لاستنفاد الحصة.
+     الحل: قراءة واحدة تُخزَّن لمدة APPROVED_CACHE_MS ثم تُعاد استعمالها من طرف
+     الدوال الأربع، بدل قراءة منفصلة لكل واحدة وفي كل استدعاء. */
+  APPROVED_CACHE_MS: 60*1000,
+  _approvedCache: null,
+  _approvedCacheAt: 0,
+  async _getApprovedDocs(forceRefresh){
+    if(!fbReady) return [];
+    const fresh = this._approvedCache && (Date.now() - this._approvedCacheAt) < this.APPROVED_CACHE_MS;
+    if(fresh && !forceRefresh) return this._approvedCache;
     const snap = await db.collection('students').where('status','==','approved').get();
-    return snap.size;
+    this._approvedCache = snap.docs;
+    this._approvedCacheAt = Date.now();
+    return this._approvedCache;
   },
 
-  /* عدد التلاميذ المتصلين الآن (lastSeen خلال آخر ONLINE_WINDOW_MS) — تُستعمل نفس قراءة
-     allStudentsCount أعلاه بدل قراءة منفصلة، وتُستدعى فقط من صفحة الأستاذ (وليس عند كل
-     تلميذ)، فلا تكرار للمشكل القديم في استهلاك حصة القراءات المجانية في Firestore. */
+  async allStudentsCount(){
+    const docs = await this._getApprovedDocs();
+    return docs.length;
+  },
+
+  /* عدد التلاميذ المتصلين الآن (lastSeen خلال آخر ONLINE_WINDOW_MS) — تستعمل نفس
+     الكاش الموحَّد أعلاه بدل قراءة منفصلة. */
   ONLINE_WINDOW_MS: 6*60*1000,
   async studentsCounts(){
-    if(!fbReady) return { total:0, online:0 };
-    const snap = await db.collection('students').where('status','==','approved').get();
+    const docs = await this._getApprovedDocs();
     const now = Date.now();
     let online = 0;
-    snap.forEach(d=>{
+    docs.forEach(d=>{
       const ls = d.data().lastSeen;
       const ms = ls && typeof ls.toMillis === 'function' ? ls.toMillis() : null;
       if(ms && (now - ms) <= this.ONLINE_WINDOW_MS) online++;
     });
-    return { total: snap.size, online };
+    return { total: docs.length, online };
   },
 
   /* قائمة أسماء كل التلاميذ المقبولين، مرتبة أبجديًا */
   async listApproved(){
-    if(!fbReady) return [];
-    const snap = await db.collection('students').where('status','==','approved').get();
-    const names = snap.docs.map(d=>d.data().fullName);
+    const docs = await this._getApprovedDocs();
+    const names = docs.map(d=>d.data().fullName);
     names.sort((a,b)=> a.localeCompare(b, 'ar'));
     return names;
   },
 
   /* قائمة كاملة (المعرّف + الاسم) لكل التلاميذ المقبولين، مرتبة أبجديًا */
   async listApprovedFull(){
-    if(!fbReady) return [];
-    const snap = await db.collection('students').where('status','==','approved').get();
-    const list = snap.docs.map(d=>({
+    const docs = await this._getApprovedDocs();
+    const list = docs.map(d=>({
       id:d.id, fullName:d.data().fullName,
       completedExercisesCount: d.data().completedExercisesCount,
       totalScoreSum: d.data().totalScoreSum
@@ -3703,6 +3731,10 @@ function setupAdminLoginModal(){
       modal.classList.remove('show'); input.value='';
       /* إخفاء نافذة تسجيل دخول التلميذ إن كانت ظاهرة، فهي تحجب لوحة تحكم الأستاذ/المشرف */
       document.getElementById('loginModal').classList.remove('show');
+      /* الاستماع اللحظي لطلبات التسجيل يبدأ هنا فقط، بعد التحقق من هوية الأستاذ — وليس لأي زائر */
+      Admin.listenPending(()=>{
+        if(Admin.authed && document.getElementById('screen-admin').style.display !== 'none') renderAdminPanel();
+      });
       Screens.show('admin'); renderAdminPanel();
     } else {
       alert('الرقم السري غير صحيح.');
@@ -4350,6 +4382,7 @@ async function renderAdminPanel(){
     if(!confirm('هل تريد تسجيل الخروج من لوحة التحكم؟')) return;
     if(window.SoundFX) SoundFX.logout();
     Admin.authed = false;
+    Admin.stopListenPending();
     Screens.show('home');
   });
 
@@ -4971,12 +5004,9 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   });
   Locks.load().then(updateIrabHomeCardLock);
 
-  /* طلبات التسجيل قيد الانتظار: استماع لحظي — أي طلب تسجيل جديد يصل يُحدِّث العدّاد وقائمة
-     "طلبات الانتظار" فورًا في لوحة تحكم الأستاذ إن كانت مفتوحة حاليًا، بلا حاجة لإعادة تحميل
-     الصفحة يدويًا */
-  Admin.listenPending(()=>{
-    if(Admin.authed && document.getElementById('screen-admin').style.display !== 'none') renderAdminPanel();
-  });
+  /* ملاحظة: الاستماع اللحظي لطلبات التسجيل (Admin.listenPending) لم يعد يُفعَّل هنا —
+     أصبح يبدأ فقط بعد نجاح تسجيل دخول الأستاذ (setupAdminLoginModal)، تفاديًا لاشتراك كل
+     زائر للموقع في هذا الاستماع، وهو ما كان يُضاعِف استهلاك حصة القراءات بشكل كبير. */
 
   /* روابط حصص الزوم: تحميل أولي، ثم استماع لحظي — أي تحديث من الأستاذ ينعكس فورًا في صفحة
      الدرس المفتوحة حاليًا عند التلميذ دون الحاجة لإعادة تحميل الصفحة */
