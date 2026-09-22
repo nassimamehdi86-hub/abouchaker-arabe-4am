@@ -174,7 +174,18 @@ const Student = {
     this.id = docSnap.id; this.fullName = data.fullName; this.phone = data.phone; this.status = data.status;
     this.lastQuestionAt = data.lastQuestionAt || null;
 
-    if(data.status === 'pending')  return { ok:true, status:'pending', fullName:this.fullName };
+    if(data.status === 'pending'){
+      /* قيد الانتظار: قد يكون التلميذ سجّل في المنصة قبل تفعيل رقمه عبر بوت تيليجرام (أو نسي
+         تفعيله وقتها) ثم فعّله لاحقًا — نعيد التحقق في كل محاولة دخول، فإن أصبح موثّقًا الآن
+         نقبله فورًا بدل تركه عالقًا في "قيد الانتظار" لأجل غير مسمى */
+      const telegramVerified = await this.checkTelegramVerification(data.phone);
+      if(telegramVerified){
+        await docSnap.ref.update({ status:'approved' });
+        this.status = 'approved';
+      } else {
+        return { ok:true, status:'pending', fullName:this.fullName };
+      }
+    }
     if(data.status === 'rejected') return { ok:true, status:'rejected', fullName:this.fullName };
 
     /* موافق عليه: نبدأ جلسة جديدة (تطرد أي جلسة سابقة تلقائيًا) */
@@ -210,8 +221,21 @@ const Student = {
       const docSnap = existing.docs[0];
       const data = docSnap.data();
 
-      if(data.status !== 'rejected'){
-        /* مقبول أو قيد الانتظار: لا ننشئ حسابًا مكرَّرًا */
+      if(data.status === 'pending'){
+        /* قيد الانتظار: قد يكون فعّل رقمه في البوت الآن بعد أن سجّل — نقبله فورًا إن أصبح موثّقًا،
+           بدل إبقائه عالقًا في "قيد الانتظار" لمجرد أن الترتيب كان معكوسًا */
+        if(telegramVerified){
+          await docSnap.ref.update({ status:'approved' });
+          this.id = docSnap.id; this.fullName = data.fullName; this.phone = data.phone; this.status = 'approved';
+          lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_phone', this.phone);
+          await this.startApprovedSession();
+          return { ok:true, status:'approved', fullName:this.fullName };
+        }
+        return { ok:true, status:'already_exists' };
+      }
+
+      if(data.status === 'approved'){
+        /* مقبول مسبقًا: لا ننشئ حسابًا مكرَّرًا */
         return { ok:true, status:'already_exists' };
       }
 
