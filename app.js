@@ -304,10 +304,36 @@ const Student = {
       this.combinedRank = (typeof data.combinedRank === 'number') ? data.combinedRank : null;
       this.combinedScore = (typeof data.combinedScore === 'number') ? data.combinedScore : null;
     });
+    this.startHeartbeat();
+  },
+
+  /* نبضة حضور خفيفة: تحديث lastSeen كل HEARTBEAT_MS (كتابة واحدة صغيرة فقط، بلا أي قراءة)
+     حتى تعرف صفحة الأستاذ عدد المتصلين الآن بدقة معقولة، دون تكرار مشكلة الاستهلاك القديم
+     (كانت القراءة تتم سابقًا عند كل تلميذ لكل التلاميذ كل 30 ثانية). تتوقف تلقائيًا إن غادر
+     التلميذ التبويب (visibilitychange) توفيرًا إضافيًا، وتُستأنف عند عودته. */
+  HEARTBEAT_MS: 3*60*1000,
+  _heartbeatTimer:null,
+  startHeartbeat(){
+    if(!fbReady || !this.id) return;
+    this.stopHeartbeat();
+    const tick = ()=>{
+      if(!this.id || document.visibilityState !== 'visible') return;
+      db.collection('students').doc(this.id).update({ lastSeen:firebase.firestore.FieldValue.serverTimestamp() }).catch(()=>{});
+    };
+    tick(); /* نبضة فورية عند بدء الجلسة */
+    this._heartbeatTimer = setInterval(tick, this.HEARTBEAT_MS);
+    if(!this._visibilityBound){
+      this._visibilityBound = true;
+      document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'visible') tick(); });
+    }
+  },
+  stopHeartbeat(){
+    if(this._heartbeatTimer){ clearInterval(this._heartbeatTimer); this._heartbeatTimer = null; }
   },
 
   logout(){
     if(this.unsubscribe) this.unsubscribe();
+    this.stopHeartbeat();
     localStorage.removeItem('student_id'); localStorage.removeItem('student_name'); localStorage.removeItem('student_session'); localStorage.removeItem('student_phone');
     this.id=null; this.fullName=null; this.phone=null; this.status=null; this.sessionId=null;
   }
@@ -561,6 +587,23 @@ const Admin = {
     if(!fbReady) return 0;
     const snap = await db.collection('students').where('status','==','approved').get();
     return snap.size;
+  },
+
+  /* عدد التلاميذ المتصلين الآن (lastSeen خلال آخر ONLINE_WINDOW_MS) — تُستعمل نفس قراءة
+     allStudentsCount أعلاه بدل قراءة منفصلة، وتُستدعى فقط من صفحة الأستاذ (وليس عند كل
+     تلميذ)، فلا تكرار للمشكل القديم في استهلاك حصة القراءات المجانية في Firestore. */
+  ONLINE_WINDOW_MS: 6*60*1000,
+  async studentsCounts(){
+    if(!fbReady) return { total:0, online:0 };
+    const snap = await db.collection('students').where('status','==','approved').get();
+    const now = Date.now();
+    let online = 0;
+    snap.forEach(d=>{
+      const ls = d.data().lastSeen;
+      const ms = ls && typeof ls.toMillis === 'function' ? ls.toMillis() : null;
+      if(ms && (now - ms) <= this.ONLINE_WINDOW_MS) online++;
+    });
+    return { total: snap.size, online };
   },
 
   /* قائمة أسماء كل التلاميذ المقبولين، مرتبة أبجديًا */
@@ -4049,7 +4092,7 @@ async function renderAdminPanel(){
   wrap.innerHTML = '<div class="sf-label">جاري التحميل…</div>';
   await Locks.load();
   const pending = await Admin.listPending();
-  const totalStudents = await Admin.allStudentsCount();
+  const { total:totalStudents, online:onlineStudents } = await Admin.studentsCounts();
 
   let pendingBody;
   if(!pending.length){
@@ -4072,6 +4115,10 @@ async function renderAdminPanel(){
   }
 
   const approvedBody = `
+    <div class="stat-card" style="text-align:center;margin-bottom:10px">
+      🟢 <b>متصل الآن: ${onlineStudents}</b> / ${totalStudents}
+      <div class="sf-label" style="margin-top:4px">يُحتسب كل من فتح المنصة خلال آخر 6 دقائق</div>
+    </div>
     <button class="al-key" id="toggleApprovedBtn" style="width:100%">👥 عدد التلاميذ المقبولين: ${totalStudents} — اضغط لعرض الأسماء والمستوى</button>
     <div id="approvedListContainer" style="display:none;margin-top:12px"></div>`;
 
