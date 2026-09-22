@@ -3689,6 +3689,7 @@ const Chat = {
   renderMessages(msgs){
     const wrap = document.getElementById('chatMessagesWrap');
     if(!wrap) return; /* الشاشة ليست في DOM (لا يحدث فعليًا لأن الشاشات تبقى مخفية فقط) */
+    msgs = msgs.filter(m=>!m.hidden); /* الأسئلة التي حذفها الأستاذ لا تظهر إطلاقًا للتلميذ */
     if(!msgs.length){
       wrap.innerHTML = '<div class="chat-pending-note">لا توجد رسائل بعد — كن أول من يكتب!</div>';
       return;
@@ -3733,7 +3734,7 @@ const Chat = {
     if(!banner) return;
     if(!Student.id){ banner.style.display = 'none'; banner.innerHTML = ''; return; }
 
-    const myAnswered = msgs.filter(m => m.isQuestion && m.answered && m.studentId === Student.id);
+    const myAnswered = msgs.filter(m => m.isQuestion && m.answered && m.studentId === Student.id && !m.hidden);
     if(!myAnswered.length){
       banner.style.display = 'none';
       banner.innerHTML = '';
@@ -3878,7 +3879,7 @@ const ChatAdmin = {
     auxDb().collection('chatMessages').where('isQuestion','==',true).where('answered','==',false)
       .orderBy('createdAt','asc')
       .onSnapshot(snap=>{
-        const list = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        const list = snap.docs.map(d=>({ id:d.id, ...d.data() })).filter(q=>!q.hidden);
         this.renderInto(list);
       }, err=>{
         console.error('خطأ في تحميل أسئلة التلاميذ (قد تحتاج فهرسًا مركّبًا في Firestore — الرابط لإنشائه يظهر عادة في رسالة الخطأ هذه في وحدة تحكم المتصفح):', err);
@@ -3941,15 +3942,22 @@ const ChatAdmin = {
     });
   },
 
-  /* حذف السؤال نهائيًا من غير أي رد — يُزال المستند من Firestore بالكامل،
-     فيختفي فورًا من لوحة الأستاذ ومن دردشة التلميذ في آنٍ واحد (onSnapshot)
-     دون أن يظهر للتلميذ أي أثر له (لا سؤال، ولا "بانتظار الرد"، ولا أي إشعار) */
+  /* إخفاء السؤال نهائيًا من غير أي رد. نستخدم عمدًا update() بدل delete():
+     - نفس صلاحية الكتابة (write) المستخدمة أصلًا في إرسال الأجوبة، والتي تعمل بالفعل عندك
+       في قواعد Firestore الحالية — بخلاف صلاحية "الحذف" التي قد تكون غير مفعّلة بشكل منفصل
+       في قواعد المشروع، وهو ما يسبب رسالة "تعذّر حذف السؤال".
+     - نضيف الحقل hidden:true فقط، ثم نستثني (بالتصفية في الكود) أي مستند يحمل hidden:true
+       من كل الأماكن التي تُعرض فيها الأسئلة: لوحة الأستاذ، ودردشة التلميذ العامة، وبطاقة
+       "آخر جواب" — فلا يظهر للتلميذ أي أثر للسؤال إطلاقًا. */
   async deleteQuestion(btn, qid){
     if(!confirm('هل تريد حذف هذا السؤال نهائيًا دون الرد عليه؟ لن يظهر أي شيء للتلميذ.')) return;
     const card = btn.closest('.chat-q-card');
     btn.disabled = true; btn.textContent = '⏳ جارٍ الحذف...';
     try{
-      await auxDb().collection('chatMessages').doc(qid).delete();
+      await auxDb().collection('chatMessages').doc(qid).update({
+        hidden: true,
+        hiddenAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
       if(card) card.remove();
     }catch(error){
       console.error('فشل حذف السؤال:', error);
