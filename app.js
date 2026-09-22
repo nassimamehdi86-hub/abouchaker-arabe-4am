@@ -1343,6 +1343,7 @@ async function renderBadges(){
 /* ---------- تصنيفات الدروس (كما تصنيف الفهرس) ---------- */
 const CATEGORY_META = {
   taqweem:{ icon:'📋', title:'التقويم التشخيصي' },
+  muktasabat:{ icon:'🧩', title:'المكتسبات القبلية' },
   tawabi: { icon:'📗', title:'التوابع' },
   qawaid: { icon:'📘', title:'قواعد اللغة' },
   jumal:  { icon:'📙', title:'الجمل التي لها محلّ من الإعراب' },
@@ -1356,7 +1357,7 @@ function renderLessonsScreen(){
   wrap.innerHTML = '<div class="sf-label">جاري التحميل…</div>';
   Locks.load().then(()=>{
     let html = '';
-    ['taqweem','tawabi','qawaid','jumal','balagha','anmat','itisaq'].forEach((cat, idx)=>{
+    ['taqweem','muktasabat','tawabi','qawaid','jumal','balagha','anmat','itisaq'].forEach((cat, idx)=>{
       const meta = CATEGORY_META[cat];
       const lessons = window.LESSONS.filter(l=>l.category===cat).sort((a,b)=>a.order-b.order);
       const categoryId = `category-${cat}`;
