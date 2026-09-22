@@ -210,10 +210,20 @@ const Student = {
     if(!phoneKey) return { ok:false, reason:'empty-phone' };
 
     const col = db.collection('students');
-    const existing = await col.where('phoneKey','==', phoneKey).limit(1).get();
+    /* تحقق من وجود تسجيل سابق بنفس الرقم — إن فشلت هذه القراءة فقط (مثلاً بسبب استنفاد
+       حصة القراءات المجانية في Firestore)، لا نمنع التسجيل: نتابع كأنه لا يوجد سجل سابق
+       وننشئ حسابًا جديدًا مباشرة (عملية كتابة فقط، لا تتأثر بحصة القراءات). النتيجة النادرة
+       المحتملة هي تسجيل مكرَّر لنفس الرقم خلال هذه الفترة فقط، يمكن دمجه لاحقًا يدويًا. */
+    let existing = { empty:true, docs:[] };
+    try{
+      existing = await col.where('phoneKey','==', phoneKey).limit(1).get();
+    }catch(e){
+      console.warn('تعذّر التحقق من وجود تسجيل سابق (على الأرجح استُنفدت حصة القراءات) — سيُنشأ حساب جديد مباشرة:', e);
+    }
 
     /* تحقق تلقائي: هل شارك هذا الرقم جهة اتصاله مع بوت تيليجرام مسبقًا؟
-       إن كان كذلك، يُقبل التلميذ فورًا دون انتظار موافقة الأستاذ. */
+       إن كان كذلك، يُقبل التلميذ فورًا دون انتظار موافقة الأستاذ.
+       (checkTelegramVerification محمية أصلًا بـ try/catch وتُعيد false عند أي فشل قراءة) */
     const telegramVerified = await this.checkTelegramVerification(phone);
     const initialStatus = telegramVerified ? 'approved' : 'pending';
 
