@@ -1405,9 +1405,11 @@ function renderLessonsScreen(){
         const arrow = this.querySelector('.accordion-arrow');
         
         if(content.style.display === 'none'){
-          /* فتح الـ Accordion */
+          /* فتح الـ Accordion — الارتفاع يُحسب تلقائيًا من محتوى القسم الفعلي (scrollHeight) بدل
+             قيمة ثابتة (1000px)، حتى لا يُقتطع آخر درس في القوائم الطويلة (مثل سلسلة المكتسبات
+             القبلية ذات الـ11 حلقة) */
           content.style.display = 'block';
-          content.style.maxHeight = '1000px';
+          content.style.maxHeight = content.scrollHeight + 'px';
           setTimeout(() => content.style.opacity = '1', 10);
           arrow.style.transform = 'rotate(0deg)';
           arrow.textContent = '▼';
@@ -1438,6 +1440,9 @@ function openLessonDetail(id){
   const lesson = window.LESSONS.find(l=>l.id===id);
   if(!lesson) return;
   const zoomOnly = !!lesson.zoomOnly;
+  /* سلسلة "المكتسبات القبلية" (BEM2024): 11 حلقة بلا تمارين ولا تسجيلات زوم حقيقية —
+     تُخفى لهذه الفئة تحديدًا بطاقة "ترتيب تلاميذ هذا الدرس" وصندوق "تسجيلات حصص الزوم" */
+  const isMuktasabat = lesson.category === 'muktasabat';
 
   Screens.show('lessonDetail');
   document.getElementById('ldTitle').textContent = lesson.title;
@@ -1448,7 +1453,7 @@ function openLessonDetail(id){
   if(ldBadge) ldBadge.className = 'badge cat-' + (lesson.category || 'taqweem');
 
   /* بطاقة عرض الترتيب (أيقونة كأس بتصميم عربي + عنوان صغير واضح) — آخر عنصر في صفحة الدرس،
-     غير مجدية لدرس بلا تمارين (zoomOnly) فتُخفى في هذه الحالة */
+     غير مجدية لدرس بلا تمارين (zoomOnly) أو لسلسلة المكتسبات القبلية (بلا تمارين) فتُخفى في هذه الحالة */
   let leaderSection = document.getElementById('ldLeaderboardSection');
   if(leaderSection && !leaderSection.querySelector('.ld-leaderboard-card')){
     leaderSection.innerHTML = `
@@ -1458,7 +1463,7 @@ function openLessonDetail(id){
       </div>`;
   }
   const leaderBtn = document.getElementById('ldLeaderboardBtn');
-  if(leaderSection) leaderSection.style.display = zoomOnly ? 'none' : '';
+  if(leaderSection) leaderSection.style.display = (zoomOnly || isMuktasabat) ? 'none' : '';
   if(leaderBtn) leaderBtn.onclick = ()=>{ if(window.SoundFX) SoundFX.click(); showLeaderboardPopup(lesson); };
 
   /* درس "بلا محتوى" (zoomOnly): يُعرض فقط العنوان + تسجيلات حصص الزوم، وتُخفى بقية الأقسام
@@ -1489,7 +1494,13 @@ function openLessonDetail(id){
   }
 
   window.currentOpenLessonId = lesson.id;
-  renderZoomGroupsBox(lesson);
+  const zoomBox = document.getElementById('ldZoomBox');
+  if(isMuktasabat){
+    if(zoomBox){ zoomBox.style.display = 'none'; zoomBox.innerHTML = ''; }
+  } else {
+    if(zoomBox) zoomBox.style.display = '';
+    renderZoomGroupsBox(lesson);
+  }
 
   quizSection.style.display = zoomOnly ? 'none' : '';
   exercisesSection.style.display = zoomOnly ? 'none' : '';
@@ -4841,13 +4852,13 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   ZoomLinks.load().then(()=>{
     if(window.currentOpenLessonId && document.getElementById('screen-lessonDetail').style.display !== 'none'){
       const lesson = window.LESSONS.find(l=>l.id===window.currentOpenLessonId);
-      if(lesson) renderZoomGroupsBox(lesson);
+      if(lesson && lesson.category!=='muktasabat') renderZoomGroupsBox(lesson);
     }
   });
   ZoomLinks.listen(()=>{
     if(window.currentOpenLessonId && document.getElementById('screen-lessonDetail').style.display !== 'none'){
       const lesson = window.LESSONS.find(l=>l.id===window.currentOpenLessonId);
-      if(lesson) renderZoomGroupsBox(lesson);
+      if(lesson && lesson.category!=='muktasabat') renderZoomGroupsBox(lesson);
     }
   });
 
