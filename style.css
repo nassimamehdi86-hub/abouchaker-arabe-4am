@@ -604,6 +604,7 @@
 
   .lesson-row .lr-text{ flex:1; position:relative; z-index:2; }
   .lesson-row .lr-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:17px; color:var(--ink); }
+  .lesson-row .lr-new-badge{ display:inline-block; margin-right:8px; padding:1px 8px; border-radius:999px; background:#C0392B; color:#fff; font-family:inherit; font-size:10px; font-weight:800; vertical-align:middle; }
   .lesson-row .lr-sub{ font-size:10.5px; color:var(--ink-soft); margin-top:3px; font-weight:600; }
   .lesson-row .lr-status{ flex-shrink:0; font-size:18px; position:relative; z-index:2; }
   .lesson-row.locked{ background:linear-gradient(150deg, #EFEADA, #E7E1CC); filter:saturate(.75); }
@@ -2264,20 +2265,13 @@
 .zoom-add-link-btn:active{ transform:translateY(1px); }
 
 /* ----- واجهة التلميذ: تبويبات صفحة الدرس (تمارين / زوم / اختبار / خريطة ذهنية) ----- */
-.ld-tabs{ display:grid; grid-template-columns:repeat(2, 1fr); gap:9px; margin:22px 0 6px; }
-.ld-tab-btn{
-  font-family:'Cairo', sans-serif; font-weight:800; font-size:13px; color:var(--ink);
-  background:linear-gradient(150deg, #FFFDF7, #F3ECD5); border:1.6px solid rgba(169,127,42,0.35);
-  border-radius:13px; padding:12px 6px; cursor:pointer; transition:.15s ease; line-height:1.3;
+/* نوافذ صفحة الدرس: نفس بطاقات الصفحة الرئيسية (.home-card) بنفس الحجم والشكل */
+.ld-tabs{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:22px 0 18px; }
+.ld-tab-card.active{
+  background:linear-gradient(160deg, #FBEDC3, #EBCB7C); border-color:var(--gold-3);
+  box-shadow:0 12px 24px rgba(169,127,42,0.28), inset 0 1px 0 rgba(255,255,255,0.7);
 }
-.ld-tab-btn:active{ transform:translateY(1px); }
-.ld-tab-btn.active{
-  background:linear-gradient(135deg, var(--gold-1), var(--gold-2)); border-color:var(--gold-3);
-  color:#33260A; box-shadow:0 8px 18px rgba(169,127,42,0.28);
-}
-@media (max-width: 480px){
-  .ld-tab-btn{ font-size:12px; padding:11px 6px; }
-}
+.ld-tab-card.active .hc-sub{ color:#5A4310; }
 
 /* ----- واجهة التلميذ: صندوق "تسجيلات حصص الزوم" داخل صفحة الدرس ----- */
 .zoom-groups-wrap{ background:var(--paper); border:1.6px solid var(--gold-3); border-radius:16px; padding:16px; margin:24px 0; }

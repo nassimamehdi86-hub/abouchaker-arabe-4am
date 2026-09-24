@@ -42,13 +42,17 @@ const LocksEnhanced = {
     /* فتح/إغلاق الدرس — نُحدّث الحالة محليًا فقط بعد نجاح الكتابة الفعلية في Firestore،
        كي لا تظهر لوحة التحكم الدرس "مفتوحًا" بينما فشلت الكتابة فعليًا بصمت (permission-denied) */
     const previousValue = Locks.data.lessons ? Locks.data.lessons[id] : undefined;
+    const previousOpenedAt = Locks.data.openedAt ? Locks.data.openedAt[id] : undefined;
     Locks.data.lessons = Locks.data.lessons || {};
     Locks.data.lessons[id] = !!open;
+    /* وقت الفتح: يجعل آخر درس مفتوح يتصدر قائمة الدروس */
+    if (open) { Locks.data.openedAt = Locks.data.openedAt || {}; Locks.data.openedAt[id] = Date.now(); }
     try {
       await db.collection('state').doc('locks').set(Locks.data, { merge: true });
     } catch (error) {
       /* تراجع عن التحديث المحلي لأن الكتابة الحقيقية فشلت */
       Locks.data.lessons[id] = previousValue;
+      if (Locks.data.openedAt) Locks.data.openedAt[id] = previousOpenedAt;
       console.error('فشل فتح/إغلاق الدرس (تحقق من قواعد Firestore لمجموعة state):', error);
       if (typeof showFbPermissionNotice === 'function') showFbPermissionNotice('locks');
       alert('تعذّر حفظ حالة الدرس في قاعدة البيانات. راجع التنبيه الظاهر أعلى الصفحة لمعرفة السبب.');

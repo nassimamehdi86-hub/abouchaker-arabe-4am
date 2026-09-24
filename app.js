@@ -381,6 +381,8 @@ const Locks = {
     if(!fbReady) return;
     this.data.lessons = this.data.lessons || {};
     this.data.lessons[id] = !!open;
+    /* وقت فتح الدرس — يُستعمل لعرض آخر درس مفتوح في أعلى قائمة الدروس */
+    if(open){ this.data.openedAt = this.data.openedAt || {}; this.data.openedAt[id] = Date.now(); }
     await db.collection('state').doc('locks').set(this.data, {merge:true});
   },
   async setTrimester(t, open){
@@ -1471,78 +1473,83 @@ function renderLessonsScreen(){
   const wrap = document.getElementById('lessonsListWrap');
   wrap.innerHTML = '<div class="sf-label">جاري التحميل…</div>';
   Locks.load().then(()=>{
-    let html = '';
-    ['taqweem','muktasabat','tawabi','qawaid','jumal','balagha','anmat','itisaq'].forEach((cat, idx)=>{
-      const meta = CATEGORY_META[cat];
-      /* الدروس المغلقة (لم يفتحها الأستاذ بعد) تُخفى بالكامل من القائمة بدل عرضها بأيقونة 🔒 —
-         التلميذ لا يرى إلا الدروس المفتوحة فعليًا أو التي بانتظار المحتوى (قريبًا) */
-      const lessons = window.LESSONS.filter(l=>l.category===cat && (l.locked==='pending' || !Locks.isLessonLocked(l.id))).sort((a,b)=>a.order-b.order);
-      const categoryId = `category-${cat}`;
-      const isOpen = false; /* كل التصنيفات مغلقة افتراضيًا عند فتح صفحة الدروس، بما فيها التقويم التشخيصي */
-      
+    /* الدروس المغلقة تُخفى بالكامل؛ يظهر فقط المفتوح أو ما بانتظار المحتوى (قريبًا) */
+    const visible = window.LESSONS.filter(l=> l.locked==='pending' || !Locks.isLessonLocked(l.id));
+    const openedAt = (Locks.data && Locks.data.openedAt) || {};
+
+    /* قائمة واحدة مسطّحة بلا مجموعات: آخر درس فتحه الأستاذ في الأعلى.
+       الدروس المفتوحة قبل هذا التحديث (بلا وقت فتح) تأتي بعد الأحدث، الأعلى ترتيبًا في المنهج أولًا.
+       الدروس "قريبًا" في آخر القائمة. */
+    const flat = visible.filter(l=> l.category!=='muktasabat').sort((a,b)=>{
+      const pa = a.locked==='pending', pb = b.locked==='pending';
+      if(pa !== pb) return pa ? 1 : -1;
+      if(pa && pb) return a.order - b.order;
+      const ta = openedAt[a.id] || 0, tb = openedAt[b.id] || 0;
+      if(ta !== tb) return tb - ta;
+      return b.order - a.order;
+    });
+    const muk = visible.filter(l=> l.category==='muktasabat').sort((a,b)=> a.order-b.order);
+
+    /* شارة "جديد": لأحدث درس فتحه الأستاذ فقط، وتزول بعد 7 أيام */
+    const newest = flat.find(l=> l.locked!=='pending' && openedAt[l.id]);
+    const newId = (newest && Date.now() - openedAt[newest.id] < 7*24*3600*1000) ? newest.id : null;
+
+    const rowHtml = (l, numHtml)=>{
+      const pending = l.locked === 'pending';
+      const locked = pending || Locks.isLessonLocked(l.id);
+      const meta = CATEGORY_META[l.category] || {};
+      const sub = pending ? 'قريبًا — بانتظار المحتوى' : (l.category==='muktasabat' ? (l.subtitle||'') : [meta.title, l.subtitle].filter(Boolean).join(' · '));
+      return `<div class="lesson-row ${locked?'locked':''} ${pending?'placeholder':''}" data-lesson="${l.id}">
+          <div class="lr-num"><span class="lr-num-text">${numHtml}</span></div>
+          <div class="lr-text">
+            <div class="lr-title">${l.title}${l.id===newId ? '<span class="lr-new-badge">جديد</span>' : ''}</div>
+            <div class="lr-sub">${sub}</div>
+          </div>
+          <div class="lr-status">${pending ? '⏳' : (locked ? '🔒' : '✅')}</div>
+        </div>`;
+    };
+
+    let html = '<div class="lesson-list">' + flat.map(l=> rowHtml(l, (CATEGORY_META[l.category]||{}).icon || '📘')).join('') + '</div>';
+
+    /* المجموعة الوحيدة المتبقية: المكتسبات القبلية */
+    if(muk.length){
+      const meta = CATEGORY_META.muktasabat;
+      const categoryId = 'category-muktasabat';
       html += `
         <div class="lesson-accordion">
           <div class="group-header accordion-toggle" data-category="${categoryId}">
             <span class="gh-icon"><span>${meta.icon}</span></span>
             <span class="gh-title">${meta.title}</span>
-            <span class="gh-count">${lessons.length} دروس</span>
-            <span class="accordion-arrow" style="margin-right: auto; transition: transform 0.3s ease;">
-              ${isOpen ? '▼' : '▶'}
-            </span>
+            <span class="gh-count">${muk.length} دروس</span>
+            <span class="accordion-arrow" style="margin-right: auto; transition: transform 0.3s ease;">▶</span>
           </div>
-          <div class="lesson-list accordion-content" id="${categoryId}" style="display: ${isOpen ? 'block' : 'none'}; max-height: ${isOpen ? '1000px' : '0'}; overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease; opacity: ${isOpen ? '1' : '0'};">
-      `;
-      
-      lessons.forEach(l=>{
-        const pending = l.locked === 'pending';
-        const locked = pending || Locks.isLessonLocked(l.id);
-        html += `<div class="lesson-row ${locked?'locked':''} ${pending?'placeholder':''}" data-lesson="${l.id}">
-          <div class="lr-num"><span class="lr-num-text">${String(l.order).padStart(2,'0')}</span></div>
-          <div class="lr-text">
-            <div class="lr-title">${l.title}</div>
-            <div class="lr-sub">${pending ? 'قريبًا — بانتظار المحتوى' : (l.subtitle||'')}</div>
+          <div class="lesson-list accordion-content" id="${categoryId}" style="display: none; max-height: 0; overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease; opacity: 0;">
+            ${muk.map(l=> rowHtml(l, String(l.order).padStart(2,'0'))).join('')}
           </div>
-          <div class="lr-status">${pending ? '⏳' : (locked ? '🔒' : '✅')}</div>
         </div>`;
-      });
-      
-      html += `
-          </div>
-        </div>
-      `;
-    });
-    
+    }
+
     wrap.innerHTML = html;
-    
-    /* إضافة معالج الـ Accordion */
+
+    /* فتح/إغلاق مجموعة المكتسبات القبلية */
     wrap.querySelectorAll('.accordion-toggle').forEach(toggle=>{
       toggle.addEventListener('click', function(){
-        const categoryId = this.getAttribute('data-category');
-        const content = document.getElementById(categoryId);
+        const content = document.getElementById(this.getAttribute('data-category'));
         const arrow = this.querySelector('.accordion-arrow');
-        
         if(content.style.display === 'none'){
-          /* فتح الـ Accordion — الارتفاع يُحسب تلقائيًا من محتوى القسم الفعلي (scrollHeight) بدل
-             قيمة ثابتة (1000px)، حتى لا يُقتطع آخر درس في القوائم الطويلة (مثل سلسلة المكتسبات
-             القبلية ذات الـ11 حلقة) */
           content.style.display = 'block';
           content.style.maxHeight = content.scrollHeight + 'px';
           setTimeout(() => content.style.opacity = '1', 10);
-          arrow.style.transform = 'rotate(0deg)';
           arrow.textContent = '▼';
         } else {
-          /* إغلاق الـ Accordion */
           content.style.opacity = '0';
           content.style.maxHeight = '0';
-          setTimeout(() => {
-            if(content.style.maxHeight === '0px') content.style.display = 'none';
-          }, 300);
-          arrow.style.transform = 'rotate(0deg)';
+          setTimeout(() => { if(content.style.maxHeight === '0px') content.style.display = 'none'; }, 300);
           arrow.textContent = '▶';
         }
       });
     });
-    
+
     /* معالج النقر على الدروس */
     wrap.querySelectorAll('.lesson-row').forEach(row=>{
       row.addEventListener('click', ()=>{
@@ -1631,10 +1638,10 @@ function openLessonDetail(id){
      يعرض تسجيلات الزوم فقط بلا تبويبات (قسم وحيد)، ودروس المكتسبات القبلية بلا تبويب زوم.
      التبويب الافتراضي المفتوح هو "تمارين الدرس" لأنه الأولوية (أكبر عدد من التلاميذ لا يُنجزونه). */
   const allTabs = [
-    { key:'exercises', label:'📝 تمارين الدرس', el:'ldExercisesSection', show: !zoomOnly },
-    { key:'zoom',       label:'🎥 حصص الزوم والواجب المنزلي', el:'ldZoomSection', show: showZoom },
-    { key:'quiz',       label:'🧠 اختبار الفهم', el:'ldQuizSection', show: !zoomOnly },
-    { key:'mindmap',    label:'🗺️ الخريطة الذهنية', el:'ldMindmapSection', show: !zoomOnly }
+    { key:'exercises', icon:'📝', title:'تمارين الدرس',   sub:'الواجب المنزلي',   cls:'c1', el:'ldExercisesSection', show: !zoomOnly },
+    { key:'zoom',      icon:'🎥', title:'حصص الزوم',      sub:'والواجب المنزلي',  cls:'c2', el:'ldZoomSection',      show: showZoom },
+    { key:'quiz',      icon:'🧠', title:'اختبار الفهم',   sub:'اختبر نفسك',       cls:'c3', el:'ldQuizSection',      show: !zoomOnly },
+    { key:'mindmap',   icon:'🗺️', title:'الخريطة الذهنية', sub:'لخّص الدرس',       cls:'c4', el:'ldMindmapSection',   show: !zoomOnly }
   ];
   setupLdTabs(allTabs.filter(t=>t.show), 'exercises');
 }
@@ -1661,7 +1668,9 @@ function setupLdTabs(panels, defaultKey){
   const activeKey = panels.some(p=>p.key===defaultKey) ? defaultKey : panels[0].key;
   tabsBar.style.display = '';
   tabsBar.innerHTML = panels.map(p=>
-    `<button type="button" class="ld-tab-btn ${p.key===activeKey?'active':''}" data-ld-tab="${p.key}">${p.label}</button>`
+    `<div class="home-card ld-tab-card ${p.cls||'c1'} ${p.key===activeKey?'active':''}" role="button" tabindex="0" data-ld-tab="${p.key}">
+      <div class="hc-icon-wrap">${p.icon||''}</div><div class="hc-title">${p.title}</div><div class="hc-sub">${p.sub||''}</div>
+    </div>`
   ).join('');
 
   function activate(key){
@@ -1669,12 +1678,12 @@ function setupLdTabs(panels, defaultKey){
       const el = document.getElementById(p.el);
       if(el) el.style.display = (p.key===key) ? '' : 'none';
     });
-    tabsBar.querySelectorAll('.ld-tab-btn').forEach(btn=>{
+    tabsBar.querySelectorAll('.ld-tab-card').forEach(btn=>{
       btn.classList.toggle('active', btn.getAttribute('data-ld-tab')===key);
     });
   }
 
-  tabsBar.querySelectorAll('.ld-tab-btn').forEach(btn=>{
+  tabsBar.querySelectorAll('.ld-tab-card').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       if(window.SoundFX) SoundFX.click();
       activate(btn.getAttribute('data-ld-tab'));
