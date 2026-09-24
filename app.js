@@ -1474,7 +1474,9 @@ function renderLessonsScreen(){
     let html = '';
     ['taqweem','muktasabat','tawabi','qawaid','jumal','balagha','anmat','itisaq'].forEach((cat, idx)=>{
       const meta = CATEGORY_META[cat];
-      const lessons = window.LESSONS.filter(l=>l.category===cat).sort((a,b)=>a.order-b.order);
+      /* الدروس المغلقة (لم يفتحها الأستاذ بعد) تُخفى بالكامل من القائمة بدل عرضها بأيقونة 🔒 —
+         التلميذ لا يرى إلا الدروس المفتوحة فعليًا أو التي بانتظار المحتوى (قريبًا) */
+      const lessons = window.LESSONS.filter(l=>l.category===cat && (l.locked==='pending' || !Locks.isLessonLocked(l.id))).sort((a,b)=>a.order-b.order);
       const categoryId = `category-${cat}`;
       const isOpen = false; /* كل التصنيفات مغلقة افتراضيًا عند فتح صفحة الدروس، بما فيها التقويم التشخيصي */
       
@@ -1584,9 +1586,6 @@ function openLessonDetail(id){
   /* درس "بلا محتوى" (zoomOnly): يُعرض فقط العنوان + تسجيلات حصص الزوم، وتُخفى بقية الأقسام
      (الشرح، الخريطة الذهنية، اختبار الفهم، تمارين الدرس) بدل تركها فارغة على الشاشة */
   const ldDef = document.getElementById('ldDef');
-  const mindmapSection = document.getElementById('ldMindmapSection');
-  const quizSection = document.getElementById('ldQuizSection');
-  const exercisesSection = document.getElementById('ldExercisesSection');
 
   ldDef.style.display = zoomOnly ? 'none' : '';
   ldDef.innerHTML = lesson.def||'';
@@ -1602,7 +1601,6 @@ function openLessonDetail(id){
     if(listenWrap) listenWrap.style.display = 'none';
   }
 
-  mindmapSection.style.display = zoomOnly ? 'none' : '';
   if(!zoomOnly){
     renderMindmap(lesson, document.getElementById('ldMindmap'));
     document.getElementById('ldMindmapPdfBtn').onclick = ()=> exportMindmapPDF(lesson);
@@ -1610,15 +1608,13 @@ function openLessonDetail(id){
 
   window.currentOpenLessonId = lesson.id;
   const zoomBox = document.getElementById('ldZoomBox');
-  if(isMuktasabat){
-    if(zoomBox){ zoomBox.style.display = 'none'; zoomBox.innerHTML = ''; }
+  const showZoom = !isMuktasabat;
+  if(!showZoom){
+    if(zoomBox) zoomBox.innerHTML = '';
   } else {
-    if(zoomBox) zoomBox.style.display = '';
     renderZoomGroupsBox(lesson);
   }
 
-  quizSection.style.display = zoomOnly ? 'none' : '';
-  exercisesSection.style.display = zoomOnly ? 'none' : '';
   if(!zoomOnly){
     const quizMount = document.getElementById('ldQuiz');
     document.getElementById('ldQuizStartBtn').onclick = ()=>{
@@ -1630,6 +1626,62 @@ function openLessonDetail(id){
 
     renderLessonExercisesBox(lesson);
   }
+
+  /* نوافذ (تبويبات) صفحة الدرس: تُبنى فقط من الأقسام الفعلية لهذا الدرس — درس zoomOnly
+     يعرض تسجيلات الزوم فقط بلا تبويبات (قسم وحيد)، ودروس المكتسبات القبلية بلا تبويب زوم.
+     التبويب الافتراضي المفتوح هو "تمارين الدرس" لأنه الأولوية (أكبر عدد من التلاميذ لا يُنجزونه). */
+  const allTabs = [
+    { key:'exercises', label:'📝 تمارين الدرس', el:'ldExercisesSection', show: !zoomOnly },
+    { key:'zoom',       label:'🎥 حصص الزوم والواجب المنزلي', el:'ldZoomSection', show: showZoom },
+    { key:'quiz',       label:'🧠 اختبار الفهم', el:'ldQuizSection', show: !zoomOnly },
+    { key:'mindmap',    label:'🗺️ الخريطة الذهنية', el:'ldMindmapSection', show: !zoomOnly }
+  ];
+  setupLdTabs(allTabs.filter(t=>t.show), 'exercises');
+}
+
+/* يبني شريط التبويبات أعلى صفحة الدرس ويربط النقر بإظهار/إخفاء النافذة المطابقة فقط.
+   panels: مصفوفة {key,label,el} للأقسام المتاحة فعليًا لهذا الدرس (قسم واحد فقط = بلا تبويبات،
+   تُعرض نافذته مباشرة). defaultKey: مفتاح التبويب المفتوح افتراضيًا عند دخول الدرس. */
+function setupLdTabs(panels, defaultKey){
+  const tabsBar = document.getElementById('ldTabs');
+  if(!tabsBar) return;
+
+  /* إخفاء كل النوافذ غير المتاحة لهذا الدرس بشكل نهائي (ليست مجرد تبويب غير نشط) */
+  document.querySelectorAll('.ld-tab-panel').forEach(el=>{
+    const inPanels = panels.some(p=>p.el===el.id);
+    el.style.display = inPanels ? '' : 'none';
+  });
+
+  if(panels.length <= 1){
+    tabsBar.style.display = 'none';
+    tabsBar.innerHTML = '';
+    return;
+  }
+
+  const activeKey = panels.some(p=>p.key===defaultKey) ? defaultKey : panels[0].key;
+  tabsBar.style.display = '';
+  tabsBar.innerHTML = panels.map(p=>
+    `<button type="button" class="ld-tab-btn ${p.key===activeKey?'active':''}" data-ld-tab="${p.key}">${p.label}</button>`
+  ).join('');
+
+  function activate(key){
+    panels.forEach(p=>{
+      const el = document.getElementById(p.el);
+      if(el) el.style.display = (p.key===key) ? '' : 'none';
+    });
+    tabsBar.querySelectorAll('.ld-tab-btn').forEach(btn=>{
+      btn.classList.toggle('active', btn.getAttribute('data-ld-tab')===key);
+    });
+  }
+
+  tabsBar.querySelectorAll('.ld-tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(window.SoundFX) SoundFX.click();
+      activate(btn.getAttribute('data-ld-tab'));
+    });
+  });
+
+  activate(activeKey);
 }
 
 /* =========================================================================================

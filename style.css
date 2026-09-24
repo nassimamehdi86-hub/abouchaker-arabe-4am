@@ -2263,6 +2263,22 @@
 }
 .zoom-add-link-btn:active{ transform:translateY(1px); }
 
+/* ----- واجهة التلميذ: تبويبات صفحة الدرس (تمارين / زوم / اختبار / خريطة ذهنية) ----- */
+.ld-tabs{ display:grid; grid-template-columns:repeat(2, 1fr); gap:9px; margin:22px 0 6px; }
+.ld-tab-btn{
+  font-family:'Cairo', sans-serif; font-weight:800; font-size:13px; color:var(--ink);
+  background:linear-gradient(150deg, #FFFDF7, #F3ECD5); border:1.6px solid rgba(169,127,42,0.35);
+  border-radius:13px; padding:12px 6px; cursor:pointer; transition:.15s ease; line-height:1.3;
+}
+.ld-tab-btn:active{ transform:translateY(1px); }
+.ld-tab-btn.active{
+  background:linear-gradient(135deg, var(--gold-1), var(--gold-2)); border-color:var(--gold-3);
+  color:#33260A; box-shadow:0 8px 18px rgba(169,127,42,0.28);
+}
+@media (max-width: 480px){
+  .ld-tab-btn{ font-size:12px; padding:11px 6px; }
+}
+
 /* ----- واجهة التلميذ: صندوق "تسجيلات حصص الزوم" داخل صفحة الدرس ----- */
 .zoom-groups-wrap{ background:var(--paper); border:1.6px solid var(--gold-3); border-radius:16px; padding:16px; margin:24px 0; }
 .zoom-groups-title{ font-family:'Aref Ruqaa', serif; font-weight:700; font-size:17px; margin-bottom:12px; color:var(--ink); text-align:center; }
