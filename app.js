@@ -1348,7 +1348,12 @@ const Screens = {
       this.el[s] = document.getElementById('screen-'+s);
     });
     document.querySelectorAll('[data-nav]').forEach(btn=>{
-      btn.addEventListener('click', ()=> this.show(btn.getAttribute('data-nav')));
+      btn.addEventListener('click', ()=>{
+        const target = btn.getAttribute('data-nav');
+        // "تمارين يومية" تفتح مباشرة تطبيق المعلّم الذكي (بدل عرض شاشة وسيطة فيها وصف فقط)
+        if(target === 'dailyExercises'){ window.location.href = 'smart-teacher.html?cat=daily'; return; }
+        this.show(target);
+      });
     });
     document.getElementById('adminEntryBtn').addEventListener('click', ()=> this.openAdminLogin());
   },
@@ -5092,6 +5097,22 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   ExamLinks.listen(()=>{
     if(document.getElementById('screen-exams').style.display !== 'none') renderExamsScreen();
   });
+
+  /* عدد التمارين اليومية المتاحة حاليًا: يُعرض كشارة صغيرة على بطاقة "تمارين يومية"
+     بالصفحة الرئيسية، ويتحدّث تلقائيًا (onSnapshot) عند نشر/حذف تمرين من طرف الأستاذ(ة) */
+  if(fbReady){
+    db.collection('exams').where('category','==','daily').onSnapshot(snap=>{
+      const badge = document.getElementById('dailyExCountBadge');
+      if(!badge) return;
+      const n = snap.size;
+      if(n > 0){
+        badge.textContent = n;
+        badge.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;margin-inline-start:6px;border-radius:999px;background:#C79A3D;color:#fff;font-size:12px;font-weight:700;vertical-align:middle;';
+      } else {
+        badge.style.display = 'none';
+      }
+    }, ()=>{ /* تجاهل الخطأ بصمت — تبقى الشارة مخفية */ });
+  }
 
   const resumed = await Student.resume();
   if(resumed){ renderWelcome(); }
