@@ -852,15 +852,28 @@ const Leaderboard = {
       ));
       subsSnaps.forEach(subsSnap=>{
         if(!subsSnap) return;
+        /* بعض التلاميذ يسلّمون نفس الفرض/التمرين أكثر من مرة (مثلاً بعد تحديث الصفحة أو عدم
+           تسجيل الدخول بنفس الحساب في المرة الثانية)، فتتكوّن أكثر من وثيقة تسليم لنفس الطالب
+           في نفس الاختبار. لتفادي احتساب هذا الاختبار مرتين، ولتفادي إمكانية أن ينقل التلميذ
+           تصحيح المحاولة الأولى ثم يعيد الحلّ للحصول على نتيجة أفضل، نحتسب دائمًا المحاولة
+           الأولى (الأقدم زمنيًا) فقط لكل طالب داخل كل اختبار، بغضّ النظر عن نتيجة أي محاولة لاحقة. */
+        const firstPerStudentInExam = new Map(); // key -> {name, studentId, score, submittedAtMs}
         subsSnap.forEach(doc=>{
           const data = doc.data();
           const name = (data.studentName || '').trim();
           if(!name || typeof data.score !== 'number') return;
           const key = data.studentId ? ('id:'+data.studentId) : ('name:'+name.toLowerCase());
-          const entry = byKey.get(key) || { name, studentId: data.studentId || null, total:0, count:0 };
-          entry.total += data.score;
+          const ts = data.submittedAt && data.submittedAt.toMillis ? data.submittedAt.toMillis() : Infinity;
+          const existing = firstPerStudentInExam.get(key);
+          if(!existing || ts < existing.submittedAtMs){
+            firstPerStudentInExam.set(key, { name, studentId: data.studentId || null, score: data.score, submittedAtMs: ts });
+          }
+        });
+        firstPerStudentInExam.forEach((first, key)=>{
+          const entry = byKey.get(key) || { name: first.name, studentId: first.studentId, total:0, count:0 };
+          entry.total += first.score;
           entry.count += 1;
-          entry.name = name || entry.name;
+          entry.name = first.name || entry.name;
           byKey.set(key, entry);
         });
       });
