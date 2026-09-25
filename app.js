@@ -350,6 +350,21 @@ const Student = {
 };
 
 /* =========================================================================================
+   تحديث دوري "واعٍ بحالة ظهور الصفحة" — يوقف القراءات الدورية تمامًا حين يكون التبويب في
+   الخلفية (مثلاً تلميذ ترك المنصة مفتوحة في تبويب دون استعمال)، ويستأنفها فور عودته للتبويب.
+   هذا يوفّر جزءًا إضافيًا مهمًا من حصة Firestore المجانية اليومية، لأن كثيرًا من التلاميذ
+   يتركون التطبيق مفتوحًا لساعات دون أن يكون التبويب مرئيًا فعليًا. */
+function startVisibilityAwarePolling(refreshFn, intervalMs){
+  let timer = null;
+  const start = ()=>{ if(timer) return; refreshFn(); timer = setInterval(refreshFn, intervalMs); };
+  const stop = ()=>{ if(timer){ clearInterval(timer); timer = null; } };
+  if(document.visibilityState === 'visible') start();
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible') start(); else stop();
+  });
+}
+
+/* =========================================================================================
    حالة قفل/فتح الدروس والفصول (يتحكم بها الأستاذ/المشرف من داخل التطبيق)
    وثيقة واحدة: state/locks  =>  { lessons: {lessonId: true/false}, trimesters: {t1:bool, t2:bool, t3:bool} }
    ========================================================================================= */
@@ -404,16 +419,23 @@ const Locks = {
     await db.collection('state').doc('locks').set(this.data, {merge:true});
   },
 
-  /* استماع لحظي للتغييرات حتى تنعكس فورًا عند كل التلاميذ */
+  /* تحديث دوري خفيف بدل الاستماع اللحظي الدائم: قراءة واحدة فقط كل مرة، تُكرَّر كل بضع دقائق
+     عبر مؤقّت (setInterval) بدل onSnapshot. السبب: onSnapshot يبقي اتصالاً مفتوحًا مع كل زائر
+     (400+ تلميذ)، فأي تعديل واحد من الأستاذ على هذه الوثيقة المشتركة يُنتج فورًا 400+ قراءة
+     دفعة واحدة (كلفة "البث للجميع")، وهو ما يستنزف حصة Firestore المجانية اليومية بسرعة كبيرة.
+     القراءة الدورية (كل 3 دقائق تقريبًا) تكفي تمامًا لهذا النوع من البيانات (حالة فتح/إغلاق
+     الدروس)، وتُخفّض الكلفة من "قراءة واحدة لكل تعديل × كل التلاميذ المتصلين" إلى
+     "قراءة واحدة لكل تلميذ كل 3 دقائق" فقط. */
   listen(onChange){
     if(!fbReady) return;
-    db.collection('state').doc('locks').onSnapshot(snap=>{
+    const refresh = ()=> db.collection('state').doc('locks').get().then(snap=>{
       if(snap.exists) this.data = Object.assign({lessons:{}, trimesters:{t1:false,t2:false,t3:false}, situations:{}, features:{irab:true}}, snap.data());
       if(onChange) onChange();
-    }, error=>{
-      console.error('تعذّر الاستماع لحالة القفل (state/locks) — تحقق من قواعد Firestore:', error);
+    }).catch(error=>{
+      console.error('تعذّرت قراءة حالة القفل (state/locks) — تحقق من قواعد Firestore:', error);
       if(typeof showFbPermissionNotice === 'function') showFbPermissionNotice('locks');
     });
+    startVisibilityAwarePolling(refresh, 3 * 60 * 1000);
   }
 };
 
@@ -489,16 +511,17 @@ const ZoomLinks = {
     return { ok:true };
   },
 
-  /* استماع لحظي: أي رابط يحفظه الأستاذ ينعكس فورًا في صفحة الدرس عند كل التلاميذ المتصلين حاليًا */
+  /* تحديث دوري بدل الاستماع اللحظي الدائم — نفس السبب الموضَّح أعلاه في Locks.listen */
   listen(onChange){
     if(!fbReady) return;
-    db.collection('state').doc('zoomLinks').onSnapshot(snap=>{
+    const refresh = ()=> db.collection('state').doc('zoomLinks').get().then(snap=>{
       if(snap.exists) this.data = Object.assign({lessons:{}}, snap.data());
       if(onChange) onChange();
-    }, error=>{
-      console.error('تعذّر الاستماع لروابط حصص الزوم (state/zoomLinks) — تحقق من قواعد Firestore:', error);
+    }).catch(error=>{
+      console.error('تعذّرت قراءة روابط حصص الزوم (state/zoomLinks) — تحقق من قواعد Firestore:', error);
       if(typeof showFbPermissionNotice === 'function') showFbPermissionNotice('zoomLinks');
     });
+    startVisibilityAwarePolling(refresh, 3 * 60 * 1000);
   }
 };
 
@@ -541,16 +564,17 @@ const ExamLinks = {
     return { ok:true };
   },
 
-  /* استماع لحظي: أي رابط يضيفه/يحذفه الأستاذ ينعكس فورًا في شاشة الفروض والاختبارات عند التلاميذ */
+  /* تحديث دوري بدل الاستماع اللحظي الدائم — نفس السبب الموضَّح أعلاه في Locks.listen */
   listen(onChange){
     if(!fbReady) return;
-    db.collection('state').doc('examLinks').onSnapshot(snap=>{
+    const refresh = ()=> db.collection('state').doc('examLinks').get().then(snap=>{
       if(snap.exists) this.data = Object.assign({t1:[],t2:[],t3:[]}, snap.data());
       if(onChange) onChange();
-    }, error=>{
-      console.error('تعذّر الاستماع لروابط الفروض والاختبارات (state/examLinks) — تحقق من قواعد Firestore:', error);
+    }).catch(error=>{
+      console.error('تعذّرت قراءة روابط الفروض والاختبارات (state/examLinks) — تحقق من قواعد Firestore:', error);
       if(typeof showFbPermissionNotice === 'function') showFbPermissionNotice('examLinks');
     });
+    startVisibilityAwarePolling(refresh, 3 * 60 * 1000);
   }
 };
 
@@ -716,7 +740,7 @@ const Leaderboard = {
       return doc.exists ? doc.data() : null;
     }catch(e){ return null; }
   },
-  LESSON_CACHE_MAX_AGE_MS: 60 * 60 * 1000,
+  LESSON_CACHE_MAX_AGE_MS: 2 * 60 * 60 * 1000,
 
   /* ---------- تخزين مؤقت لترتيب درس واحد (ساعة واحدة) ----------
      نفس فكرة تخزين الترتيب العام: بدل قراءة نتائج كل تلميذ أنجز الدرس في كل مرة يفتح فيها أي
@@ -922,7 +946,7 @@ const Leaderboard = {
      leaderboardCache) يقرأه الجميع بقراءة واحدة فقط. أما "مرتبة التلميذ نفسه"، فتُكتب داخل مستنده
      الشخصي (lessonsRank/examsRank/combinedRank...) الذي يراقبه أصلاً باستمرار عبر watchSession —
      فتصل إليه بلا أي قراءة إضافية إطلاقًا. */
-  CACHE_MAX_AGE_MS: 60 * 60 * 1000,
+  CACHE_MAX_AGE_MS: 2 * 60 * 60 * 1000,
 
   async getCache(){
     if(!fbReady) return null;
@@ -934,11 +958,11 @@ const Leaderboard = {
 
   /* يُعيد نسخة محدَّثة من الترتيب (من التخزين المؤقت إن كان لا يزال صالحًا، أو يُعيد حسابه كاملاً
      إن انتهت صلاحيته — مرة كل 24 ساعة كحد أقصى بغض النظر عن عدد مرات فتح الصفحة). */
-  async refreshIfStale(){
+  async refreshIfStale(force){
     const cache = await this.getCache();
     const age = cache && cache.updatedAt && typeof cache.updatedAt.toMillis === 'function'
       ? (Date.now() - cache.updatedAt.toMillis()) : Infinity;
-    if(cache && age < this.CACHE_MAX_AGE_MS) return cache;
+    if(!force && cache && age < this.CACHE_MAX_AGE_MS) return cache;
 
     /* التخزين المؤقت غائب أو منتهي الصلاحية: نعيد الحساب الكامل (هذا هو الجزء المكلف، يحدث
        مرة كل 24 ساعة على الأكثر) */
@@ -4385,6 +4409,7 @@ async function renderAdminPanel(){
     adminAccordionHTML('chatQuestions', `${AA_ICONS.chat} أسئلة التلاميذ (الدردشة) <span class="aa-badge" id="chatQuestionsBadge">0</span>`, `<div id="chatQuestionsBody"><div class="exam-panel">جارٍ التحميل…</div></div>`) +
     adminAccordionHTML('pending', `${AA_ICONS.pending} طلبات الانتظار <span class="aa-badge">${pending.length}</span>`, pendingBody) +
     adminAccordionHTML('approved', `${AA_ICONS.approved} التلاميذ المقبولون <span class="aa-badge">${totalStudents}</span>`, approvedBody) +
+    `<button class="al-key" id="forceRefreshLbBtn" style="width:100%;margin:6px 0 14px;">🔄 تحديث الترتيب الآن (بدل انتظار ساعة)</button>` +
     zoomManageCard +
     examLinksManageCard +
     solutionsCard +
@@ -4398,6 +4423,19 @@ async function renderAdminPanel(){
     adminAccordionHTML('stats', `${AA_ICONS.stats} إحصائيات كل درس`, statsBody);
 
   wireAdminAccordions(wrap);
+  const forceRefreshBtn = document.getElementById('forceRefreshLbBtn');
+  if(forceRefreshBtn) forceRefreshBtn.onclick = async ()=>{
+    forceRefreshBtn.disabled = true;
+    forceRefreshBtn.textContent = 'جارٍ إعادة الحساب...';
+    try{
+      await Leaderboard.refreshIfStale(true);
+      alert('تم تحديث الترتيب بنجاح ✅');
+    }catch(e){
+      alert('تعذّر تحديث الترتيب، حاول مرة أخرى.');
+    }
+    forceRefreshBtn.disabled = false;
+    forceRefreshBtn.textContent = '🔄 تحديث الترتيب الآن (بدل انتظار ساعة)';
+  };
   ChatAdmin.ensureListening();
 
   document.getElementById('zoomManageBtn').addEventListener('click', ()=>{
@@ -5112,9 +5150,11 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   });
 
   /* عدد التمارين اليومية المتاحة حاليًا: يُعرض كشارة صغيرة على بطاقة "تمارين يومية"
-     بالصفحة الرئيسية، ويتحدّث تلقائيًا (onSnapshot) عند نشر/حذف تمرين من طرف الأستاذ(ة) */
+     بالصفحة الرئيسية. قراءة دورية (وليست بثًا لحظيًا onSnapshot) لنفس سبب توفير حصة
+     Firestore المجانية اليومية الموضَّح أعلاه في Locks.listen — عدد التمارين لا يحتاج
+     أصلاً لتحديث لحظي، فتكفي قراءة واحدة كل بضع دقائق. */
   if(fbReady){
-    db.collection('exams').where('category','==','daily').onSnapshot(snap=>{
+    const refreshDailyBadge = ()=> db.collection('exams').where('category','==','daily').get().then(snap=>{
       const badge = document.getElementById('dailyExCountBadge');
       if(!badge) return;
       const n = snap.size;
@@ -5124,7 +5164,8 @@ document.addEventListener('DOMContentLoaded', async ()=>{
       } else {
         badge.style.display = 'none';
       }
-    }, ()=>{ /* تجاهل الخطأ بصمت — تبقى الشارة مخفية */ });
+    }).catch(()=>{ /* تجاهل الخطأ بصمت — تبقى الشارة مخفية */ });
+    startVisibilityAwarePolling(refreshDailyBadge, 5 * 60 * 1000);
   }
 
   const resumed = await Student.resume();
