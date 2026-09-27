@@ -47,7 +47,7 @@ function normalizeAr(s){
   return (s||'')
     .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g,'')
     .replace(/[إأآٱا]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ؤ/g,'و').replace(/ئ/g,'ي')
-    .replace(/[^ابتثجحخدذرزسشصضطظعغفقكلمنهويء0-9\s]/g,'').replace(/\s+/g,' ').trim();
+    .replace(/[^ابتثجحخدذرزسشصضطظعغفقكلمنهويءa-zA-ZàâäáãåæçéèêëíìîïñòóôöõøùúûüýÿœÀÂÄÁÃÅÆÇÉÈÊËÍÌÎÏÑÒÓÔÖÕØÙÚÛÜÝŸŒ0-9\s]/g,'').replace(/\s+/g,' ').trim();
 }
 function genSessionId(){ return 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2,10); }
 
