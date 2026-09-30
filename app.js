@@ -162,41 +162,46 @@ const Student = {
     const phoneKey = this.normalizedPhone(phone);
     if(!phoneKey) return { ok:false, reason:'empty-phone' };
 
-    const col = db.collection('students');
-    const existing = await col.where('phoneKey','==', phoneKey).limit(1).get();
+    /* كل عمليات القراءة/الكتابة في Firestore هنا محاطة بمحاولة واحدة شاملة: أي انقطاع في
+       الاتصال بالإنترنت، حجب لخوادم Google/Firebase من شبكة التلميذ، أو استنفاد حصة القراءات
+       المجانية يجب أن يُعيد رسالة خطأ واضحة للتلميذ بدل ترك الزر عالقًا في "جارٍ التحقق…" للأبد
+       بلا أي استجابة (وهو ما كان يبدو للتلميذ كأن "المنصة لا تفتح" أو "لا يمكن الوصول لفايرباز"). */
+    try{
+      const col = db.collection('students');
+      const existing = await col.where('phoneKey','==', phoneKey).limit(1).get();
 
-    if(existing.empty){
-      return { ok:true, status:'not_found' };
-    }
-
-    const docSnap = existing.docs[0];
-    const data = docSnap.data();
-    this.id = docSnap.id; this.fullName = data.fullName; this.phone = data.phone; this.status = data.status;
-    this.lastQuestionAt = data.lastQuestionAt || null;
-
-    if(data.status === 'pending'){
-      /* قيد الانتظار: قد يكون التلميذ سجّل في المنصة قبل تفعيل رقمه عبر بوت تيليجرام (أو نسي
-         تفعيله وقتها) ثم فعّله لاحقًا — نعيد التحقق في كل محاولة دخول، فإن أصبح موثّقًا الآن
-         نقبله فورًا بدل تركه عالقًا في "قيد الانتظار" لأجل غير مسمى */
-      const telegramVerified = await this.checkTelegramVerification(data.phone);
-      if(telegramVerified){
-        await docSnap.ref.update({ status:'approved' });
-        this.status = 'approved';
-      } else {
-        return { ok:true, status:'pending', fullName:this.fullName };
+      if(existing.empty){
+        return { ok:true, status:'not_found' };
       }
-    }
-    if(data.status === 'rejected') return { ok:true, status:'rejected', fullName:this.fullName };
 
-    /* موافق عليه: نبدأ جلسة جديدة (تطرد أي جلسة سابقة تلقائيًا) */
-    const newSession = genSessionId();
-    await col.doc(this.id).update({ currentSession:newSession, lastSeen:firebase.firestore.FieldValue.serverTimestamp() });
-    this.sessionId = newSession;
-    lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_session', newSession);
-    lsSet('student_phone', this.phone);
-    this.watchSession();
-    await this.updateStreak();
-    return { ok:true, status:'approved', fullName:this.fullName };
+      const docSnap = existing.docs[0];
+      const data = docSnap.data();
+      this.id = docSnap.id; this.fullName = data.fullName; this.phone = data.phone; this.status = data.status;
+      this.lastQuestionAt = data.lastQuestionAt || null;
+
+      if(data.status === 'pending'){
+        const telegramVerified = await this.checkTelegramVerification(data.phone);
+        if(telegramVerified){
+          await docSnap.ref.update({ status:'approved' });
+          this.status = 'approved';
+        } else {
+          return { ok:true, status:'pending', fullName:this.fullName };
+        }
+      }
+      if(data.status === 'rejected') return { ok:true, status:'rejected', fullName:this.fullName };
+
+      const newSession = genSessionId();
+      await col.doc(this.id).update({ currentSession:newSession, lastSeen:firebase.firestore.FieldValue.serverTimestamp() });
+      this.sessionId = newSession;
+      lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_session', newSession);
+      lsSet('student_phone', this.phone);
+      this.watchSession();
+      await this.updateStreak();
+      return { ok:true, status:'approved', fullName:this.fullName };
+    }catch(e){
+      console.warn('تعذّر الاتصال بفايرباز أثناء تسجيل الدخول (شبكة/حصة/صلاحيات):', e);
+      return { ok:false, reason:'network-error', error:e };
+    }
   },
 
   /* إنشاء حساب جديد فقط — إن كان رقم الهاتف مسجَّلًا من قبل بحالة "مقبول" أو "قيد الانتظار"،
@@ -221,57 +226,62 @@ const Student = {
       console.warn('تعذّر التحقق من وجود تسجيل سابق (على الأرجح استُنفدت حصة القراءات) — سيُنشأ حساب جديد مباشرة:', e);
     }
 
-    /* تحقق تلقائي: هل شارك هذا الرقم جهة اتصاله مع بوت تيليجرام مسبقًا؟
-       إن كان كذلك، يُقبل التلميذ فورًا دون انتظار موافقة الأستاذ.
-       (checkTelegramVerification محمية أصلًا بـ try/catch وتُعيد false عند أي فشل قراءة) */
-    const telegramVerified = await this.checkTelegramVerification(phone);
-    const initialStatus = telegramVerified ? 'approved' : 'pending';
+    /* من هنا فصاعدًا: عمليات الكتابة الفعلية (إنشاء/تحديث السجل) محاطة بمحاولة شاملة، لأن أي
+       انقطاع في الاتصال بالإنترنت أو حجب لخوادم Google/Firebase من شبكة التلميذ كان يجعل هذه
+       العملية تفشل بصمت (بلا try/catch) ويبقى الزر عالقًا في "جارٍ التحقق…" للأبد بلا أي رسالة —
+       وهو ما يبدو للتلميذ كأن "المنصة لا تستجيب" أو "لا يمكن الوصول لفايرباز". */
+    try{
+      /* تحقق تلقائي: هل شارك هذا الرقم جهة اتصاله مع بوت تيليجرام مسبقًا؟
+         إن كان كذلك، يُقبل التلميذ فورًا دون انتظار موافقة الأستاذ.
+         (checkTelegramVerification محمية أصلًا بـ try/catch وتُعيد false عند أي فشل قراءة) */
+      const telegramVerified = await this.checkTelegramVerification(phone);
+      const initialStatus = telegramVerified ? 'approved' : 'pending';
 
-    if(!existing.empty){
-      const docSnap = existing.docs[0];
-      const data = docSnap.data();
+      if(!existing.empty){
+        const docSnap = existing.docs[0];
+        const data = docSnap.data();
 
-      if(data.status === 'pending'){
-        /* قيد الانتظار: قد يكون فعّل رقمه في البوت الآن بعد أن سجّل — نقبله فورًا إن أصبح موثّقًا،
-           بدل إبقائه عالقًا في "قيد الانتظار" لمجرد أن الترتيب كان معكوسًا */
-        if(telegramVerified){
-          await docSnap.ref.update({ status:'approved' });
-          this.id = docSnap.id; this.fullName = data.fullName; this.phone = data.phone; this.status = 'approved';
-          lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_phone', this.phone);
-          await this.startApprovedSession();
-          return { ok:true, status:'approved', fullName:this.fullName };
+        if(data.status === 'pending'){
+          if(telegramVerified){
+            await docSnap.ref.update({ status:'approved' });
+            this.id = docSnap.id; this.fullName = data.fullName; this.phone = data.phone; this.status = 'approved';
+            lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_phone', this.phone);
+            await this.startApprovedSession();
+            return { ok:true, status:'approved', fullName:this.fullName };
+          }
+          return { ok:true, status:'already_exists' };
         }
-        return { ok:true, status:'already_exists' };
+
+        if(data.status === 'approved'){
+          return { ok:true, status:'already_exists' };
+        }
+
+        /* كان مرفوضًا سابقًا: نسمح له بإعادة إرسال طلب جديد على نفس السجل */
+        await docSnap.ref.update({
+          fullName: fullName.trim(), nameKey:key, status:initialStatus,
+          receiptImage: receiptDataUrl || null,
+          resubmittedAt: firebase.firestore.FieldValue.serverTimestamp(), currentSession:null
+        });
+        this.id = docSnap.id; this.fullName = fullName.trim(); this.phone = phone.trim(); this.status = initialStatus;
+        lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_phone', this.phone);
+        if(initialStatus === 'approved') await this.startApprovedSession();
+        return { ok:true, status:initialStatus, fullName:this.fullName };
       }
 
-      if(data.status === 'approved'){
-        /* مقبول مسبقًا: لا ننشئ حسابًا مكرَّرًا */
-        return { ok:true, status:'already_exists' };
-      }
-
-      /* كان مرفوضًا سابقًا: نسمح له بإعادة إرسال طلب جديد على نفس السجل */
-      await docSnap.ref.update({
-        fullName: fullName.trim(), nameKey:key, status:initialStatus,
+      /* لا يوجد سجل سابق برقم الهاتف هذا: إنشاء حساب جديد */
+      const newDoc = await col.add({
+        fullName: fullName.trim(), nameKey:key, phone: phone.trim(), phoneKey, status:initialStatus,
         receiptImage: receiptDataUrl || null,
-        resubmittedAt: firebase.firestore.FieldValue.serverTimestamp(), currentSession:null
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(), currentSession:null
       });
-      this.id = docSnap.id; this.fullName = fullName.trim(); this.phone = phone.trim(); this.status = initialStatus;
+      this.id = newDoc.id; this.fullName = fullName.trim(); this.phone = phone.trim(); this.status = initialStatus;
       lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_phone', this.phone);
       if(initialStatus === 'approved') await this.startApprovedSession();
       return { ok:true, status:initialStatus, fullName:this.fullName };
+    }catch(e){
+      console.warn('تعذّر الاتصال بفايرباز أثناء إنشاء الحساب (شبكة/حصة/صلاحيات):', e);
+      return { ok:false, reason:'network-error', error:e };
     }
-
-    /* لا يوجد سجل سابق برقم الهاتف هذا: إنشاء حساب جديد — مقبول فورًا إن كان موثّقًا عبر
-       تيليجرام، أو بحالة الانتظار كالمعتاد إن لم يكن كذلك */
-    const newDoc = await col.add({
-      fullName: fullName.trim(), nameKey:key, phone: phone.trim(), phoneKey, status:initialStatus,
-      receiptImage: receiptDataUrl || null, /* صورة وصل اختيارية */
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(), currentSession:null
-    });
-    this.id = newDoc.id; this.fullName = fullName.trim(); this.phone = phone.trim(); this.status = initialStatus;
-    lsSet('student_id', this.id); lsSet('student_name', this.fullName); lsSet('student_phone', this.phone);
-    if(initialStatus === 'approved') await this.startApprovedSession();
-    return { ok:true, status:initialStatus, fullName:this.fullName };
   },
 
   /* محاولة استرجاع جلسة محفوظة محليًا عند فتح التطبيق */
@@ -454,6 +464,79 @@ function normalizeZoomLinkList(v){
   if(Array.isArray(v)) return v.map(x=> String(x==null?'':x).trim()).filter(Boolean);
   if(typeof v === 'string' && v.trim()) return [v.trim()];
   return [];
+}
+
+/* ===== الفيديو الرئيسي لكل درس (🎧 استمع لشرح الأستاذ) — قابل للتعديل من لوحة الأستاذ =====
+   يُحفظ في Firestore: state/lessonVideos  ->  { lessons: { [lessonId]: 'YOUTUBE_ID' } }
+   إن لم يوجد تعديل لدرس ما يبقى الفيديو الأصلي المكتوب في lessons-data.js */
+function extractYoutubeId(input){
+  const v = String(input||'').trim();
+  if(!v) return '';
+  if(/^[A-Za-z0-9_-]{11}$/.test(v)) return v;
+  const m = v.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/|v\/))([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : '';
+}
+
+const LessonVideos = {
+  data:{ lessons:{} }, ready:false,
+  async load(){
+    if(!fbReady){ this.ready = true; return; }
+    try{
+      const snap = await db.collection('state').doc('lessonVideos').get();
+      if(snap.exists) this.data = Object.assign({lessons:{}}, snap.data());
+    }catch(e){
+      console.error('تعذّرت قراءة فيديوهات الدروس (state/lessonVideos):', e);
+    }
+    this.ready = true;
+  },
+  /* يُعيد معرّف يوتيوب المعدَّل من الأستاذ، أو '' إن لم يوجد تعديل */
+  getOverride(lessonId){
+    const v = this.data.lessons && this.data.lessons[lessonId];
+    return extractYoutubeId(v);
+  },
+  getEffective(lesson){
+    const ov = this.getOverride(lesson.id);
+    if(ov) return ov;
+    const vids = Array.isArray(lesson.video) ? lesson.video : (lesson.video ? [lesson.video] : []);
+    return (vids[0] && vids[0].yt) || '';
+  },
+  async set(lessonId, ytId){
+    if(!fbReady) return { ok:false, reason:'no-firebase' };
+    this.data.lessons = this.data.lessons || {};
+    this.data.lessons[lessonId] = ytId;
+    await db.collection('state').doc('lessonVideos').set({ lessons:{ [lessonId]: ytId } }, {merge:true});
+    return { ok:true };
+  },
+  async reset(lessonId){
+    if(!fbReady) return { ok:false, reason:'no-firebase' };
+    if(this.data.lessons) delete this.data.lessons[lessonId];
+    await db.collection('state').doc('lessonVideos').set({ lessons:{ [lessonId]: firebase.firestore.FieldValue.delete() } }, {merge:true});
+    return { ok:true };
+  },
+  listen(onChange){
+    if(!fbReady) return;
+    const refresh = ()=> db.collection('state').doc('lessonVideos').get().then(snap=>{
+      if(snap.exists) this.data = Object.assign({lessons:{}}, snap.data());
+      if(onChange) onChange();
+    }).catch(e=> console.error('lessonVideos:', e));
+    startVisibilityAwarePolling(refresh, 3 * 60 * 1000);
+  }
+};
+
+/* يعرض الفيديو الرئيسي للدرس المفتوح (المعدَّل من الأستاذ أو الأصلي) */
+function setLessonMainVideo(lesson, zoomOnly){
+  const videoFrame = document.getElementById('ldVideo');
+  if(!videoFrame) return;
+  const listenWrap = videoFrame.closest('.listen-wrap');
+  const yt = zoomOnly ? '' : LessonVideos.getEffective(lesson);
+  if(yt){
+    const src = `https://www.youtube.com/embed/${yt}?rel=0`;
+    if(videoFrame.getAttribute('src') !== src) videoFrame.src = src;
+    if(listenWrap) listenWrap.style.display = '';
+  } else {
+    videoFrame.src = '';
+    if(listenWrap) listenWrap.style.display = 'none';
+  }
 }
 
 const ZoomLinks = {
@@ -1639,16 +1722,7 @@ function openLessonDetail(id){
   ldDef.style.display = zoomOnly ? 'none' : '';
   ldDef.innerHTML = lesson.def||'';
 
-  const videos = Array.isArray(lesson.video) ? lesson.video : (lesson.video ? [lesson.video] : []);
-  const videoFrame = document.getElementById('ldVideo');
-  const listenWrap = videoFrame.closest('.listen-wrap');
-  if(!zoomOnly && videos.length && videos[0] && videos[0].yt){
-    videoFrame.src = `https://www.youtube.com/embed/${videos[0].yt}?rel=0`;
-    if(listenWrap) listenWrap.style.display = '';
-  } else {
-    videoFrame.src = '';
-    if(listenWrap) listenWrap.style.display = 'none';
-  }
+  setLessonMainVideo(lesson, zoomOnly);
 
   if(!zoomOnly){
     renderMindmap(lesson, document.getElementById('ldMindmap'));
@@ -4350,6 +4424,16 @@ async function renderAdminPanel(){
       </div>
     </div>`;
 
+  /* زر لإدارة الفيديو الرئيسي (🎧 استمع لشرح الأستاذ) لكل درس */
+  const lessonVideoCard = `
+    <div class="home-card-wide zoom-manage-card" id="lessonVideoManageBtn" style="margin-bottom:16px;cursor:pointer">
+      <div class="hc-icon-wrap" style="background:linear-gradient(150deg,#E6F0FB,#9EC3EE);font-size:30px;display:flex;align-items:center;justify-content:center">▶️</div>
+      <div>
+        <div class="hc-title">إدارة فيديو شرح الدروس</div>
+        <div class="hc-sub">أضف أو غيّر فيديو يوتيوب الرئيسي لكل درس — يظهر فورًا للتلاميذ</div>
+      </div>
+    </div>`;
+
   /* زر بارز لإدارة روابط الفروض والاختبارات — موحّدة لكل الأفواج، بنفس أسلوب رفع روابط الزوم */
   const examLinksManageCard = `
     <div class="home-card-wide zoom-manage-card" id="examLinksManageBtn" style="margin-bottom:16px;cursor:pointer">
@@ -4411,6 +4495,7 @@ async function renderAdminPanel(){
     adminAccordionHTML('approved', `${AA_ICONS.approved} التلاميذ المقبولون <span class="aa-badge">${totalStudents}</span>`, approvedBody) +
     `<button class="al-key" id="forceRefreshLbBtn" style="width:100%;margin:6px 0 14px;">🔄 تحديث الترتيب الآن (بدل انتظار ساعة)</button>` +
     zoomManageCard +
+    lessonVideoCard +
     examLinksManageCard +
     solutionsCard +
     examSolutionsCard +
@@ -4441,6 +4526,11 @@ async function renderAdminPanel(){
   document.getElementById('zoomManageBtn').addEventListener('click', ()=>{
     if(window.SoundFX) SoundFX.click();
     openZoomManagerModal();
+  });
+
+  document.getElementById('lessonVideoManageBtn').addEventListener('click', ()=>{
+    if(window.SoundFX) SoundFX.click();
+    openLessonVideoManagerModal();
   });
 
   document.getElementById('examLinksManageBtn').addEventListener('click', ()=>{
@@ -4659,6 +4749,113 @@ const ZOOM_DOCS = [
 /* تفادي حقن HTML عند عرض روابط/عناوين داخل سمات value="" أو نص عادي */
 function escZoomText(s){
   return String(s==null ? '' : s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function openLessonVideoManagerModal(){
+  if(!fbReady){
+    alert('Firebase غير مفعّل. لا يمكن حفظ الفيديوهات بدونه.');
+    return;
+  }
+  const overlay = document.createElement('div');
+  overlay.className = 'zoom-modal-overlay';
+  overlay.innerHTML = `
+    <div class="zoom-modal-popup">
+      <div class="zoom-modal-header">
+        <div class="zoom-modal-title">▶️ فيديو شرح الدروس</div>
+        <div class="zoom-modal-subtitle" id="lvModalSubtitle">اختر درسًا لإضافة الفيديو أو تغييره</div>
+        <button type="button" class="zoom-modal-close" id="lvModalCloseBtn">✕</button>
+      </div>
+      <div class="zoom-modal-body" id="lvModalBody"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e)=>{ if(e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#lvModalCloseBtn').addEventListener('click', ()=> overlay.remove());
+  renderLessonVideoList(overlay);
+}
+
+async function renderLessonVideoList(overlay){
+  const body = overlay.querySelector('#lvModalBody');
+  overlay.querySelector('#lvModalSubtitle').textContent = 'اختر درسًا لإضافة الفيديو أو تغييره';
+  body.innerHTML = '<div class="sf-label">جاري التحميل…</div>';
+  await LessonVideos.load();
+  const rows = window.LESSONS.filter(l=> l.locked !== 'pending').map(l=>{
+    const custom = !!LessonVideos.getOverride(l.id);
+    const has = !!LessonVideos.getEffective(l);
+    const icon = custom ? '✏️' : (has ? '🎬' : '➕');
+    const tip = custom ? 'فيديو معدَّل من الأستاذ' : (has ? 'الفيديو الأصلي' : 'لا يوجد فيديو');
+    return `<div class="lesson-row zoom-lesson-row" data-lv-lesson="${l.id}">
+      <div class="lr-num"><span class="lr-num-text">${String(l.order).padStart(2,'0')}</span></div>
+      <div class="lr-text"><div class="lr-title">${escZoomText(l.title)}</div></div>
+      <div class="lr-status" title="${tip}">${icon}</div>
+    </div>`;
+  }).join('');
+  body.innerHTML = `<div class="note" style="margin-bottom:10px">✏️ معدَّل من الأستاذ &nbsp;·&nbsp; 🎬 الفيديو الأصلي &nbsp;·&nbsp; ➕ بلا فيديو</div><div class="lesson-list">${rows}</div>`;
+  body.querySelectorAll('[data-lv-lesson]').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      if(window.SoundFX) SoundFX.click();
+      const lesson = window.LESSONS.find(l=>l.id === row.getAttribute('data-lv-lesson'));
+      if(lesson) renderLessonVideoForm(overlay, lesson);
+    });
+  });
+}
+
+function renderLessonVideoForm(overlay, lesson){
+  const body = overlay.querySelector('#lvModalBody');
+  overlay.querySelector('#lvModalSubtitle').textContent = lesson.title;
+  const current = LessonVideos.getEffective(lesson);
+  const isCustom = !!LessonVideos.getOverride(lesson.id);
+  body.innerHTML = `
+    <div class="zoom-form-group">
+      <label class="zoom-form-label">🔗 رابط فيديو يوتيوب</label>
+      <input type="text" id="lvInput" class="zoom-form-input" dir="ltr" placeholder="https://youtu.be/…" value="${current ? 'https://youtu.be/'+current : ''}">
+      <div class="sf-label" id="lvHint" style="margin-top:6px">${isCustom ? '✏️ فيديو معدَّل من الأستاذ' : (current ? '🎬 هذا هو الفيديو الأصلي للدرس' : 'لا يوجد فيديو لهذا الدرس بعد')}</div>
+    </div>
+    <div id="lvPreview" style="margin:10px 0"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button type="button" class="al-key" id="lvSaveBtn" style="width:auto;padding:9px 20px">💾 حفظ</button>
+      ${isCustom ? '<button type="button" class="al-key" id="lvResetBtn" style="width:auto;padding:9px 20px">↩️ استرجاع الفيديو الأصلي</button>' : ''}
+      <button type="button" class="al-key" id="lvBackBtn" style="width:auto;padding:9px 20px">← رجوع</button>
+    </div>`;
+  const input = body.querySelector('#lvInput');
+  const preview = body.querySelector('#lvPreview');
+  const showPreview = ()=>{
+    const id = extractYoutubeId(input.value);
+    preview.innerHTML = id
+      ? `<div style="position:relative;padding-top:56.25%"><iframe src="https://www.youtube.com/embed/${id}?rel=0" style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:12px" allowfullscreen></iframe></div>`
+      : (input.value.trim() ? '<div class="exam-panel">⚠️ الرابط غير صالح — الصق رابط يوتيوب صحيحًا</div>' : '');
+  };
+  input.addEventListener('input', showPreview);
+  showPreview();
+
+  body.querySelector('#lvBackBtn').onclick = ()=> renderLessonVideoList(overlay);
+  body.querySelector('#lvSaveBtn').onclick = async ()=>{
+    const id = extractYoutubeId(input.value);
+    if(!id){ alert('الرجاء لصق رابط يوتيوب صالح.'); return; }
+    const btn = body.querySelector('#lvSaveBtn');
+    btn.disabled = true; btn.textContent = 'جارٍ الحفظ…';
+    try{
+      await LessonVideos.set(lesson.id, id);
+      if(window.currentOpenLessonId === lesson.id) setLessonMainVideo(lesson, false);
+      alert('تم حفظ الفيديو ✅ — يظهر الآن للتلاميذ.');
+      renderLessonVideoList(overlay);
+    }catch(e){
+      console.error(e);
+      alert('تعذّر الحفظ. تحقق من قواعد Firestore (state/lessonVideos) ثم أعد المحاولة.');
+      btn.disabled = false; btn.textContent = '💾 حفظ';
+    }
+  };
+  const resetBtn = body.querySelector('#lvResetBtn');
+  if(resetBtn) resetBtn.onclick = async ()=>{
+    if(!confirm('استرجاع الفيديو الأصلي لهذا الدرس؟')) return;
+    try{
+      await LessonVideos.reset(lesson.id);
+      if(window.currentOpenLessonId === lesson.id) setLessonMainVideo(lesson, false);
+      renderLessonVideoList(overlay);
+    }catch(e){
+      console.error(e);
+      alert('تعذّر الاسترجاع. حاول مرة أخرى.');
+    }
+  };
 }
 
 function openZoomManagerModal(){
@@ -5057,15 +5254,27 @@ function setupLoginModal(){
     submitBtn.disabled = true; submitBtn.textContent = 'جارٍ التحقق…';
     msgBox.textContent = '';
 
-    /* الوضعان منفصلان تمامًا: تسجيل الدخول لا يُنشئ أي طلب أبدًا،
-       وإنشاء حساب جديد لا يُنشئ طلبًا مكرَّرًا لرقم هاتف مسجَّل من قبل */
-    const res = (currentMode === 'signup')
-      ? await Student.register(name, phone, null)
-      : await Student.login(name, phone);
+    let res;
+    try{
+      /* الوضعان منفصلان تمامًا: تسجيل الدخول لا يُنشئ أي طلب أبدًا،
+         وإنشاء حساب جديد لا يُنشئ طلبًا مكرَّرًا لرقم هاتف مسجَّل من قبل */
+      res = (currentMode === 'signup')
+        ? await Student.register(name, phone, null)
+        : await Student.login(name, phone);
+    }catch(e){
+      /* شبكة داخلية غير متوقعة لم تُعالَج داخل login/register — لا نترك الزر عالقًا بلا رد أبدًا */
+      console.warn('خطأ غير متوقع أثناء تسجيل الدخول/الحساب:', e);
+      res = { ok:false, reason:'network-error', error:e };
+    }
 
     submitBtn.disabled = false; submitBtn.textContent = 'دخول';
 
-    if(!res.ok){ msgBox.textContent = 'تعذّر الاتصال بالمنصة، تحقق من إعداد Firebase.'; return; }
+    if(!res.ok){
+      msgBox.textContent = (res.reason === 'network-error')
+        ? '⚠️ تعذّر الوصول إلى خوادم المنصة. تحقّق من اتصالك بالإنترنت (أو جرّب إغلاق أي VPN/مانع إعلانات، أو تبديل الشبكة) ثم أعد المحاولة.'
+        : 'تعذّر الاتصال بالمنصة، تحقق من إعداد Firebase.';
+      return;
+    }
 
     if(res.status === 'not_found'){
       msgBox.textContent = '❌ لا يوجد حساب مسجَّل بهذا رقم الهاتف. إن كنت تلميذًا جديدًا، اضغط "رجوع" ثم اختر "إنشاء حساب جديد".';
@@ -5124,6 +5333,16 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   /* ملاحظة: الاستماع اللحظي لطلبات التسجيل (Admin.listenPending) لم يعد يُفعَّل هنا —
      أصبح يبدأ فقط بعد نجاح تسجيل دخول الأستاذ (setupAdminLoginModal)، تفاديًا لاشتراك كل
      زائر للموقع في هذا الاستماع، وهو ما كان يُضاعِف استهلاك حصة القراءات بشكل كبير. */
+
+  /* فيديو شرح الدرس: تحميل أولي ثم تحديث دوري — تعديل الأستاذ ينعكس عند التلميذ */
+  const refreshOpenLessonVideo = ()=>{
+    if(window.currentOpenLessonId && document.getElementById('screen-lessonDetail').style.display !== 'none'){
+      const lesson = window.LESSONS.find(l=>l.id===window.currentOpenLessonId);
+      if(lesson) setLessonMainVideo(lesson, !!lesson.zoomOnly);
+    }
+  };
+  LessonVideos.load().then(refreshOpenLessonVideo);
+  LessonVideos.listen(refreshOpenLessonVideo);
 
   /* روابط حصص الزوم: تحميل أولي، ثم استماع لحظي — أي تحديث من الأستاذ ينعكس فورًا في صفحة
      الدرس المفتوحة حاليًا عند التلميذ دون الحاجة لإعادة تحميل الصفحة */

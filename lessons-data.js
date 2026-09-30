@@ -478,7 +478,7 @@ window.LESSONS = [
     id:'atf-nasaq', order:2, category:'tawabi',
     title:'عطف النسق', subtitle:'حرف يتوسط بين المتبوع والتابع',
     def:'<b>تعريفه:</b> <mark class="g">الاسم المعطوف</mark> هو <mark class="y">التابع</mark> الذي <mark class="b">يتوسّط</mark> بينه وبين متبوعه (المعطوف عليه) <mark class="g">أحد حروف العطف</mark>.<br><span style="font-size:12.5px">مثال: حضر <mark class="b">محمدٌ</mark> <mark class="g">و</mark><mark class="y">عليٌّ</mark>. (محمد: معطوف عليه — الواو: حرف عطف — علي: معطوف)</span>',
-    video:[{yt:'6exMyzoHAaU'}],
+    video:[{yt:'SHUBJejsGoM'}],
     tree:[
       { title:'حروف تفيد المشاركة في اللفظ والمعنى معًا (6 حروف)', color:'blue',
         rule:'هذه الحروف تجعل المعطوف يشارك المعطوف عليه <mark class="b"><b>في الإعراب وفي الحكم معًا</b></mark>.',
