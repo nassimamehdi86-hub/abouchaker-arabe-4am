@@ -12,6 +12,9 @@
    لمجموعات مثل notifications أو state، بينما هذا التطبيق يعتمد نظام PIN وليس Firebase Auth حقيقي. */
 const _fbNoticeShown = new Set();
 function showFbPermissionNotice(context){
+  /* هذا التنبيه تشخيصي مخصّص للأستاذ فقط: لا يظهر أبدًا للتلاميذ مهما كان السبب، حتى لا يُربكهم
+     بتفاصيل تقنية لا تعنيهم. يظهر فقط إن كانت جلسة الأستاذ مسجَّلة دخولها فعليًا بالرقم السري. */
+  if (typeof Admin === 'undefined' || !Admin.authed) return;
   if (_fbNoticeShown.has(context)) return;
   _fbNoticeShown.add(context);
   const el = document.getElementById('fbNotice');
@@ -20,15 +23,14 @@ function showFbPermissionNotice(context){
     notifications: 'الإشعارات وجرس التنبيهات',
     locks: 'حالة فتح/إغلاق الدروس',
     zoomLinks: 'روابط حصص الزوم للأفواج',
-    examLinks: 'روابط الفروض والاختبارات'
+    examLinks: 'روابط الفروض والاختبارات',
+    chatMessages: 'الدردشة والأسئلة'
   };
   el.innerHTML += `<div class="note" style="margin:10px 0;border-color:#c0392b">
     <b>⚠️ تعذّر الاتصال بقاعدة البيانات لتحديث: ${labels[context] || context}.</b><br>
     السبب الأكثر شيوعًا: قواعد الأمان (Rules) في Firebase Console لا تسمح بالقراءة/الكتابة العامة
     لهذه المجموعة (لأن التطبيق لا يستخدم Firebase Authentication، بل نظام رقم سري PIN).
-    افتح Firebase Console ← Firestore Database ← Rules، وتأكد من وجود:
-    <pre style="white-space:pre-wrap;font-size:11px;background:#fff;padding:8px;border-radius:8px;margin-top:6px">match /notifications/{id} { allow read, write: if true; }
-match /state/{id} { allow read, write: if true; }</pre>
+    افتح Firebase Console ← Firestore Database ← Rules، وتأكد من وجود القاعدة المناسبة لهذه المجموعة،
     ثم اضغط "نشر" (Publish).
   </div>`;
 }
