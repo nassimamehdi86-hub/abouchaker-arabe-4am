@@ -973,24 +973,60 @@ const Leaderboard = {
           const ts = data.submittedAt && data.submittedAt.toMillis ? data.submittedAt.toMillis() : Infinity;
           const existing = firstPerStudentInExam.get(key);
           if(!existing || ts < existing.submittedAtMs){
-            firstPerStudentInExam.set(key, { name, studentId: data.studentId || null, score: data.score, submittedAtMs: ts });
+            firstPerStudentInExam.set(key, { name, studentId: data.studentId || null, score: data.score, totalPoints: data.totalPoints, submittedAtMs: ts });
           }
         });
         firstPerStudentInExam.forEach((first, key)=>{
-          const entry = byKey.get(key) || { name: first.name, studentId: first.studentId, total:0, count:0 };
+          const entry = byKey.get(key) || { name: first.name, studentId: first.studentId, total:0, count:0, percentTotal:0, percentCount:0 };
           entry.total += first.score;
           entry.count += 1;
+          /* نسبة هذا التمرين المئوية (النقطة ÷ سلّم التمرين × 100) — تُستعمل لدمج حلول المعلّم الذكي
+             مع نتائج تمارين الدروس بنفس الوحدة (نسبة مئوية لكل تمرين منجز) */
+          if(typeof first.totalPoints === 'number' && first.totalPoints > 0){
+            entry.percentTotal += Math.min(100, Math.max(0, first.score / first.totalPoints * 100));
+            entry.percentCount += 1;
+          }
           entry.name = first.name || entry.name;
           byKey.set(key, entry);
         });
       });
     }catch(e){}
     const results = Array.from(byKey.values()).map(e=>({
-      name: e.name, studentId: e.studentId, totalPoints: Math.round(e.total*100)/100, examsCount: e.count
+      name: e.name, studentId: e.studentId, totalPoints: Math.round(e.total*100)/100, examsCount: e.count,
+      percentTotal: e.percentTotal, percentCount: e.percentCount
     }));
     /* الترتيب التنازلي حسب مجموع النقاط المتحصل عليها */
     results.sort((a,b)=> b.totalPoints - a.totalPoints);
     return results;
+  },
+
+  /* ---------- دمج حلول المعلّم الذكي مع تمارين الدروس (لوحة الشرف العامة) ----------
+     كل تمرين/فرض/اختبار يحلّه التلميذ في المعلّم الذكي يُحتسب بنسبته المئوية (النقطة ÷ سلّم الموضوع × 100)
+     تمامًا مثل تمرين الدرس، فيُضاف إلى مجموع النتائج وإلى عدد التمارين المنجزة، ويُعاد حساب المعدّل.
+     المطابقة بحساب التلميذ (studentId) أولًا، وبالاسم الكامل فقط للنتائج القديمة التي لا تحمل studentId. */
+  mergeAllExercises(lessonResults, examResults, approvedStudents){
+    const lessonById = new Map(lessonResults.map(r=> [r.studentId, r]));
+    const examById = new Map(examResults.filter(r=> r.studentId).map(r=> [r.studentId, r]));
+    const examByName = new Map(examResults.map(r=> [(r.name||'').trim().toLowerCase(), r]));
+    const out = [];
+    approvedStudents.forEach(s=>{
+      const l = lessonById.get(s.id);
+      const e = examById.get(s.id) || examByName.get((s.fullName||'').trim().toLowerCase());
+      const lessonScore = l ? l.totalScore : 0;
+      const lessonCount = l ? l.exercisesCount : 0;
+      const smartScore = e ? Math.round(e.percentTotal*10)/10 : 0;
+      const smartCount = e ? e.percentCount : 0;
+      const count = lessonCount + smartCount;
+      if(count <= 0) return;
+      const total = Math.round((lessonScore + smartScore)*10)/10;
+      out.push({
+        studentId: s.id, name: s.fullName || 'طالب غير معروف',
+        totalScore: total, avgPercent: Math.round(total/count), exercisesCount: count,
+        lessonScore, smartScore
+      });
+    });
+    out.sort((a,b)=> b.totalScore - a.totalScore);
+    return out;
   },
 
   /* ---------- الترتيب الشامل الكامل: تمارين الدروس + الفروض والاختبارات معًا ----------
@@ -1002,17 +1038,14 @@ const Leaderboard = {
     const [lessonResults, examResults, approvedStudents] = await Promise.all([
       this.overallLessons(), this.overallExams(), Admin.listApprovedFull()
     ]);
-    const lessonByStudentId = new Map(lessonResults.map(r=> [r.studentId, r.totalScore]));
-    const examByStudentId = new Map(examResults.filter(r=> r.studentId).map(r=> [r.studentId, r.totalPoints]));
-    const examByName = new Map(examResults.map(r=> [(r.name||'').trim().toLowerCase(), r.totalPoints]));
+    const all = this.mergeAllExercises(lessonResults, examResults, approvedStudents);
+    const allById = new Map(all.map(r=> [r.studentId, r]));
     const combined = approvedStudents.map(s=>{
-      const lessonScore = lessonByStudentId.get(s.id) || 0;
-      const examScore = examByStudentId.has(s.id)
-        ? examByStudentId.get(s.id)
-        : (examByName.get((s.fullName||'').trim().toLowerCase()) || 0);
+      const r = allById.get(s.id);
       return {
-        studentId: s.id, name: s.fullName, lessonScore, examScore,
-        totalScore: Math.round((lessonScore + examScore) * 10) / 10
+        studentId: s.id, name: s.fullName,
+        lessonScore: r ? r.lessonScore : 0, examScore: r ? r.smartScore : 0,
+        totalScore: r ? r.totalScore : 0
       };
     });
     /* الترتيب التنازلي حسب المجموع الشامل */
@@ -1053,17 +1086,13 @@ const Leaderboard = {
       const [lessonResults, examResults, approvedStudents] = await Promise.all([
         this.overallLessons(), this.overallExams(), Admin.listApprovedFull()
       ]);
-      const lessonRankByStudent = new Map(lessonResults.map((r,i)=> [r.studentId, i+1]));
+      /* الترتيب العام = تمارين الدروس + حلول المعلّم الذكي (كلها بالنسبة المئوية لكل تمرين منجز) */
+      const allResults = this.mergeAllExercises(lessonResults, examResults, approvedStudents);
+      const lessonRankByStudent = new Map(allResults.map((r,i)=> [r.studentId, i+1]));
+      const lessonByStudentId = new Map(allResults.map(r=> [r.studentId, r.totalScore]));
       const examRankByStudent = new Map();
       examResults.forEach((r,i)=>{ if(r.studentId) examRankByStudent.set(r.studentId, {rank:i+1, points:r.totalPoints}); });
-      const lessonByStudentId = new Map(lessonResults.map(r=> [r.studentId, r.totalScore]));
-      const examByStudentId = new Map(examResults.filter(r=> r.studentId).map(r=> [r.studentId, r.totalPoints]));
-      const examByName = new Map(examResults.map(r=> [(r.name||'').trim().toLowerCase(), r.totalPoints]));
-      const combined = approvedStudents.map(s=>{
-        const lessonScore = lessonByStudentId.get(s.id) || 0;
-        const examScore = examByStudentId.has(s.id) ? examByStudentId.get(s.id) : (examByName.get((s.fullName||'').trim().toLowerCase()) || 0);
-        return { studentId:s.id, totalScore: Math.round((lessonScore+examScore)*10)/10 };
-      });
+      const combined = approvedStudents.map(s=> ({ studentId:s.id, totalScore: lessonByStudentId.get(s.id) || 0 }));
       combined.sort((a,b)=> b.totalScore - a.totalScore);
       const combinedRankByStudent = new Map(combined.map((r,i)=> [r.studentId, i+1]));
 
@@ -1090,7 +1119,7 @@ const Leaderboard = {
       const newCache = {
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         totalStudents: approvedStudents.length,
-        top10Lessons: lessonResults.slice(0,10),
+        top10Lessons: allResults.slice(0,10),
         top10Exams: examResults.slice(0,10)
       };
       await db.collection('state').doc('leaderboardCache').set(newCache);
@@ -4682,7 +4711,7 @@ async function renderAdminPanel(){
 
   const statsMount = document.getElementById('adminStatsMount');
   for(const l of window.LESSONS){
-    if(l.locked==='pending') continue;
+    if(l.locked==='pending' || Locks.isLessonLocked(l.id)) continue; /* فقط الدروس المفتوحة */
     const card = document.createElement('div');
     card.className = 'stat-card';
     card.dataset.lessonId = l.id;
@@ -4777,8 +4806,8 @@ async function renderLessonVideoList(overlay){
   const body = overlay.querySelector('#lvModalBody');
   overlay.querySelector('#lvModalSubtitle').textContent = 'اختر درسًا لإضافة الفيديو أو تغييره';
   body.innerHTML = '<div class="sf-label">جاري التحميل…</div>';
-  await LessonVideos.load();
-  const rows = window.LESSONS.filter(l=> l.locked !== 'pending').map(l=>{
+  await Promise.all([LessonVideos.load(), Locks.load()]);
+  const rows = window.LESSONS.filter(l=> l.locked !== 'pending' && !Locks.isLessonLocked(l.id)).map(l=>{
     const custom = !!LessonVideos.getOverride(l.id);
     const has = !!LessonVideos.getEffective(l);
     const icon = custom ? '✏️' : (has ? '🎬' : '➕');
@@ -4789,7 +4818,7 @@ async function renderLessonVideoList(overlay){
       <div class="lr-status" title="${tip}">${icon}</div>
     </div>`;
   }).join('');
-  body.innerHTML = `<div class="note" style="margin-bottom:10px">✏️ معدَّل من الأستاذ &nbsp;·&nbsp; 🎬 الفيديو الأصلي &nbsp;·&nbsp; ➕ بلا فيديو</div><div class="lesson-list">${rows}</div>`;
+  body.innerHTML = `<div class="note" style="margin-bottom:10px">✏️ معدَّل من الأستاذ &nbsp;·&nbsp; 🎬 الفيديو الأصلي &nbsp;·&nbsp; ➕ بلا فيديو</div>${rows ? `<div class="lesson-list">${rows}</div>` : '<div class="exam-panel">لا توجد دروس مفتوحة حاليًا — افتح درسًا من «فتح/إغلاق الدروس» ليظهر هنا.</div>'}`;
   body.querySelectorAll('[data-lv-lesson]').forEach(row=>{
     row.addEventListener('click', ()=>{
       if(window.SoundFX) SoundFX.click();
@@ -4886,9 +4915,9 @@ async function renderZoomManagerList(overlay){
   overlay.querySelector('#zoomModalSubtitle').textContent = 'اختر درسًا لإضافة أو تعديل روابط تسجيلاته';
   body.innerHTML = '<div class="sf-label">جاري التحميل…</div>';
 
-  await ZoomLinks.load();
+  await Promise.all([ZoomLinks.load(), Locks.load()]);
 
-  const rows = window.LESSONS.map(l=>{
+  const rows = window.LESSONS.filter(l=> l.locked !== 'pending' && !Locks.isLessonLocked(l.id)).map(l=>{ /* فقط الدروس المفتوحة */
     const has = ZoomLinks.hasAnyLink(l.id);
     return `<div class="lesson-row zoom-lesson-row" data-zoom-lesson="${l.id}">
       <div class="lr-num"><span class="lr-num-text">${String(l.order).padStart(2,'0')}</span></div>
@@ -4897,7 +4926,7 @@ async function renderZoomManagerList(overlay){
     </div>`;
   }).join('');
 
-  body.innerHTML = `<div class="lesson-list">${rows}</div>`;
+  body.innerHTML = rows ? `<div class="lesson-list">${rows}</div>` : '<div class="exam-panel">لا توجد دروس مفتوحة حاليًا — افتح درسًا من «فتح/إغلاق الدروس» ليظهر هنا.</div>';
 
   body.querySelectorAll('[data-zoom-lesson]').forEach(row=>{
     row.addEventListener('click', ()=>{
